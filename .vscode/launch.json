@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Debug Hulk Compiler",
+        "type": "lldb",
+        "request": "launch",
+        "program": "${workspaceFolder}/target/debug/hulk-compiler",
+        "args": ["test.hulk"],
+        "cwd": "${workspaceFolder}",
+        "sourceLanguages": ["rust"]
+      }
+    ]
+  }

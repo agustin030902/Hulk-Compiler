@@ -3,11 +3,11 @@ fn main() {
     let x = "3 +      9 +1- 2 * 51 /2.19; \n \n 3 + 9*3.9001".to_string();
     let mut lexer = lexer::Lexer::new(x);
     let tokens = lexer.lex();
+    let _0 = 90;
 
     for token in tokens {
         println!("{:?}", token);
     }
-
 }
 
 #[derive(Clone, Debug)]

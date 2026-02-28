@@ -1,43 +1,49 @@
+// mod lexer;
+// mod parser;
+
+// use parser::Parser;
+
+// fn main() {
+//     let x = "3 + 9 +1- 2 * 51 /2.19".to_string();
+
+//     let mut lexer = lexer::Lexer::new(x);
+//     let tokens = lexer.lex();
+
+//     let mut parser = Parser::new(tokens);
+//     let ast = parser.parse_expression();
+
+//     println!("{:#?}", ast);
+// }
+
 mod lexer;
-fn main() {
-    let x = "3 +      9 +1- 2 * 51 /2.19; \n \n 3 + 9*3.9001".to_string();
-    let mut lexer = lexer::Lexer::new(x);
+mod parser;
+
+use parser::Parser;
+
+fn run(source: &str) {
+    println!("==============================");
+    println!("SOURCE:\n{}\n", source);
+
+    let mut lexer = lexer::Lexer::new(source.to_string());
     let tokens = lexer.lex();
-    let _0 = 90;
 
-    for token in tokens {
-        println!("{:?}", token);
+    println!("TOKENS:");
+    for t in &tokens {
+        println!("{:?}", t);
     }
+
+    let mut parser = Parser::new(tokens);
+    let ast = parser.parse_expression();
+
+    println!("\nAST:");
+    println!("{:#?}", ast);
+    println!("==============================\n");
 }
 
-#[derive(Clone, Debug)]
-struct Dog {
-    name: String,
-    age: i32,
-}
+fn main() {
+    // Tu expresión original
+    run("3 + 9 + 1 - 2 * 51 / 2.19");
 
-impl Dog {
-    pub fn new(name: String, age: i32) -> Self {
-        Self { name, age }
-    }
-
-    pub fn set_age(&mut self, age: i32) {
-        self.age = age;
-    }
-
-    pub fn age(&self) -> i32 {
-        self.age
-    }
-
-    pub fn name(&self) -> &String {
-        &self.name
-    }
-}
-
-fn dogs_names(dogs: Vec<Dog>) -> Vec<String> {
-    let mut names: Vec<String> = Vec::new();
-    for dog in dogs {
-        names.push(dog.name);
-    }
-    names
+    // Ahora probamos print
+    run(r#"print("Hola mundo")"#);
 }

@@ -1,0 +1,140 @@
+use crate::lexer::TokenKind;
+use crate::parser::expression::{
+    BinaryExpr, BinaryOp, Expr, Literal, Program, Span, Statement, UnaryExpr, UnaryOp,
+};
+
+grammar;
+
+extern {
+    type Location = usize;
+    type Error = String;
+
+    enum TokenKind {
+        "let" => TokenKind::Let,
+        "print" => TokenKind::Print,
+        "=" => TokenKind::Assign,
+        "+" => TokenKind::Add,
+        "-" => TokenKind::Minus,
+        "*" => TokenKind::Multiply,
+        "/" => TokenKind::Divide,
+        "," => TokenKind::Comma,
+        ";" => TokenKind::Semicolon,
+        "(" => TokenKind::LeftParen,
+        ")" => TokenKind::RightParen,
+        "identifier" => TokenKind::Identifier(<String>),
+        "number" => TokenKind::Number(<String>),
+        "string" => TokenKind::String(<String>),
+        "boolean" => TokenKind::Boolean(<String>),
+        "unknown" => TokenKind::Unknown,
+        "eof" => TokenKind::EOF,
+    }
+}
+
+pub Program: Program = {
+    <statements:Statement*> "eof" => Program { statements },
+};
+
+Statement: Statement = {
+    <l:@L> "let" <id:IdentifierWithSpan> "=" <value:Expr> ";" <r:@R> => Statement::Let {
+        name: id.0,
+        name_span: id.1,
+        value,
+        span: Span::new(l, r),
+    },
+    <l:@L> "print" "(" <value:Expr> ")" ";" <r:@R> => Statement::Print {
+        value,
+        span: Span::new(l, r),
+    },
+};
+
+Expr: Expr = {
+    <l:@L> <left:Expr> "+" <right:Term> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Add,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Expr> "-" <right:Term> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Sub,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    Term,
+};
+
+Term: Expr = {
+    <l:@L> <left:Term> "*" <right:Unary> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Mul,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Term> "/" <right:Unary> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Div,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    Unary,
+};
+
+Unary: Expr = {
+    <l:@L> "-" <expr:Unary> <r:@R> => Expr::Unary(UnaryExpr {
+        op: UnaryOp::Neg,
+        expr: Box::new(expr),
+        span: Span::new(l, r),
+    }),
+    Primary,
+};
+
+Primary: Expr = {
+    <literal:LiteralExpr> => literal,
+    <variable:VariableExpr> => variable,
+    "(" <expr:Expr> ")" => expr,
+};
+
+IdentifierWithSpan: (String, Span) = {
+    <l:@L> <name:"identifier"> <r:@R> => (name, Span::new(l, r)),
+};
+
+VariableExpr: Expr = {
+    <l:@L> <name:"identifier"> <r:@R> => Expr::Variable {
+        name,
+        span: Span::new(l, r),
+    },
+};
+
+LiteralExpr: Expr = {
+    <l:@L> <raw:"number"> <r:@R> =>? {
+        if raw.contains('.') {
+            match raw.parse::<f64>() {
+                Ok(v) => Ok(Expr::Literal {
+                    value: Literal::Float(v),
+                    span: Span::new(l, r),
+                }),
+                Err(_) => Err(lalrpop_util::ParseError::User {
+                    error: format!("Invalid float literal: {}", raw),
+                }),
+            }
+        } else {
+            match raw.parse::<i64>() {
+                Ok(v) => Ok(Expr::Literal {
+                    value: Literal::Integer(v),
+                    span: Span::new(l, r),
+                }),
+                Err(_) => Err(lalrpop_util::ParseError::User {
+                    error: format!("Invalid integer literal: {}", raw),
+                }),
+            }
+        }
+    },
+    <l:@L> <raw:"boolean"> <r:@R> => Expr::Literal {
+        value: Literal::Boolean(raw == "true"),
+        span: Span::new(l, r),
+    },
+    <l:@L> <raw:"string"> <r:@R> => Expr::Literal {
+        value: Literal::String(raw),
+        span: Span::new(l, r),
+    },
+};

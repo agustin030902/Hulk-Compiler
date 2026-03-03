@@ -1,1 +1,12 @@
 /target
+
+# Generated outputs
+/artifacts/
+
+# Local playground inputs/samples
+/examples/
+
+# OS/editor noise
+.DS_Store
+*.swp
+*.swo

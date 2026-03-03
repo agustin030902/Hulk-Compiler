@@ -1,0 +1,5 @@
+print("zzzz");
+
+let x = 90 - 9 + (9 -1) * 2                            ;
+let y = 23 + (9/3 + 4) * 2;
+print (x + y + z);

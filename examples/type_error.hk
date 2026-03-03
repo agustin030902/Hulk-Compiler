@@ -1,0 +1,3 @@
+let a = "hola" + 3;
+let b = true + 1;
+print(a);

@@ -4,9 +4,9 @@
 /artifacts/
 
 # Local playground inputs/samples
-/examples/
+#/examples/
 
 # OS/editor noise
-.DS_Store
+.DS_Store 
 *.swp
 *.swo

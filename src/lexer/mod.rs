@@ -167,7 +167,6 @@ impl Lexer {
     pub fn errors(&self) -> &[CompilerError] {
         &self.errors
     }
-}
 
     pub fn has_errors(&self) -> bool {
         !self.errors.is_empty()

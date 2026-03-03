@@ -74,6 +74,7 @@ pub struct UnaryExpr {
 #[derive(Debug, Clone)]
 pub enum BinaryOp {
     Add,
+    Concat,
     Sub,
     Mul,
     Div,

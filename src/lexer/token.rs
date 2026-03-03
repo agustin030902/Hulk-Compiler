@@ -8,6 +8,7 @@ pub enum TokenKind {
     Print,
     Assign,
     Add,
+    Concat,
     Minus,
     Multiply,
     Divide,

@@ -1,4 +1,8 @@
 mod token;
+#[cfg(test)]
+mod string_escape_tests;
+#[cfg(test)]
+mod tests;
 
 use logos::Logos;
 
@@ -24,6 +28,8 @@ enum LogosTokenKind {
     String,
     #[token("+")]
     Add,
+    #[token("@")]
+    Concat,
     #[token("-")]
     Minus,
     #[token("*")]
@@ -67,14 +73,15 @@ impl LogosTokenKind {
                 (TokenKind::Number(value.clone()), value)
             }
             LogosTokenKind::String => {
-                let value = lexeme
+                let raw_value = lexeme
                     .strip_prefix('"')
                     .and_then(|s| s.strip_suffix('"'))
-                    .unwrap_or(lexeme)
-                    .to_string();
+                    .unwrap_or(lexeme);
+                let value = unescape_string_contents(raw_value);
                 (TokenKind::String(value.clone()), value)
             }
             LogosTokenKind::Add => (TokenKind::Add, lexeme.to_string()),
+            LogosTokenKind::Concat => (TokenKind::Concat, lexeme.to_string()),
             LogosTokenKind::Minus => (TokenKind::Minus, lexeme.to_string()),
             LogosTokenKind::Multiply => (TokenKind::Multiply, lexeme.to_string()),
             LogosTokenKind::Divide => (TokenKind::Divide, lexeme.to_string()),
@@ -160,6 +167,7 @@ impl Lexer {
     pub fn errors(&self) -> &[CompilerError] {
         &self.errors
     }
+}
 
     pub fn has_errors(&self) -> bool {
         !self.errors.is_empty()
@@ -183,4 +191,29 @@ fn line_column_at(offset: usize, line_starts: &[usize]) -> (usize, usize) {
     let line_start = line_starts[line_index];
     let column = offset.saturating_sub(line_start);
     (line_index + 1, column + 1)
+}
+
+fn unescape_string_contents(raw: &str) -> String {
+    let mut result = String::with_capacity(raw.len());
+    let mut chars = raw.chars();
+
+    while let Some(ch) = chars.next() {
+        if ch != '\\' {
+            result.push(ch);
+            continue;
+        }
+
+        match chars.next() {
+            Some('"') => result.push('"'),
+            Some('n') => result.push('\n'),
+            Some('t') => result.push('\t'),
+            Some(other) => {
+                result.push('\\');
+                result.push(other);
+            }
+            None => result.push('\\'),
+        }
+    }
+
+    result
 }

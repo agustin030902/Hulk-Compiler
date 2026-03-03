@@ -14,6 +14,7 @@ extern {
         "print" => TokenKind::Print,
         "=" => TokenKind::Assign,
         "+" => TokenKind::Add,
+        "@" => TokenKind::Concat,
         "-" => TokenKind::Minus,
         "*" => TokenKind::Multiply,
         "/" => TokenKind::Divide,
@@ -51,6 +52,12 @@ Expr: Expr = {
     <l:@L> <left:Expr> "+" <right:Term> <r:@R> => Expr::Binary(BinaryExpr {
         left: Box::new(left),
         op: BinaryOp::Add,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Expr> "@" <right:Term> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Concat,
         right: Box::new(right),
         span: Span::new(l, r),
     }),

@@ -2,6 +2,8 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
+#[cfg(test)]
+mod tests;
 
 use crate::{
     codegen::{CodegenBackend, llvm::LlvmBackend},

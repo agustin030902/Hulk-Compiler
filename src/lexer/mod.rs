@@ -1,4 +1,6 @@
 mod token;
+#[cfg(test)]
+mod tests;
 
 use logos::Logos;
 
@@ -24,6 +26,8 @@ enum LogosTokenKind {
     String,
     #[token("+")]
     Add,
+    #[token("@")]
+    Concat,
     #[token("-")]
     Minus,
     #[token("*")]
@@ -75,6 +79,7 @@ impl LogosTokenKind {
                 (TokenKind::String(value.clone()), value)
             }
             LogosTokenKind::Add => (TokenKind::Add, lexeme.to_string()),
+            LogosTokenKind::Concat => (TokenKind::Concat, lexeme.to_string()),
             LogosTokenKind::Minus => (TokenKind::Minus, lexeme.to_string()),
             LogosTokenKind::Multiply => (TokenKind::Multiply, lexeme.to_string()),
             LogosTokenKind::Divide => (TokenKind::Divide, lexeme.to_string()),

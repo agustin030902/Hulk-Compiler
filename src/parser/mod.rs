@@ -6,6 +6,8 @@ use crate::{
 };
 
 pub mod expression;
+#[cfg(test)]
+mod tests;
 
 pub use expression::Program;
 
@@ -120,6 +122,7 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::Print => "print".to_string(),
         TokenKind::Assign => "=".to_string(),
         TokenKind::Add => "+".to_string(),
+        TokenKind::Concat => "@".to_string(),
         TokenKind::Minus => "-".to_string(),
         TokenKind::Multiply => "*".to_string(),
         TokenKind::Divide => "/".to_string(),

@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 #[cfg(test)]
+mod string_escape_tests;
+#[cfg(test)]
 mod tests;
 
 use crate::{

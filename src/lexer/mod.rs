@@ -1,202 +1,186 @@
 mod token;
-//mod error;
- 
+
+use logos::Logos;
+
+use crate::error::{CompilerError, ErrorCategory};
+
 pub use token::Token;
 pub use token::TokenKind;
 
+#[derive(Logos, Debug, PartialEq)]
+#[logos(skip r"[ \t\r\n\f]+")]
+enum LogosTokenKind {
+    #[token("let")]
+    Let,
+    #[token("print")]
+    Print,
+    #[regex(r"true|false")]
+    Boolean,
+    #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
+    Identifier,
+    #[regex(r"[0-9]+(?:\.[0-9]+)?")]
+    Number,
+    #[regex(r#""([^"\\]|\\.)*""#)]
+    String,
+    #[token("+")]
+    Add,
+    #[token("-")]
+    Minus,
+    #[token("*")]
+    Multiply,
+    #[token("/")]
+    Divide,
+    #[token("(")]
+    LeftParen,
+    #[token(")")]
+    RightParen,
+    #[token(",")]
+    Comma,
+    #[token(";")]
+    Semicolon,
+    #[token("=")]
+    Assign,
+}
 
-pub struct Lexer{
+impl LogosTokenKind {
+    fn into_token(
+        self,
+        lexeme: &str,
+        line: usize,
+        column: usize,
+        start: usize,
+        end: usize,
+    ) -> Token {
+        let (kind, value) = match self {
+            LogosTokenKind::Let => (TokenKind::Let, lexeme.to_string()),
+            LogosTokenKind::Print => (TokenKind::Print, lexeme.to_string()),
+            LogosTokenKind::Boolean => {
+                let value = lexeme.to_string();
+                (TokenKind::Boolean(value.clone()), value)
+            }
+            LogosTokenKind::Identifier => {
+                let value = lexeme.to_string();
+                (TokenKind::Identifier(value.clone()), value)
+            }
+            LogosTokenKind::Number => {
+                let value = lexeme.to_string();
+                (TokenKind::Number(value.clone()), value)
+            }
+            LogosTokenKind::String => {
+                let value = lexeme
+                    .strip_prefix('"')
+                    .and_then(|s| s.strip_suffix('"'))
+                    .unwrap_or(lexeme)
+                    .to_string();
+                (TokenKind::String(value.clone()), value)
+            }
+            LogosTokenKind::Add => (TokenKind::Add, lexeme.to_string()),
+            LogosTokenKind::Minus => (TokenKind::Minus, lexeme.to_string()),
+            LogosTokenKind::Multiply => (TokenKind::Multiply, lexeme.to_string()),
+            LogosTokenKind::Divide => (TokenKind::Divide, lexeme.to_string()),
+            LogosTokenKind::LeftParen => (TokenKind::LeftParen, lexeme.to_string()),
+            LogosTokenKind::RightParen => (TokenKind::RightParen, lexeme.to_string()),
+            LogosTokenKind::Comma => (TokenKind::Comma, lexeme.to_string()),
+            LogosTokenKind::Semicolon => (TokenKind::Semicolon, lexeme.to_string()),
+            LogosTokenKind::Assign => (TokenKind::Assign, lexeme.to_string()),
+        };
+
+        Token {
+            kind,
+            value,
+            line,
+            column,
+            start,
+            end,
+        }
+    }
+}
+
+pub struct Lexer {
     input: String,
-    position: i32,
-    raw: i32,
-    column: i32,
-    current_char: Option<char>,
-    token_list: Vec<Token>,
+    errors: Vec<CompilerError>,
 }
 
 impl Lexer {
     pub fn new(input: String) -> Self {
-        let mut lexer = Lexer {
+        Self {
             input,
-            raw: 0,
-            position: 0,
-            column: 0,
-            current_char: None,
-            token_list: Vec::new(),
-        };
-        lexer.current_char = lexer.input.chars().nth(0);
-        lexer
+            errors: Vec::new(),
+        }
     }
-    
+
     pub fn lex(&mut self) -> Vec<Token> {
-        while let Some(c) = self.current_char {
-    
-            if c.is_whitespace() {
-                self.skip_whitespace();
-    
-            } else if c.is_ascii_digit() {
-                let number_token = self.lex_number();
-                self.token_list.push(number_token);
-    
-            } else if c.is_alphabetic() {
-                let ident_token = self.lex_identifier();
-                self.token_list.push(ident_token);
-    
-            } else if c == '"' {
-                let string_token = self.lex_string();
-                self.token_list.push(string_token);
-    
-            } else if c == '(' {
-                self.token_list.push(Token {
-                    kind: TokenKind::LeftParen,
-                    value: "(".to_string(),
-                    line: self.raw,
-                    column: self.column,
-                });
-                self.advance();
-    
-            } else if c == ')' {
-                self.token_list.push(Token {
-                    kind: TokenKind::RightParen,
-                    value: ")".to_string(),
-                    line: self.raw,
-                    column: self.column,
-                });
-                self.advance();
-    
-            } else if "+-*/".contains(c) {
-                let operator_token = self.lex_operator();
-                self.token_list.push(operator_token);
-    
-            } else {
-                self.advance();
+        let input = self.input.as_str();
+        let line_starts = compute_line_starts(input);
+        let mut logos_lexer = LogosTokenKind::lexer(input);
+        let mut tokens = Vec::new();
+        self.errors.clear();
+
+        while let Some(next) = logos_lexer.next() {
+            let span = logos_lexer.span();
+            let lexeme = &input[span.clone()];
+            let (line, column) = line_column_at(span.start, &line_starts);
+
+            match next {
+                Ok(kind) => {
+                    tokens.push(kind.into_token(lexeme, line, column, span.start, span.end))
+                }
+                Err(_) => {
+                    self.errors.push(CompilerError::new(
+                        ErrorCategory::Lexical,
+                        format!("Unexpected character sequence: {}", lexeme),
+                        line,
+                        column,
+                    ));
+                    tokens.push(Token {
+                        kind: TokenKind::Unknown,
+                        value: lexeme.to_string(),
+                        line,
+                        column,
+                        start: span.start,
+                        end: span.end,
+                    });
+                }
             }
         }
-    
-        self.token_list.push(Token {
+
+        let (line, column) = line_column_at(input.len(), &line_starts);
+        tokens.push(Token {
             kind: TokenKind::EOF,
             value: String::new(),
-            line: self.raw,
-            column: self.column,
+            line,
+            column,
+            start: input.len(),
+            end: input.len(),
         });
-    
-        self.token_list.clone()
+
+        tokens
     }
 
-    pub fn advance(&mut self) {
-        self.column += 1;
-        //self.raw += 1;
-        self.position += 1;
-        self.current_char = self.input.chars().nth(self.position as usize);
+    pub fn errors(&self) -> &[CompilerError] {
+        &self.errors
     }
 
-    pub fn lex_identifier(&mut self) -> Token {
-        let start_raw = self.raw;
-        let start_column = self.column;
-        let mut value = String::new();
-    
-        while let Some(c) = self.current_char {
-            if c.is_alphanumeric() {
-                value.push(c);
-                self.advance();
-            } else {
-                break;
-            }
-        }
-    
-        let kind = match value.as_str() {
-            "print" => TokenKind::Print,
-            "true" | "false" => TokenKind::Boolean(value.clone()),
-            _ => TokenKind::Identifier(value.clone()),
-        };
-    
-        Token {
-            kind,
-            value,
-            line: start_raw,
-            column: start_column,
+    pub fn has_errors(&self) -> bool {
+        !self.errors.is_empty()
+    }
+}
+
+fn compute_line_starts(input: &str) -> Vec<usize> {
+    let mut starts = vec![0];
+    for (index, ch) in input.char_indices() {
+        if ch == '\n' {
+            starts.push(index + ch.len_utf8());
         }
     }
+    starts
+}
 
-    pub fn lex_string(&mut self) -> Token {
-        let start_raw = self.raw;
-        let start_column = self.column;
-    
-        self.advance(); // consumir comilla inicial
-    
-        let mut value = String::new();
-    
-        while let Some(c) = self.current_char {
-            if c == '"' {
-                break;
-            }
-            value.push(c);
-            self.advance();
-        }
-    
-        self.advance(); // consumir comilla final
-    
-        Token {
-            kind: TokenKind::String(value.clone()),
-            value,
-            line: start_raw,
-            column: start_column,
-        }
-    }
-
-    pub fn skip_whitespace(&mut self) {
-        while let Some(c) = self.current_char {
-            if c.is_whitespace() {
-                if c == '\n' {
-                    self.column = 0;
-                    self.raw += 1;
-                }
-                self.advance();
-            } else {
-                break;
-            }
-        }
-    }
-
-    pub fn lex_number(&mut self) -> Token {
-        let start_raw = self.raw;
-        let start_column = self.column;
-        let mut value = String::new();
-
-        while let Some(c) = self.current_char {
-            if c.is_digit(10) || c == '.' {
-                value.push(c);
-                self.advance();
-            } else {
-                break;
-            }
-        }
-
-        Token {
-            kind: TokenKind::Number(value.clone()),
-            value,
-            line: start_raw,
-            column: start_column,
-        }
-    }
-
-    pub fn lex_operator(&mut self) -> Token {
-        let start_raw = self.raw;
-        let start_column = self.column;
-        let value = self.current_char.unwrap().to_string();
-        self.advance();
-
-        Token {
-            kind: match value.as_str() {
-                "+" => TokenKind::Add,
-                "-" => TokenKind::Minus,
-                "*" => TokenKind::Multiply,
-                "/" => TokenKind::Divide,
-                _ => TokenKind::Unknown,
-            },
-            value,
-            line: start_raw,
-            column: start_column,
-        }
-    }
-}   
+fn line_column_at(offset: usize, line_starts: &[usize]) -> (usize, usize) {
+    let line_index = line_starts
+        .partition_point(|&line_start| line_start <= offset)
+        .saturating_sub(1);
+    let line_start = line_starts[line_index];
+    let column = offset.saturating_sub(line_start);
+    (line_index + 1, column + 1)
+}

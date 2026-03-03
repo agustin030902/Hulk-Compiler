@@ -1,54 +1,51 @@
-// pub enum Expr {
-//     Binary(BinaryExpr),
-//     Unary(UnaryExpr),
-//     Atomic(Literal),
-//     Print(String)
-// }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Span {
+    pub start: usize,
+    pub end: usize,
+}
 
-// #[derive(Debug)]
-// pub enum Literal {
-//     Integer(i64),
-//     Float(f64),
-//     Boolean(bool),
-//     String(String),
-// }
-
-// #[derive(Debug)]
-// pub struct BinaryExpr {
-//     pub left: Box<Expr>,
-//     pub op: BinaryOp,
-//     pub right: Box<Expr>,
-// }
-
-// #[derive(Debug)]
-// pub struct UnaryExpr {
-//     pub op: UnaryOp,
-//     pub expr: Box<Expr>,
-// }
-
-// #[derive(Debug)]
-// pub enum BinaryOp {
-//     Add,
-//     Sub,
-//     Mul,
-//     Div,
-// }
-
-// #[derive(Debug)]
-// pub enum UnaryOp {
-//     Neg,
-// }
-
-
-use core::str;
-use std::fmt;
+impl Span {
+    pub const fn new(start: usize, end: usize) -> Self {
+        Self { start, end }
+    }
+}
 
 #[derive(Debug)]
+pub struct Program {
+    pub statements: Vec<Statement>,
+}
+
+#[derive(Debug)]
+pub enum Statement {
+    Let {
+        name: String,
+        name_span: Span,
+        value: Expr,
+        span: Span,
+    },
+    Print {
+        value: Expr,
+        span: Span,
+    },
+}
+
+#[derive(Debug, Clone)]
 pub enum Expr {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
-    Atomic(Literal),
-    Print(String),
+    Literal { value: Literal, span: Span },
+    Variable { name: String, span: Span },
+}
+
+impl Expr {
+    pub fn span(&self) -> Span {
+        match self {
+            Expr::Binary(binary) => binary.span,
+            Expr::Unary(unary) => unary.span,
+            Expr::Literal { span, .. } => *span,
+            Expr::Variable { span, .. } => *span,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -59,25 +56,22 @@ pub enum Literal {
     String(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BinaryExpr {
     pub left: Box<Expr>,
     pub op: BinaryOp,
     pub right: Box<Expr>,
+    pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UnaryExpr {
     pub op: UnaryOp,
     pub expr: Box<Expr>,
+    pub span: Span,
 }
 
-#[derive(Debug)]
-pub struct PrintExpr {
-    pub message: Expr,
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BinaryOp {
     Add,
     Sub,
@@ -85,85 +79,7 @@ pub enum BinaryOp {
     Div,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UnaryOp {
     Neg,
-}
-
-#[derive(Debug)]
-pub enum EvalError {
-    TypeError,
-    DivisionByZero,
-}
-
-impl Expr {
-    pub fn eval(&self) -> Result<Literal, EvalError> {
-        match self {
-            Expr::Atomic(lit) => Ok(lit.clone()),
-
-            Expr::Unary(unary) => {
-                let value = unary.expr.eval()?;
-                match (&unary.op, value) {
-                    (UnaryOp::Neg, Literal::Integer(i)) => {
-                        Ok(Literal::Integer(-i))
-                    }
-                    (UnaryOp::Neg, Literal::Float(f)) => {
-                        Ok(Literal::Float(-f))
-                    }
-                    _ => Err(EvalError::TypeError),
-                }
-            }
-
-            Expr::Binary(binary) => {
-                let left = binary.left.eval()?;
-                let right = binary.right.eval()?;
-
-                match (&binary.op, left, right) {
-
-                    // Integer ops
-                    (BinaryOp::Add, Literal::Integer(a), Literal::Integer(b)) =>
-                        Ok(Literal::Integer(a + b)),
-
-                    (BinaryOp::Sub, Literal::Integer(a), Literal::Integer(b)) =>
-                        Ok(Literal::Integer(a - b)),
-
-                    (BinaryOp::Mul, Literal::Integer(a), Literal::Integer(b)) =>
-                        Ok(Literal::Integer(a * b)),
-
-                    (BinaryOp::Div, Literal::Integer(a), Literal::Integer(b)) => {
-                        if b == 0 {
-                            Err(EvalError::DivisionByZero)
-                        } else {
-                            Ok(Literal::Integer(a / b))
-                        }
-                    }
-
-                    // Float ops
-                    (BinaryOp::Add, Literal::Float(a), Literal::Float(b)) =>
-                        Ok(Literal::Float(a + b)),
-
-                    (BinaryOp::Sub, Literal::Float(a), Literal::Float(b)) =>
-                        Ok(Literal::Float(a - b)),
-
-                    (BinaryOp::Mul, Literal::Float(a), Literal::Float(b)) =>
-                        Ok(Literal::Float(a * b)),
-
-                    (BinaryOp::Div, Literal::Float(a), Literal::Float(b)) => {
-                        if b == 0.0 {
-                            Err(EvalError::DivisionByZero)
-                        } else {
-                            Ok(Literal::Float(a / b))
-                        }
-                    }
-
-                    _ => Err(EvalError::TypeError),
-                }
-            }
-
-            Expr::Print(msg) => {
-                println!("{}", msg);
-                Ok(Literal::Boolean(true))
-            }
-        }
-    }
 }

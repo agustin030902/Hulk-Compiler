@@ -6,6 +6,10 @@ use crate::{
 };
 
 pub mod expression;
+#[cfg(test)]
+mod string_escape_tests;
+#[cfg(test)]
+mod tests;
 
 pub use expression::Program;
 
@@ -32,9 +36,10 @@ impl<'input> Parser<'input> {
     pub fn parse_program(&mut self, tokens: Vec<Token>) -> Option<Program> {
         self.errors.clear();
 
-        let spanned = tokens
-            .into_iter()
-            .map(|token| Ok((token.start, token.kind, token.end)));
+        let spanned = tokens.into_iter().map(|token| {
+            let kind = normalize_token_kind(token.kind);
+            Ok((token.start, kind, token.end))
+        });
 
         match grammar::ProgramParser::new().parse(spanned) {
             Ok(program) => Some(program),
@@ -120,6 +125,7 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::Print => "print".to_string(),
         TokenKind::Assign => "=".to_string(),
         TokenKind::Add => "+".to_string(),
+        TokenKind::Concat => "@".to_string(),
         TokenKind::Minus => "-".to_string(),
         TokenKind::Multiply => "*".to_string(),
         TokenKind::Divide => "/".to_string(),
@@ -130,4 +136,36 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::Unknown => "unknown".to_string(),
         TokenKind::EOF => "EOF".to_string(),
     }
+}
+
+fn normalize_token_kind(kind: TokenKind) -> TokenKind {
+    match kind {
+        TokenKind::String(raw) => TokenKind::String(unescape_string_contents(&raw)),
+        other => other,
+    }
+}
+
+fn unescape_string_contents(raw: &str) -> String {
+    let mut result = String::with_capacity(raw.len());
+    let mut chars = raw.chars();
+
+    while let Some(ch) = chars.next() {
+        if ch != '\\' {
+            result.push(ch);
+            continue;
+        }
+
+        match chars.next() {
+            Some('"') => result.push('"'),
+            Some('n') => result.push('\n'),
+            Some('t') => result.push('\t'),
+            Some(other) => {
+                result.push('\\');
+                result.push(other);
+            }
+            None => result.push('\\'),
+        }
+    }
+
+    result
 }

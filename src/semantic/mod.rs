@@ -1,4 +1,8 @@
 use std::collections::HashMap;
+#[cfg(test)]
+mod string_escape_tests;
+#[cfg(test)]
+mod tests;
 
 use crate::{
     error::{CompilerError, ErrorCategory, offset_to_line_column},
@@ -151,6 +155,27 @@ impl SemanticAnalyzer {
                             None
                         }
                     }
+                    BinaryOp::Concat => {
+                        if left_type == SemanticType::Unknown || right_type == SemanticType::Unknown
+                        {
+                            return Some(SemanticType::Unknown);
+                        }
+
+                        if is_valid_concat_pair(left_type, right_type) {
+                            Some(SemanticType::String)
+                        } else {
+                            self.push_type_error(
+                                binary.span,
+                                source,
+                                format!(
+                                    "Operator '@' expects (String, String), (String, Number), or (Number, String), but got {} and {}.",
+                                    left_type.display_name(),
+                                    right_type.display_name()
+                                ),
+                            );
+                            None
+                        }
+                    }
                 }
             }
         }
@@ -188,8 +213,18 @@ impl SemanticAnalyzer {
 fn op_symbol(op: BinaryOp) -> &'static str {
     match op {
         BinaryOp::Add => "+",
+        BinaryOp::Concat => "@",
         BinaryOp::Sub => "-",
         BinaryOp::Mul => "*",
         BinaryOp::Div => "/",
     }
+}
+
+fn is_valid_concat_pair(left: SemanticType, right: SemanticType) -> bool {
+    matches!(
+        (left, right),
+        (SemanticType::String, SemanticType::String)
+            | (SemanticType::String, SemanticType::Number)
+            | (SemanticType::Number, SemanticType::String)
+    )
 }

@@ -252,27 +252,72 @@ impl LlvmBackend {
         let left = self.emit_expr(left)?;
         let right = self.emit_expr(right)?;
 
-        if left.value_type != ValueType::Double || right.value_type != ValueType::Double {
-            self.semantic_error("Binary arithmetic operators only support numeric values");
-            return None;
-        }
+        match op {
+            BinaryOp::Concat => self.emit_concat(&left, &right),
+            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
+                if left.value_type != ValueType::Double || right.value_type != ValueType::Double {
+                    self.semantic_error("Binary arithmetic operators only support numeric values");
+                    return None;
+                }
 
-        let instruction = match op {
-            BinaryOp::Add => "fadd",
-            BinaryOp::Sub => "fsub",
-            BinaryOp::Mul => "fmul",
-            BinaryOp::Div => "fdiv",
+                let instruction = match op {
+                    BinaryOp::Add => "fadd",
+                    BinaryOp::Sub => "fsub",
+                    BinaryOp::Mul => "fmul",
+                    BinaryOp::Div => "fdiv",
+                    BinaryOp::Concat => unreachable!("concat handled in outer match"),
+                };
+
+                let result = self.next_temp();
+                self.emit_body(format!(
+                    "{result} = {instruction} double {}, {}",
+                    left.repr, right.repr
+                ));
+
+                Some(ValueRef {
+                    value_type: ValueType::Double,
+                    repr: result,
+                })
+            }
+        }
+    }
+
+    fn emit_concat(&mut self, left: &ValueRef, right: &ValueRef) -> Option<ValueRef> {
+        let (fmt_name, arg_values) = match (left.value_type, right.value_type) {
+            (ValueType::StringPtr, ValueType::StringPtr) => {
+                ("@.fmt.concat.ss", format!("i8* {}, i8* {}", left.repr, right.repr))
+            }
+            (ValueType::StringPtr, ValueType::Double) => {
+                ("@.fmt.concat.sn", format!("i8* {}, double {}", left.repr, right.repr))
+            }
+            (ValueType::Double, ValueType::StringPtr) => {
+                ("@.fmt.concat.ns", format!("double {}, i8* {}", left.repr, right.repr))
+            }
+            _ => {
+                self.semantic_error(format!(
+                    "Operator '@' expects (String, String), (String, Number), or (Number, String), but got {} and {} in code generation.",
+                    value_type_name(left.value_type),
+                    value_type_name(right.value_type)
+                ));
+                return None;
+            }
         };
 
-        let result = self.next_temp();
+        let result_slot = self.next_temp();
+        self.emit_body(format!("{result_slot} = alloca i8*"));
+
+        let call_tmp = self.next_temp();
+        let fmt_ptr = Self::format_ptr_global(fmt_name, 5);
         self.emit_body(format!(
-            "{result} = {instruction} double {}, {}",
-            left.repr, right.repr
+            "{call_tmp} = call i32 (i8**, i8*, ...) @asprintf(i8** {result_slot}, i8* {fmt_ptr}, {arg_values})"
         ));
 
+        let loaded = self.next_temp();
+        self.emit_body(format!("{loaded} = load i8*, i8** {result_slot}"));
+
         Some(ValueRef {
-            value_type: ValueType::Double,
-            repr: result,
+            value_type: ValueType::StringPtr,
+            repr: loaded,
         })
     }
 
@@ -280,9 +325,13 @@ impl LlvmBackend {
         let mut out = vec![
             "; Hulk LLVM IR (intermediate code)".to_string(),
             "declare i32 @printf(i8*, ...)".to_string(),
+            "declare i32 @asprintf(i8**, i8*, ...)".to_string(),
             "@.fmt.number = private unnamed_addr constant [4 x i8] c\"%g\\0A\\00\"".to_string(),
             "@.fmt.string = private unnamed_addr constant [4 x i8] c\"%s\\0A\\00\"".to_string(),
             "@.fmt.bool = private unnamed_addr constant [4 x i8] c\"%d\\0A\\00\"".to_string(),
+            "@.fmt.concat.ss = private unnamed_addr constant [5 x i8] c\"%s%s\\00\"".to_string(),
+            "@.fmt.concat.sn = private unnamed_addr constant [5 x i8] c\"%s%g\\00\"".to_string(),
+            "@.fmt.concat.ns = private unnamed_addr constant [5 x i8] c\"%g%s\\00\"".to_string(),
         ];
 
         out.extend(self.global_lines.clone());
@@ -336,5 +385,13 @@ fn format_double(value: f64) -> String {
     } else {
         let text = format!("{value:.10}");
         text.trim_end_matches('0').trim_end_matches('.').to_string()
+    }
+}
+
+fn value_type_name(value_type: ValueType) -> &'static str {
+    match value_type {
+        ValueType::Double => "Number",
+        ValueType::Bool => "Boolean",
+        ValueType::StringPtr => "String",
     }
 }

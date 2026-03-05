@@ -72,7 +72,54 @@ Resultado:
 - genera un `.txt` por cada `.hk`.
 - ejemplo: `examples/demo.hk` -> `artifacts/batch/demo.txt`.
 
-### 3) Ayuda de CLI
+### 3) Compilar y ejecutar en una sola línea (NUEVO)
+
+**Qué hace:** Compila un archivo `.hk` → genera LLVM IR → lo compila a ejecutable nativo con `clang` → lo ejecuta automáticamente.
+
+**Comando básico:**
+```bash
+cargo run -- run examples/calculator_ok.hk
+```
+
+**Ejemplos de uso:**
+
+Solo compilar sin ejecutar:
+```bash
+cargo run -- run examples/calculator_ok.hk --no-exec
+```
+
+Con optimización nivel 3:
+```bash
+cargo run -- run examples/calculator_ok.hk --opt-level 3
+```
+
+Especificar rutas de salida:
+```bash
+cargo run -- run examples/calculator_ok.hk --emit-ir output.ll --out myapp
+```
+
+Pasar argumentos al programa:
+```bash
+cargo run -- run examples/calculator_ok.hk -- arg1 arg2
+```
+
+**Opciones disponibles:**
+- `--input <file>` o posicional: archivo `.hk` (requerido)
+- `--emit-ir <path>` - guardar LLVM IR generado
+- `--out <exe>` - ruta del ejecutable
+- `--clang <path>` - ruta a clang (default: "clang")
+- `--opt-level <0-3>` - nivel de optimización (default: 2)
+- `--no-exec` - solo compilar, no ejecutar
+- `-- args...` - argumentos para el programa
+
+**Flujo internamente:**
+```text
+archivo.hk → [Lexer] → [Parser] → [Semantic] → [LLVM IR]
+           → [clang -O<n>] → ejecutable nativo
+           → [ejecución] → stdout/stderr
+```
+
+### 4) Ayuda de CLI
 
 ```bash
 cargo run -- --help
@@ -103,7 +150,17 @@ Tipos de error:
 
 ## Ejecutar LLVM IR
 
-Cuando el `.txt` sea IR válido:
+Hay dos formas de ejecutar código compilado:
+
+**Forma automática (RECOMENDADO):**
+```bash
+cargo run -- run examples/calculator_ok.hk
+```
+Esto hace todo automáticamente: compila → genera IR → ejecutable → run.
+
+**Forma manual:**
+
+Cuando el `.txt` sea IR válido (generado con comandos 1 o 2):
 
 ```bash
 lli artifacts/output.txt

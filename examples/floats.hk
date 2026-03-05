@@ -1,0 +1,4 @@
+let pi = 3.14;
+let e = 2.71;
+let sum_floats = pi + e;
+print(sum_floats);

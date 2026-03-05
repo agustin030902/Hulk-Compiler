@@ -1,0 +1,5 @@
+let x = 42;
+let y = -x;
+let z = -10;
+print(y);
+print(z);

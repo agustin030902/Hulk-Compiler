@@ -1,0 +1,10 @@
+let a = 100;
+let b = 50;
+let sum = a + b;
+let diff = a - b;
+let prod = a * b;
+let div = a / b;
+print(sum);
+print(diff);
+print(prod);
+print(div);

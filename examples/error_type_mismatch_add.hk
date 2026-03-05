@@ -1,0 +1,3 @@
+let x = 10;
+let y = "string" + 5;
+print(y);

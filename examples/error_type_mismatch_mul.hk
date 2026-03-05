@@ -1,0 +1,4 @@
+let a = true;
+let b = 42;
+let c = a * b;
+print(c);

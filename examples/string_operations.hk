@@ -1,0 +1,4 @@
+let msg = "Hello";
+let name = "World";
+print(msg);
+print(name);

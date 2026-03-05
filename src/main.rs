@@ -4,6 +4,7 @@ mod error;
 mod lexer;
 mod parser;
 mod semantic;
+mod runner;
 
 use std::{
     env, fs,
@@ -11,11 +12,13 @@ use std::{
 };
 
 use compiler::{CompileOptions, Compiler, OutputKind};
+use runner::{LlvmRunner, RunnerOptions};
 
 #[derive(Debug)]
 enum Command {
     RunOne(RunOneConfig),
     RunAll(RunAllConfig),
+    Run(RunConfig),
     Help,
 }
 
@@ -49,6 +52,18 @@ impl Default for RunAllConfig {
     }
 }
 
+/// Configuración para el comando 'run': compilar un archivo .hk a ejecutable y ejecutarlo.
+#[derive(Debug)]
+struct RunConfig {
+    input_path: PathBuf,
+    ir_path: Option<PathBuf>,
+    exe_path: Option<PathBuf>,
+    clang_bin: String,
+    opt_level: u8,
+    no_exec: bool,
+    program_args: Vec<String>,
+}
+
 fn main() {
     let command = match parse_command() {
         Ok(command) => command,
@@ -63,6 +78,7 @@ fn main() {
         Command::Help => print_usage(),
         Command::RunOne(config) => run_one(config),
         Command::RunAll(config) => run_all(config),
+        Command::Run(config) => run_with_execution(config),
     }
 }
 
@@ -213,11 +229,107 @@ fn run_all(config: RunAllConfig) {
     );
 }
 
+fn run_with_execution(config: RunConfig) {
+    // Cargar y compilar el archivo fuente
+    let source = match fs::read_to_string(&config.input_path) {
+        Ok(source) => source,
+        Err(err) => {
+            eprintln!("Error reading '{}': {}", config.input_path.display(), err);
+            return;
+        }
+    };
+
+    let mut compiler = Compiler::new();
+
+    // Determinar ruta de salida para el LLVM IR
+    let ir_path = if let Some(ir) = &config.ir_path {
+        ir.clone()
+    } else {
+        let stem = file_stem_or_default(&config.input_path);
+        PathBuf::from(format!("artifacts/{}.ll", stem))
+    };
+
+    // Compilar a LLVM IR
+    let options = CompileOptions {
+        output_path: ir_path.clone(),
+    };
+    let report = compiler.compile(&source, &options);
+
+    if !report.errors.is_empty() {
+        eprintln!("Compilation failed:");
+        for error in &report.errors {
+            eprintln!("  {}", error);
+        }
+        return;
+    }
+
+    println!("✓ Compiled to LLVM IR: {}", ir_path.display());
+
+    // Compilar LLVM IR a ejecutable con clang
+    let exe_path = if let Some(exe) = &config.exe_path {
+        exe.clone()
+    } else {
+        let stem = file_stem_or_default(&config.input_path);
+        runner::platform::Platform::as_executable_path(Path::new(&format!("artifacts/{}", stem)))
+    };
+
+    let runner_opts = RunnerOptions {
+        clang_bin: config.clang_bin.clone(),
+        opt_level: config.opt_level,
+        extra_args: Vec::new(),
+    };
+
+    match LlvmRunner::compile_ll_to_executable(&ir_path, Some(&exe_path), &runner_opts) {
+        Ok(exe) => {
+            println!("✓ Compiled to executable: {}", exe.display());
+
+            // Si no tiene --no-exec, ejecutar el programa
+            if !config.no_exec {
+                println!("\n--- Program output ---");
+                match LlvmRunner::run_executable(&exe, &config.program_args) {
+                    Ok(output) => {
+                        if !output.stdout.is_empty() {
+                            print!("{}", String::from_utf8_lossy(&output.stdout));
+                        }
+                        if !output.stderr.is_empty() {
+                            eprint!("{}", String::from_utf8_lossy(&output.stderr));
+                        }
+                        if !output.status.success() {
+                            eprintln!("Program exited with status: {}", output.status.code().unwrap_or(-1));
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!("Error executing program: {}", err);
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!("Error compiling to executable: {}", err);
+        }
+    }
+}
+
 fn parse_command() -> Result<Command, String> {
+    let mut args = env::args().skip(1).peekable();
+
+    // Detectar el primer argumento para determinar el comando
+    if let Some(first_arg) = args.peek() {
+        match first_arg.as_str() {
+            "run" => {
+                args.next(); // consumir "run"
+                let remaining: Vec<String> = args.collect();
+                return parse_run_command(remaining);
+            }
+            "--help" | "-h" => return Ok(Command::Help),
+            _ => {}
+        }
+    }
+
+    // Parsing para los comandos antiguos: RunOne y RunAll
     let mut single = RunOneConfig::default();
     let mut batch = RunAllConfig::default();
     let mut run_all = false;
-    let mut args = env::args().skip(1).peekable();
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -260,6 +372,114 @@ fn parse_command() -> Result<Command, String> {
     }
 
     Ok(Command::RunOne(single))
+}
+
+fn parse_run_command(
+    args: Vec<String>,
+) -> Result<Command, String> {
+    // Mostrar ayuda si se solicita
+    if args.iter().any(|a| a == "--help" || a == "-h") {
+        println!("Usage: run [<file.hk>] [options]");
+        println!();
+        println!("Options:");
+        println!("  --input <file>         Input .hk file");
+        println!("  --emit-ir <path>       Output LLVM IR file");
+        println!("  --out <exe>            Output executable path");
+        println!("  --clang <path>         Path to clang binary (default: 'clang')");
+        println!("  --opt-level <0-3>      Optimization level (default: 2)");
+        println!("  --no-exec              Don't execute after compilation");
+        println!("  -- args...             Arguments to pass to the program");
+        std::process::exit(0);
+    }
+
+    let mut args_iter = args.into_iter();
+    let mut input_path: Option<PathBuf> = None;
+    let mut ir_path: Option<PathBuf> = None;
+    let mut exe_path: Option<PathBuf> = None;
+    let mut clang_bin = "clang".to_string();
+    let mut opt_level = 2u8;
+    let mut no_exec = false;
+    let mut program_args: Vec<String> = Vec::new();
+    let mut reading_program_args = false;
+
+    while let Some(arg) = args_iter.next() {
+        // Si encontramos "--", el resto son argumentos del programa
+        if arg == "--" {
+            reading_program_args = true;
+            continue;
+        }
+
+        if reading_program_args {
+            program_args.push(arg);
+            continue;
+        }
+
+        if arg.starts_with("--") {
+            match arg.as_str() {
+                "--input" => {
+                    let value = args_iter
+                        .next()
+                        .ok_or_else(|| "Missing value for --input".to_string())?;
+                    input_path = Some(PathBuf::from(value));
+                }
+                "--emit-ir" => {
+                    let value = args_iter
+                        .next()
+                        .ok_or_else(|| "Missing value for --emit-ir".to_string())?;
+                    ir_path = Some(PathBuf::from(value));
+                }
+                "--out" => {
+                    let value = args_iter
+                        .next()
+                        .ok_or_else(|| "Missing value for --out".to_string())?;
+                    exe_path = Some(PathBuf::from(value));
+                }
+                "--clang" => {
+                    let value = args_iter
+                        .next()
+                        .ok_or_else(|| "Missing value for --clang".to_string())?;
+                    clang_bin = value;
+                }
+                "--opt-level" => {
+                    let value = args_iter
+                        .next()
+                        .ok_or_else(|| "Missing value for --opt-level".to_string())?;
+                    opt_level = value.parse::<u8>()
+                        .map_err(|_| format!("Invalid optimization level: {}", value))?;
+                }
+                "--no-exec" => {
+                    no_exec = true;
+                }
+                other => {
+                    return Err(format!("Unknown flag for 'run': {}", other));
+                }
+            }
+        } else {
+            // Es un argumento posicional (archivo de entrada)
+            if input_path.is_none() {
+                input_path = Some(PathBuf::from(arg));
+            } else {
+                // Después del archivo de entrada, todo lo demás son argumentos del programa
+                program_args.push(arg);
+                reading_program_args = true;
+            }
+        }
+    }
+
+    let input = input_path.ok_or_else(|| {
+        "Missing input file. Usage: run [<file.hk>] [options] [-- program_args]"
+            .to_string()
+    })?;
+
+    Ok(Command::Run(RunConfig {
+        input_path: input,
+        ir_path,
+        exe_path,
+        clang_bin,
+        opt_level,
+        no_exec,
+        program_args,
+    }))
 }
 
 fn list_hk_files(dir: &Path) -> Result<Vec<PathBuf>, String> {
@@ -305,14 +525,24 @@ fn print_usage() {
     println!("Usage:");
     println!("  cargo run -- [--input <source.hk>] [--emit-ir <output.txt>]");
     println!("  cargo run -- --run-all <input_dir> [--emit-dir <output_dir>]");
-    println!("  cargo run -- --run-all <input_dir> [--emit-ir <output_dir>]");
-    println!("  output is LLVM IR on success or diagnostics on error.");
+    println!("  cargo run -- run [--input <file.hk>] [options] [-- args...]");
+    println!();
+    println!("Commands:");
+    println!("  run                    Compile a .hk file to executable and run it");
+    println!();
+    println!("Run options:");
+    println!("  --input <file>         Input .hk file (required for 'run')");
+    println!("  --emit-ir <path>       Output LLVM IR file (optional)");
+    println!("  --out <exe>            Output executable path (optional)");
+    println!("  --clang <path>         Path to clang binary (default: 'clang')");
+    println!("  --opt-level <0-3>      Optimization level (default: 2)");
+    println!("  --no-exec              Generate executable but don't run it");
+    println!("  -- args...             Arguments to pass to the program");
     println!();
     println!("Examples:");
     println!("  cargo run -- --emit-ir artifacts/intermediate.txt");
-    println!(
-        "  cargo run -- --input examples/calculator_ok.hk --emit-ir artifacts/calculator_ir.txt"
-    );
-    println!("  cargo run -- --input examples/type_error.hk --emit-ir artifacts/type_error.txt");
-    println!("  cargo run -- --run-all examples --emit-dir artifacts/batch");
+    println!("  cargo run -- --input examples/calculator_ok.hk --emit-ir artifacts/calculator_ir.txt");
+    println!("  cargo run -- run --input examples/calculator_ok.hk");
+    println!("  cargo run -- run examples/calculator_ok.hk --opt-level 3");
+    println!("  cargo run -- run examples/calculator_ok.hk -- arg1 arg2");
 }

@@ -2,7 +2,7 @@ use crate::lexer::Lexer;
 
 use super::{
     Parser,
-    expression::{BinaryOp, Expr, Literal, Program, Statement, UnaryOp},
+    expression::{BinaryOp, BuiltinFunction, Expr, Literal, Program, Statement, UnaryOp},
 };
 
 fn parse_program(source: &str) -> Program {
@@ -153,4 +153,81 @@ fn parses_arithmetic_before_comparison() {
         panic!("expected multiplication on right side of comparison");
     };
     assert!(matches!(mul_expr.op, BinaryOp::Mul));
+}
+
+#[test]
+fn parses_reassignment_statement() {
+    let program = parse_program(
+        r#"
+let x = 45;
+x = true;
+print(x);
+"#,
+    );
+
+    assert_eq!(program.statements.len(), 3);
+
+    assert!(matches!(
+        &program.statements[0],
+        Statement::Let { name, .. } if name == "x"
+    ));
+    assert!(matches!(
+        &program.statements[1],
+        Statement::Assign { name, .. } if name == "x"
+    ));
+    assert!(matches!(&program.statements[2], Statement::Print { .. }));
+}
+
+#[test]
+fn parses_builtin_calls_with_primary_precedence() {
+    let program = parse_program(r#"print(sin(2 + 1) * cos(0));"#);
+
+    let Statement::Print { value, .. } = &program.statements[0] else {
+        panic!("expected print statement");
+    };
+
+    let Expr::Binary(mul_expr) = value else {
+        panic!("expected multiplication at top level");
+    };
+    assert!(matches!(mul_expr.op, BinaryOp::Mul));
+
+    let Expr::BuiltinCall(left_call) = mul_expr.left.as_ref() else {
+        panic!("expected sin() call on left side");
+    };
+    assert_eq!(left_call.function, BuiltinFunction::Sin);
+
+    let Expr::BuiltinCall(right_call) = mul_expr.right.as_ref() else {
+        panic!("expected cos() call on right side");
+    };
+    assert_eq!(right_call.function, BuiltinFunction::Cos);
+}
+
+#[test]
+fn parses_log_with_two_arguments() {
+    let program = parse_program(r#"print(log(4, 64));"#);
+
+    let Statement::Print { value, .. } = &program.statements[0] else {
+        panic!("expected print statement");
+    };
+
+    let Expr::BuiltinCall(call) = value else {
+        panic!("expected builtin call");
+    };
+
+    assert_eq!(call.function, BuiltinFunction::Log);
+    assert_eq!(call.args.len(), 2);
+    assert!(matches!(
+        &call.args[0],
+        Expr::Literal {
+            value: Literal::Integer(4),
+            ..
+        }
+    ));
+    assert!(matches!(
+        &call.args[1],
+        Expr::Literal {
+            value: Literal::Integer(64),
+            ..
+        }
+    ));
 }

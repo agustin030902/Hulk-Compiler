@@ -14,10 +14,24 @@ pub use token::TokenKind;
 #[derive(Logos, Debug, PartialEq)]
 #[logos(skip r"[ \t\r\n\f]+")]
 enum LogosTokenKind {
-    #[token("let")]
+    #[token("let", priority = 3)]
     Let,
-    #[token("print")]
+    #[token("print", priority = 3)]
     Print,
+    #[token("PI", priority = 3)]
+    Pi,
+    #[token("E", priority = 3)]
+    E,
+    #[token("sin", priority = 3)]
+    Sin,
+    #[token("cos", priority = 3)]
+    Cos,
+    #[token("sqrt", priority = 3)]
+    Sqrt,
+    #[token("exp", priority = 3)]
+    Exp,
+    #[token("log", priority = 3)]
+    Log,
     #[regex(r"true|false")]
     Boolean,
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
@@ -78,6 +92,13 @@ impl LogosTokenKind {
         let (kind, value) = match self {
             LogosTokenKind::Let => (TokenKind::Let, lexeme.to_string()),
             LogosTokenKind::Print => (TokenKind::Print, lexeme.to_string()),
+            LogosTokenKind::Pi => (TokenKind::Pi, lexeme.to_string()),
+            LogosTokenKind::E => (TokenKind::E, lexeme.to_string()),
+            LogosTokenKind::Sin => (TokenKind::Sin, lexeme.to_string()),
+            LogosTokenKind::Cos => (TokenKind::Cos, lexeme.to_string()),
+            LogosTokenKind::Sqrt => (TokenKind::Sqrt, lexeme.to_string()),
+            LogosTokenKind::Exp => (TokenKind::Exp, lexeme.to_string()),
+            LogosTokenKind::Log => (TokenKind::Log, lexeme.to_string()),
             LogosTokenKind::Boolean => {
                 let value = lexeme.to_string();
                 (TokenKind::Boolean(value.clone()), value)

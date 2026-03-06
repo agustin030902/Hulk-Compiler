@@ -23,6 +23,12 @@ pub enum Statement {
         value: Expr,
         span: Span,
     },
+    Assign {
+        name: String,
+        name_span: Span,
+        value: Expr,
+        span: Span,
+    },
     Print {
         value: Expr,
         span: Span,
@@ -33,6 +39,7 @@ pub enum Statement {
 pub enum Expr {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
+    BuiltinCall(BuiltinCallExpr),
     Literal { value: Literal, span: Span },
     Variable { name: String, span: Span },
 }
@@ -42,6 +49,7 @@ impl Expr {
         match self {
             Expr::Binary(binary) => binary.span,
             Expr::Unary(unary) => unary.span,
+            Expr::BuiltinCall(call) => call.span,
             Expr::Literal { span, .. } => *span,
             Expr::Variable { span, .. } => *span,
         }
@@ -72,6 +80,13 @@ pub struct UnaryExpr {
 }
 
 #[derive(Debug, Clone)]
+pub struct BuiltinCallExpr {
+    pub function: BuiltinFunction,
+    pub args: Vec<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
 pub enum BinaryOp {
     Add,
     Concat,
@@ -92,4 +107,25 @@ pub enum BinaryOp {
 pub enum UnaryOp {
     Neg,
     Not,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuiltinFunction {
+    Sin,
+    Cos,
+    Sqrt,
+    Exp,
+    Log,
+}
+
+impl BuiltinFunction {
+    pub const fn name(self) -> &'static str {
+        match self {
+            BuiltinFunction::Sin => "sin",
+            BuiltinFunction::Cos => "cos",
+            BuiltinFunction::Sqrt => "sqrt",
+            BuiltinFunction::Exp => "exp",
+            BuiltinFunction::Log => "log",
+        }
+    }
 }

@@ -1,0 +1,2 @@
+let a = log(2, "64");
+print(a);

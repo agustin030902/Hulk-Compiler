@@ -1,6 +1,7 @@
 use crate::lexer::TokenKind;
 use crate::parser::expression::{
-    BinaryExpr, BinaryOp, Expr, Literal, Program, Span, Statement, UnaryExpr, UnaryOp,
+    BinaryExpr, BinaryOp, BuiltinCallExpr, BuiltinFunction, Expr, Literal, Program, Span,
+    Statement, UnaryExpr, UnaryOp,
 };
 
 grammar;
@@ -12,6 +13,13 @@ extern {
     enum TokenKind {
         "let" => TokenKind::Let,
         "print" => TokenKind::Print,
+        "PI" => TokenKind::Pi,
+        "E" => TokenKind::E,
+        "sin" => TokenKind::Sin,
+        "cos" => TokenKind::Cos,
+        "sqrt" => TokenKind::Sqrt,
+        "exp" => TokenKind::Exp,
+        "log" => TokenKind::Log,
         "=" => TokenKind::Assign,
         "+" => TokenKind::Add,
         "@" => TokenKind::Concat,
@@ -46,6 +54,12 @@ pub Program: Program = {
 
 Statement: Statement = {
     <l:@L> "let" <id:IdentifierWithSpan> "=" <value:Expr> ";" <r:@R> => Statement::Let {
+        name: id.0,
+        name_span: id.1,
+        value,
+        span: Span::new(l, r),
+    },
+    <l:@L> <id:IdentifierWithSpan> "=" <value:Expr> ";" <r:@R> => Statement::Assign {
         name: id.0,
         name_span: id.1,
         value,
@@ -178,9 +192,38 @@ Unary: Expr = {
 };
 
 Primary: Expr = {
+    <call:BuiltinCallExpr> => call,
     <literal:LiteralExpr> => literal,
     <variable:VariableExpr> => variable,
     "(" <expr:Expr> ")" => expr,
+};
+
+BuiltinCallExpr: Expr = {
+    <l:@L> "sin" "(" <arg:Expr> ")" <r:@R> => Expr::BuiltinCall(BuiltinCallExpr {
+        function: BuiltinFunction::Sin,
+        args: vec![arg],
+        span: Span::new(l, r),
+    }),
+    <l:@L> "cos" "(" <arg:Expr> ")" <r:@R> => Expr::BuiltinCall(BuiltinCallExpr {
+        function: BuiltinFunction::Cos,
+        args: vec![arg],
+        span: Span::new(l, r),
+    }),
+    <l:@L> "sqrt" "(" <arg:Expr> ")" <r:@R> => Expr::BuiltinCall(BuiltinCallExpr {
+        function: BuiltinFunction::Sqrt,
+        args: vec![arg],
+        span: Span::new(l, r),
+    }),
+    <l:@L> "exp" "(" <arg:Expr> ")" <r:@R> => Expr::BuiltinCall(BuiltinCallExpr {
+        function: BuiltinFunction::Exp,
+        args: vec![arg],
+        span: Span::new(l, r),
+    }),
+    <l:@L> "log" "(" <base:Expr> "," <value:Expr> ")" <r:@R> => Expr::BuiltinCall(BuiltinCallExpr {
+        function: BuiltinFunction::Log,
+        args: vec![base, value],
+        span: Span::new(l, r),
+    }),
 };
 
 IdentifierWithSpan: (String, Span) = {
@@ -195,6 +238,14 @@ VariableExpr: Expr = {
 };
 
 LiteralExpr: Expr = {
+    <l:@L> "PI" <r:@R> => Expr::Literal {
+        value: Literal::Float(std::f64::consts::PI),
+        span: Span::new(l, r),
+    },
+    <l:@L> "E" <r:@R> => Expr::Literal {
+        value: Literal::Float(std::f64::consts::E),
+        span: Span::new(l, r),
+    },
     <l:@L> <raw:"number"> <r:@R> =>? {
         if raw.contains('.') {
             match raw.parse::<f64>() {

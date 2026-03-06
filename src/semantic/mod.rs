@@ -6,7 +6,7 @@ mod tests;
 
 use crate::{
     error::{CompilerError, ErrorCategory, offset_to_line_column},
-    parser::expression::{BinaryOp, Expr, Literal, Program, Span, Statement, UnaryOp},
+    parser::expression::{BinaryOp, BuiltinFunction, Expr, Literal, Program, Span, Statement, UnaryOp},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,6 +78,29 @@ impl SemanticAnalyzer {
             Statement::Print { value, .. } => {
                 let _ = self.check_expr(value, source);
             }
+            Statement::Assign {
+                name,
+                name_span,
+                value,
+                ..
+            } => {
+                if !self.symbols.contains_key(name) {
+                    self.push_semantic_error(
+                        *name_span,
+                        source,
+                        format!(
+                            "Variable '{}' is assigned before declaration. Declare it with 'let' first.",
+                            name
+                        ),
+                    );
+                    return;
+                }
+
+                let value_type = self
+                    .check_expr(value, source)
+                    .unwrap_or(SemanticType::Unknown);
+                self.symbols.insert(name.clone(), value_type);
+            }
         }
     }
 
@@ -142,6 +165,7 @@ impl SemanticAnalyzer {
                     }
                 }
             }
+            Expr::BuiltinCall(call) => self.check_builtin_call(call.function, &call.args, call.span, source),
             Expr::Binary(binary) => {
                 let left_type = self.check_expr(&binary.left, source);
                 let right_type = self.check_expr(&binary.right, source);
@@ -272,6 +296,81 @@ impl SemanticAnalyzer {
                             None
                         }
                     }
+                }
+            }
+        }
+    }
+
+    fn check_builtin_call(
+        &mut self,
+        function: BuiltinFunction,
+        args: &[Expr],
+        span: Span,
+        source: &str,
+    ) -> Option<SemanticType> {
+        match function {
+            BuiltinFunction::Sin
+            | BuiltinFunction::Cos
+            | BuiltinFunction::Sqrt
+            | BuiltinFunction::Exp => {
+                let Some(arg) = args.first() else {
+                    self.push_semantic_error(
+                        span,
+                        source,
+                        format!("Function '{}' expects 1 argument.", function.name()),
+                    );
+                    return None;
+                };
+
+                let arg_type = self.check_expr(arg, source)?;
+                if arg_type == SemanticType::Unknown {
+                    return Some(SemanticType::Unknown);
+                }
+
+                if arg_type == SemanticType::Number {
+                    Some(SemanticType::Number)
+                } else {
+                    self.push_type_error(
+                        span,
+                        source,
+                        format!(
+                            "Function '{}' expects Number, but got {}.",
+                            function.name(),
+                            arg_type.display_name()
+                        ),
+                    );
+                    None
+                }
+            }
+            BuiltinFunction::Log => {
+                if args.len() != 2 {
+                    self.push_semantic_error(
+                        span,
+                        source,
+                        "Function 'log' expects 2 arguments.".to_string(),
+                    );
+                    return None;
+                }
+
+                let left_type = self.check_expr(&args[0], source)?;
+                let right_type = self.check_expr(&args[1], source)?;
+                if left_type == SemanticType::Unknown || right_type == SemanticType::Unknown {
+                    return Some(SemanticType::Unknown);
+                }
+
+                if left_type == SemanticType::Number && right_type == SemanticType::Number {
+                    Some(SemanticType::Number)
+                } else {
+                    self.push_type_error(
+                        span,
+                        source,
+                        format!(
+                            "Function 'log' expects (Number, Number), but got {} and {}.",
+                            left_type.display_name(),
+                            right_type.display_name()
+                        ),
+                    );
+                    None
                 }
             }
         }

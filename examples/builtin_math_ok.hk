@@ -1,0 +1,5 @@
+let angle = 2 * PI;
+let denom = log(4, 64);
+let value = sin(angle) + cos(3 * PI / denom) + sqrt(16) + exp(1);
+
+print(value);

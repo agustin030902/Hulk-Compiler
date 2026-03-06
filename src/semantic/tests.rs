@@ -133,3 +133,80 @@ fn rejects_equality_with_mismatched_types() {
         "Operator '==' expects operands of the same type, but got Number and Boolean."
     );
 }
+
+#[test]
+fn allows_reassignment_even_when_type_changes() {
+    let source = r#"
+let x = 45;
+x = true;
+print(x);
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_assignment_before_declaration() {
+    let source = r#"
+x = 10;
+print(x);
+"#;
+
+    let errors = analyze_source(source);
+    assert_eq!(errors.len(), 2);
+    assert_eq!(errors[0].category, ErrorCategory::Semantic);
+    assert_eq!(
+        errors[0].message,
+        "Variable 'x' is assigned before declaration. Declare it with 'let' first."
+    );
+}
+
+#[test]
+fn allows_builtin_math_functions() {
+    let source = r#"
+let a = sin(PI);
+let b = cos(E);
+let c = sqrt(9);
+let d = exp(1);
+let e = log(4, 64);
+print(a + b + c + d + e);
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_log_with_invalid_argument_types() {
+    let source = r#"print(log(2, "x"));"#;
+
+    let errors = analyze_source(source);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].category, ErrorCategory::Type);
+    assert_eq!(
+        errors[0].message,
+        "Function 'log' expects (Number, Number), but got Number and String."
+    );
+}
+
+#[test]
+fn rejects_sin_with_non_numeric_argument() {
+    let source = r#"print(sin(true));"#;
+
+    let errors = analyze_source(source);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].category, ErrorCategory::Type);
+    assert_eq!(
+        errors[0].message,
+        "Function 'sin' expects Number, but got Boolean."
+    );
+}

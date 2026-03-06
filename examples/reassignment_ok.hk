@@ -1,0 +1,8 @@
+let x = 45;
+print(x);
+
+x = true;
+print(x);
+
+x = log(2, 8);
+print(x);

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     codegen::CodegenBackend,
     error::{CompilerError, ErrorCategory},
-    parser::expression::{BinaryOp, Expr, Literal, Program, Statement, UnaryOp},
+    parser::expression::{BinaryOp, BuiltinFunction, Expr, Literal, Program, Statement, UnaryOp},
 };
 
 #[derive(Debug, Default)]
@@ -156,6 +156,39 @@ impl LlvmBackend {
                     }
                 }
             }
+            Statement::Assign { name, value, .. } => {
+                let Some(existing) = self.variables.get(name).cloned() else {
+                    self.semantic_error(format!("Variable '{}' is not declared", name));
+                    return;
+                };
+
+                let Some(value_ref) = self.emit_expr(value) else {
+                    return;
+                };
+
+                if existing.value_type == value_ref.value_type {
+                    let llvm_ty = Self::llvm_type(existing.value_type);
+                    self.emit_body(format!(
+                        "store {llvm_ty} {}, {llvm_ty}* {}",
+                        value_ref.repr, existing.ptr_name
+                    ));
+                } else {
+                    let new_ptr_name = self.next_temp();
+                    let llvm_ty = Self::llvm_type(value_ref.value_type);
+                    self.emit_body(format!("{new_ptr_name} = alloca {llvm_ty}"));
+                    self.emit_body(format!(
+                        "store {llvm_ty} {}, {llvm_ty}* {new_ptr_name}",
+                        value_ref.repr
+                    ));
+                    self.variables.insert(
+                        name.clone(),
+                        VariableInfo {
+                            ptr_name: new_ptr_name,
+                            value_type: value_ref.value_type,
+                        },
+                    );
+                }
+            }
         }
     }
 
@@ -164,8 +197,84 @@ impl LlvmBackend {
             Expr::Literal { value, .. } => self.emit_literal(value),
             Expr::Variable { name, .. } => self.emit_variable(name),
             Expr::Unary(unary) => self.emit_unary(unary.op.clone(), &unary.expr),
+            Expr::BuiltinCall(call) => self.emit_builtin_call(call.function, &call.args),
             Expr::Binary(binary) => {
                 self.emit_binary(binary.op.clone(), &binary.left, &binary.right)
+            }
+        }
+    }
+
+    fn emit_builtin_call(&mut self, function: BuiltinFunction, args: &[Expr]) -> Option<ValueRef> {
+        match function {
+            BuiltinFunction::Sin
+            | BuiltinFunction::Cos
+            | BuiltinFunction::Sqrt
+            | BuiltinFunction::Exp => {
+                let Some(arg_expr) = args.first() else {
+                    self.semantic_error(format!("Function '{}' expects 1 argument", function.name()));
+                    return None;
+                };
+
+                let arg = self.emit_expr(arg_expr)?;
+                if arg.value_type != ValueType::Double {
+                    self.semantic_error(format!(
+                        "Function '{}' only supports numeric values",
+                        function.name()
+                    ));
+                    return None;
+                }
+
+                let intrinsic = match function {
+                    BuiltinFunction::Sin => "llvm.sin.f64",
+                    BuiltinFunction::Cos => "llvm.cos.f64",
+                    BuiltinFunction::Sqrt => "llvm.sqrt.f64",
+                    BuiltinFunction::Exp => "llvm.exp.f64",
+                    BuiltinFunction::Log => unreachable!("log handled in dedicated branch"),
+                };
+
+                let result = self.next_temp();
+                self.emit_body(format!(
+                    "{result} = call double @{intrinsic}(double {})",
+                    arg.repr
+                ));
+
+                Some(ValueRef {
+                    value_type: ValueType::Double,
+                    repr: result,
+                })
+            }
+            BuiltinFunction::Log => {
+                if args.len() != 2 {
+                    self.semantic_error("Function 'log' expects 2 arguments");
+                    return None;
+                }
+
+                let base = self.emit_expr(&args[0])?;
+                let value = self.emit_expr(&args[1])?;
+                if base.value_type != ValueType::Double || value.value_type != ValueType::Double {
+                    self.semantic_error("Function 'log' only supports numeric values");
+                    return None;
+                }
+
+                let ln_base = self.next_temp();
+                self.emit_body(format!(
+                    "{ln_base} = call double @llvm.log.f64(double {})",
+                    base.repr
+                ));
+
+                let ln_value = self.next_temp();
+                self.emit_body(format!(
+                    "{ln_value} = call double @llvm.log.f64(double {})",
+                    value.repr
+                ));
+
+                let result = self.next_temp();
+                self.emit_body(format!("{result} = fdiv double {ln_value}, {ln_base}"));
+
+                Some(ValueRef {
+                    value_type: ValueType::Double,
+                    repr: result,
+                })
             }
         }
     }
@@ -467,6 +576,11 @@ impl LlvmBackend {
             "declare i32 @printf(i8*, ...)".to_string(),
             "declare i32 @asprintf(i8**, i8*, ...)".to_string(),
             "declare i32 @strcmp(i8*, i8*)".to_string(),
+            "declare double @llvm.sin.f64(double)".to_string(),
+            "declare double @llvm.cos.f64(double)".to_string(),
+            "declare double @llvm.sqrt.f64(double)".to_string(),
+            "declare double @llvm.exp.f64(double)".to_string(),
+            "declare double @llvm.log.f64(double)".to_string(),
             "@.fmt.number = private unnamed_addr constant [4 x i8] c\"%g\\0A\\00\"".to_string(),
             "@.fmt.string = private unnamed_addr constant [4 x i8] c\"%s\\0A\\00\"".to_string(),
             "@.fmt.bool = private unnamed_addr constant [4 x i8] c\"%d\\0A\\00\"".to_string(),

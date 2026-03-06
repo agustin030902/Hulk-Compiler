@@ -127,3 +127,122 @@ print(!(x >= y));
         llvm_ir
     );
 }
+
+#[test]
+fn writes_llvm_ir_for_reassignment_with_type_change() {
+    let source = r#"
+let x = 45;
+x = true;
+print(x);
+"#;
+    let output_path = unique_output_path("valid_reassignment_ir");
+
+    let mut compiler = Compiler::new();
+    let report = compiler.compile(
+        source,
+        &CompileOptions {
+            output_path: output_path.clone(),
+        },
+    );
+
+    assert!(
+        report.errors.is_empty(),
+        "expected successful compilation, got errors: {:?}",
+        report.errors
+    );
+    assert_eq!(report.output_kind, Some(OutputKind::LlvmIr));
+
+    let llvm_ir = fs::read_to_string(&output_path)
+        .expect("compiler should write llvm output file on success");
+    assert!(
+        llvm_ir.contains("alloca i1"),
+        "reassignment to boolean should allocate bool storage, got:\n{}",
+        llvm_ir
+    );
+    assert!(
+        llvm_ir.contains("zext i1"),
+        "printing reassigned boolean should convert i1 to i32, got:\n{}",
+        llvm_ir
+    );
+}
+
+#[test]
+fn writes_llvm_ir_for_builtin_math_functions() {
+    let source = r#"
+let a = sin(PI);
+let b = cos(E);
+let c = sqrt(9);
+let d = exp(1);
+let e = log(4, 64);
+print(a + b + c + d + e);
+"#;
+    let output_path = unique_output_path("valid_builtin_math_ir");
+
+    let mut compiler = Compiler::new();
+    let report = compiler.compile(
+        source,
+        &CompileOptions {
+            output_path: output_path.clone(),
+        },
+    );
+
+    assert!(
+        report.errors.is_empty(),
+        "expected successful compilation, got errors: {:?}",
+        report.errors
+    );
+    assert_eq!(report.output_kind, Some(OutputKind::LlvmIr));
+
+    let llvm_ir = fs::read_to_string(&output_path)
+        .expect("compiler should write llvm output file on success");
+    assert!(
+        llvm_ir.contains("@llvm.sin.f64"),
+        "IR should include sin intrinsic, got:\n{}",
+        llvm_ir
+    );
+    assert!(
+        llvm_ir.contains("@llvm.cos.f64"),
+        "IR should include cos intrinsic, got:\n{}",
+        llvm_ir
+    );
+    assert!(
+        llvm_ir.contains("@llvm.sqrt.f64"),
+        "IR should include sqrt intrinsic, got:\n{}",
+        llvm_ir
+    );
+    assert!(
+        llvm_ir.contains("@llvm.exp.f64"),
+        "IR should include exp intrinsic, got:\n{}",
+        llvm_ir
+    );
+    assert!(
+        llvm_ir.contains("@llvm.log.f64"),
+        "IR should include log intrinsic, got:\n{}",
+        llvm_ir
+    );
+}
+
+#[test]
+fn writes_diagnostics_for_invalid_builtin_log_arguments() {
+    let source = r#"print(log(2, "x"));"#;
+    let output_path = unique_output_path("invalid_builtin_log_args");
+
+    let mut compiler = Compiler::new();
+    let report = compiler.compile(
+        source,
+        &CompileOptions {
+            output_path: output_path.clone(),
+        },
+    );
+
+    assert!(!report.errors.is_empty());
+    assert_eq!(report.output_kind, Some(OutputKind::Diagnostics));
+
+    let diagnostics = fs::read_to_string(&output_path)
+        .expect("compiler should write diagnostics output file on error");
+    assert!(
+        diagnostics.contains("Function 'log' expects (Number, Number), but got Number and String."),
+        "diagnostics file should contain builtin type error, got:\n{}",
+        diagnostics
+    );
+}

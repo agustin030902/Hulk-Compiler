@@ -54,6 +54,7 @@ fn token(kind: TokenKind, start: usize, end: usize) -> Token {
         TokenKind::Log => "log".to_string(),
         TokenKind::Assign => "=".to_string(),
         TokenKind::Add => "+".to_string(),
+        TokenKind::Power => "^".to_string(),
         TokenKind::Concat => "@".to_string(),
         TokenKind::Minus => "-".to_string(),
         TokenKind::Multiply => "*".to_string(),
@@ -127,11 +128,7 @@ fn parser_normalizes_escaped_sequences_from_string_tokens() {
     let tokens = vec![
         token(TokenKind::Print, 0, 5),
         token(TokenKind::LeftParen, 5, 6),
-        token(
-            TokenKind::String("Line1\\nLine2\\tDone".to_string()),
-            6,
-            24,
-        ),
+        token(TokenKind::String("Line1\\nLine2\\tDone".to_string()), 6, 24),
         token(TokenKind::RightParen, 24, 25),
         token(TokenKind::Semicolon, 25, 26),
         token(TokenKind::EOF, 26, 26),

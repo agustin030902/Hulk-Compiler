@@ -211,7 +211,10 @@ impl LlvmBackend {
             | BuiltinFunction::Sqrt
             | BuiltinFunction::Exp => {
                 let Some(arg_expr) = args.first() else {
-                    self.semantic_error(format!("Function '{}' expects 1 argument", function.name()));
+                    self.semantic_error(format!(
+                        "Function '{}' expects 1 argument",
+                        function.name()
+                    ));
                     return None;
                 };
 
@@ -376,6 +379,23 @@ impl LlvmBackend {
 
         match op {
             BinaryOp::Concat => self.emit_concat(&left, &right),
+            BinaryOp::Pow => {
+                if left.value_type != ValueType::Double || right.value_type != ValueType::Double {
+                    self.semantic_error("Binary arithmetic operators only support numeric values");
+                    return None;
+                }
+
+                let result = self.next_temp();
+                self.emit_body(format!(
+                    "{result} = call double @llvm.pow.f64(double {}, double {})",
+                    left.repr, right.repr
+                ));
+
+                Some(ValueRef {
+                    value_type: ValueType::Double,
+                    repr: result,
+                })
+            }
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
                 if left.value_type != ValueType::Double || right.value_type != ValueType::Double {
                     self.semantic_error("Binary arithmetic operators only support numeric values");
@@ -439,7 +459,12 @@ impl LlvmBackend {
         })
     }
 
-    fn emit_equality(&mut self, op: BinaryOp, left: &ValueRef, right: &ValueRef) -> Option<ValueRef> {
+    fn emit_equality(
+        &mut self,
+        op: BinaryOp,
+        left: &ValueRef,
+        right: &ValueRef,
+    ) -> Option<ValueRef> {
         if left.value_type != right.value_type {
             self.semantic_error("Equality operators require operands of the same type");
             return None;
@@ -533,15 +558,18 @@ impl LlvmBackend {
 
     fn emit_concat(&mut self, left: &ValueRef, right: &ValueRef) -> Option<ValueRef> {
         let (fmt_name, arg_values) = match (left.value_type, right.value_type) {
-            (ValueType::StringPtr, ValueType::StringPtr) => {
-                ("@.fmt.concat.ss", format!("i8* {}, i8* {}", left.repr, right.repr))
-            }
-            (ValueType::StringPtr, ValueType::Double) => {
-                ("@.fmt.concat.sn", format!("i8* {}, double {}", left.repr, right.repr))
-            }
-            (ValueType::Double, ValueType::StringPtr) => {
-                ("@.fmt.concat.ns", format!("double {}, i8* {}", left.repr, right.repr))
-            }
+            (ValueType::StringPtr, ValueType::StringPtr) => (
+                "@.fmt.concat.ss",
+                format!("i8* {}, i8* {}", left.repr, right.repr),
+            ),
+            (ValueType::StringPtr, ValueType::Double) => (
+                "@.fmt.concat.sn",
+                format!("i8* {}, double {}", left.repr, right.repr),
+            ),
+            (ValueType::Double, ValueType::StringPtr) => (
+                "@.fmt.concat.ns",
+                format!("double {}, i8* {}", left.repr, right.repr),
+            ),
             _ => {
                 self.semantic_error(format!(
                     "Operator '@' expects (String, String), (String, Number), or (Number, String), but got {} and {} in code generation.",
@@ -581,6 +609,7 @@ impl LlvmBackend {
             "declare double @llvm.sqrt.f64(double)".to_string(),
             "declare double @llvm.exp.f64(double)".to_string(),
             "declare double @llvm.log.f64(double)".to_string(),
+            "declare double @llvm.pow.f64(double, double)".to_string(),
             "@.fmt.number = private unnamed_addr constant [4 x i8] c\"%g\\0A\\00\"".to_string(),
             "@.fmt.string = private unnamed_addr constant [4 x i8] c\"%s\\0A\\00\"".to_string(),
             "@.fmt.bool = private unnamed_addr constant [4 x i8] c\"%d\\0A\\00\"".to_string(),

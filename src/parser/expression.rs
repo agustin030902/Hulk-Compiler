@@ -89,6 +89,7 @@ pub struct BuiltinCallExpr {
 #[derive(Debug, Clone)]
 pub enum BinaryOp {
     Add,
+    Pow,
     Concat,
     Sub,
     Mul,

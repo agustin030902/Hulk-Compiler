@@ -153,3 +153,29 @@ fn lexes_builtin_math_functions_and_constants() {
         ]
     );
 }
+
+#[test]
+fn lexes_power_operator_with_right_associative_shape() {
+    let source = r#"print(2 ^ 3 ^ 2);"#.to_string();
+    let mut lexer = Lexer::new(source);
+
+    let tokens = lexer.lex();
+    let kinds: Vec<TokenKind> = tokens.into_iter().map(|token| token.kind).collect();
+
+    assert!(!lexer.has_errors());
+    assert_eq!(
+        kinds,
+        vec![
+            TokenKind::Print,
+            TokenKind::LeftParen,
+            TokenKind::Number("2".to_string()),
+            TokenKind::Power,
+            TokenKind::Number("3".to_string()),
+            TokenKind::Power,
+            TokenKind::Number("2".to_string()),
+            TokenKind::RightParen,
+            TokenKind::Semicolon,
+            TokenKind::EOF,
+        ]
+    );
+}

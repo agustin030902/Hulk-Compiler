@@ -132,6 +132,7 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::Log => "log".to_string(),
         TokenKind::Assign => "=".to_string(),
         TokenKind::Add => "+".to_string(),
+        TokenKind::Power => "^".to_string(),
         TokenKind::Concat => "@".to_string(),
         TokenKind::Minus => "-".to_string(),
         TokenKind::Multiply => "*".to_string(),

@@ -15,6 +15,7 @@ pub enum TokenKind {
     Log,
     Assign,
     Add,
+    Power,
     Concat,
     Minus,
     Multiply,

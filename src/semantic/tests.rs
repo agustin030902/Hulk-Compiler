@@ -1,8 +1,4 @@
-use crate::{
-    error::ErrorCategory,
-    lexer::Lexer,
-    parser::Parser,
-};
+use crate::{error::ErrorCategory, lexer::Lexer, parser::Parser};
 
 use super::SemanticAnalyzer;
 
@@ -208,5 +204,33 @@ fn rejects_sin_with_non_numeric_argument() {
     assert_eq!(
         errors[0].message,
         "Function 'sin' expects Number, but got Boolean."
+    );
+}
+
+#[test]
+fn allows_power_with_numeric_operands() {
+    let source = r#"
+let result = 2 ^ 3 ^ 2;
+print(result);
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_power_with_non_numeric_operands() {
+    let source = r#"print("x" ^ 2);"#;
+
+    let errors = analyze_source(source);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].category, ErrorCategory::Type);
+    assert_eq!(
+        errors[0].message,
+        "Operator '^' expects Number and Number, but got String and Number."
     );
 }

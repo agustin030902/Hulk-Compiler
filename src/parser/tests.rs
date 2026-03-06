@@ -231,3 +231,46 @@ fn parses_log_with_two_arguments() {
         }
     ));
 }
+
+#[test]
+fn parses_power_with_higher_precedence_than_mul_and_add() {
+    let program = parse_program(r#"print(2 + 3 * 2 ^ 3);"#);
+
+    let Statement::Print { value, .. } = &program.statements[0] else {
+        panic!("expected print statement");
+    };
+
+    let Expr::Binary(add_expr) = value else {
+        panic!("expected top-level addition");
+    };
+    assert!(matches!(add_expr.op, BinaryOp::Add));
+
+    let Expr::Binary(mul_expr) = add_expr.right.as_ref() else {
+        panic!("expected multiplication on right side of addition");
+    };
+    assert!(matches!(mul_expr.op, BinaryOp::Mul));
+
+    let Expr::Binary(pow_expr) = mul_expr.right.as_ref() else {
+        panic!("expected power expression on right side of multiplication");
+    };
+    assert!(matches!(pow_expr.op, BinaryOp::Pow));
+}
+
+#[test]
+fn parses_power_as_right_associative() {
+    let program = parse_program(r#"print(2 ^ 3 ^ 2);"#);
+
+    let Statement::Print { value, .. } = &program.statements[0] else {
+        panic!("expected print statement");
+    };
+
+    let Expr::Binary(outer_pow) = value else {
+        panic!("expected top-level power expression");
+    };
+    assert!(matches!(outer_pow.op, BinaryOp::Pow));
+
+    let Expr::Binary(inner_pow) = outer_pow.right.as_ref() else {
+        panic!("expected right-nested power expression");
+    };
+    assert!(matches!(inner_pow.op, BinaryOp::Pow));
+}

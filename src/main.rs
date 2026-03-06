@@ -3,8 +3,8 @@ mod compiler;
 mod error;
 mod lexer;
 mod parser;
-mod semantic;
 mod runner;
+mod semantic;
 
 use std::{
     env, fs,
@@ -295,7 +295,10 @@ fn run_with_execution(config: RunConfig) {
                             eprint!("{}", String::from_utf8_lossy(&output.stderr));
                         }
                         if !output.status.success() {
-                            eprintln!("Program exited with status: {}", output.status.code().unwrap_or(-1));
+                            eprintln!(
+                                "Program exited with status: {}",
+                                output.status.code().unwrap_or(-1)
+                            );
                         }
                     }
                     Err(err) => {
@@ -374,9 +377,7 @@ fn parse_command() -> Result<Command, String> {
     Ok(Command::RunOne(single))
 }
 
-fn parse_run_command(
-    args: Vec<String>,
-) -> Result<Command, String> {
+fn parse_run_command(args: Vec<String>) -> Result<Command, String> {
     // Mostrar ayuda si se solicita
     if args.iter().any(|a| a == "--help" || a == "-h") {
         println!("Usage: run [<file.hk>] [options]");
@@ -444,7 +445,8 @@ fn parse_run_command(
                     let value = args_iter
                         .next()
                         .ok_or_else(|| "Missing value for --opt-level".to_string())?;
-                    opt_level = value.parse::<u8>()
+                    opt_level = value
+                        .parse::<u8>()
                         .map_err(|_| format!("Invalid optimization level: {}", value))?;
                 }
                 "--no-exec" => {
@@ -467,8 +469,7 @@ fn parse_run_command(
     }
 
     let input = input_path.ok_or_else(|| {
-        "Missing input file. Usage: run [<file.hk>] [options] [-- program_args]"
-            .to_string()
+        "Missing input file. Usage: run [<file.hk>] [options] [-- program_args]".to_string()
     })?;
 
     Ok(Command::Run(RunConfig {
@@ -541,7 +542,9 @@ fn print_usage() {
     println!();
     println!("Examples:");
     println!("  cargo run -- --emit-ir artifacts/intermediate.txt");
-    println!("  cargo run -- --input examples/calculator_ok.hk --emit-ir artifacts/calculator_ir.txt");
+    println!(
+        "  cargo run -- --input examples/calculator_ok.hk --emit-ir artifacts/calculator_ir.txt"
+    );
     println!("  cargo run -- run --input examples/calculator_ok.hk");
     println!("  cargo run -- run examples/calculator_ok.hk --opt-level 3");
     println!("  cargo run -- run examples/calculator_ok.hk -- arg1 arg2");

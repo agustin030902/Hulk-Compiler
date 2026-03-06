@@ -47,3 +47,36 @@ fn lexes_concat_operator_between_strings() {
         ]
     );
 }
+
+#[test]
+fn lexes_comparison_and_logical_operators() {
+    let source = r#"print(!(x <= 10) || true && y != 0);"#.to_string();
+    let mut lexer = Lexer::new(source);
+
+    let tokens = lexer.lex();
+    let kinds: Vec<TokenKind> = tokens.into_iter().map(|token| token.kind).collect();
+
+    assert!(!lexer.has_errors());
+    assert_eq!(
+        kinds,
+        vec![
+            TokenKind::Print,
+            TokenKind::LeftParen,
+            TokenKind::Not,
+            TokenKind::LeftParen,
+            TokenKind::Identifier("x".to_string()),
+            TokenKind::LessEqual,
+            TokenKind::Number("10".to_string()),
+            TokenKind::RightParen,
+            TokenKind::Or,
+            TokenKind::Boolean("true".to_string()),
+            TokenKind::And,
+            TokenKind::Identifier("y".to_string()),
+            TokenKind::NotEqual,
+            TokenKind::Number("0".to_string()),
+            TokenKind::RightParen,
+            TokenKind::Semicolon,
+            TokenKind::EOF,
+        ]
+    );
+}

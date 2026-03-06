@@ -18,6 +18,15 @@ extern {
         "-" => TokenKind::Minus,
         "*" => TokenKind::Multiply,
         "/" => TokenKind::Divide,
+        "==" => TokenKind::EqualEqual,
+        "!=" => TokenKind::NotEqual,
+        "<" => TokenKind::Less,
+        ">" => TokenKind::Greater,
+        "<=" => TokenKind::LessEqual,
+        ">=" => TokenKind::GreaterEqual,
+        "&&" => TokenKind::And,
+        "||" => TokenKind::Or,
+        "!" => TokenKind::Not,
         "," => TokenKind::Comma,
         ";" => TokenKind::Semicolon,
         "(" => TokenKind::LeftParen,
@@ -49,21 +58,67 @@ Statement: Statement = {
 };
 
 Expr: Expr = {
-    <l:@L> <left:Expr> "+" <right:Term> <r:@R> => Expr::Binary(BinaryExpr {
+    LogicalOr,
+};
+
+LogicalOr: Expr = {
+    <l:@L> <left:LogicalOr> "||" <right:LogicalAnd> <r:@R> => Expr::Binary(BinaryExpr {
         left: Box::new(left),
-        op: BinaryOp::Add,
+        op: BinaryOp::Or,
         right: Box::new(right),
         span: Span::new(l, r),
     }),
-    <l:@L> <left:Expr> "@" <right:Term> <r:@R> => Expr::Binary(BinaryExpr {
+    LogicalAnd,
+};
+
+LogicalAnd: Expr = {
+    <l:@L> <left:LogicalAnd> "&&" <right:Equality> <r:@R> => Expr::Binary(BinaryExpr {
         left: Box::new(left),
-        op: BinaryOp::Concat,
+        op: BinaryOp::And,
         right: Box::new(right),
         span: Span::new(l, r),
     }),
-    <l:@L> <left:Expr> "-" <right:Term> <r:@R> => Expr::Binary(BinaryExpr {
+    Equality,
+};
+
+Equality: Expr = {
+    <l:@L> <left:Equality> "==" <right:Comparison> <r:@R> => Expr::Binary(BinaryExpr {
         left: Box::new(left),
-        op: BinaryOp::Sub,
+        op: BinaryOp::Equal,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Equality> "!=" <right:Comparison> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::NotEqual,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    Comparison,
+};
+
+Comparison: Expr = {
+    <l:@L> <left:Comparison> "<" <right:Term> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Less,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Comparison> ">" <right:Term> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Greater,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Comparison> "<=" <right:Term> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::LessEqual,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Comparison> ">=" <right:Term> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::GreaterEqual,
         right: Box::new(right),
         span: Span::new(l, r),
     }),
@@ -71,13 +126,35 @@ Expr: Expr = {
 };
 
 Term: Expr = {
-    <l:@L> <left:Term> "*" <right:Unary> <r:@R> => Expr::Binary(BinaryExpr {
+    <l:@L> <left:Term> "+" <right:Factor> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Add,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Term> "@" <right:Factor> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Concat,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Term> "-" <right:Factor> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Sub,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    Factor,
+};
+
+Factor: Expr = {
+    <l:@L> <left:Factor> "*" <right:Unary> <r:@R> => Expr::Binary(BinaryExpr {
         left: Box::new(left),
         op: BinaryOp::Mul,
         right: Box::new(right),
         span: Span::new(l, r),
     }),
-    <l:@L> <left:Term> "/" <right:Unary> <r:@R> => Expr::Binary(BinaryExpr {
+    <l:@L> <left:Factor> "/" <right:Unary> <r:@R> => Expr::Binary(BinaryExpr {
         left: Box::new(left),
         op: BinaryOp::Div,
         right: Box::new(right),
@@ -87,6 +164,11 @@ Term: Expr = {
 };
 
 Unary: Expr = {
+    <l:@L> "!" <expr:Unary> <r:@R> => Expr::Unary(UnaryExpr {
+        op: UnaryOp::Not,
+        expr: Box::new(expr),
+        span: Span::new(l, r),
+    }),
     <l:@L> "-" <expr:Unary> <r:@R> => Expr::Unary(UnaryExpr {
         op: UnaryOp::Neg,
         expr: Box::new(expr),

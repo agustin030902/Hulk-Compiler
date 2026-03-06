@@ -36,6 +36,24 @@ enum LogosTokenKind {
     Multiply,
     #[token("/")]
     Divide,
+    #[token("==")]
+    EqualEqual,
+    #[token("!=")]
+    NotEqual,
+    #[token("<=")]
+    LessEqual,
+    #[token(">=")]
+    GreaterEqual,
+    #[token("<")]
+    Less,
+    #[token(">")]
+    Greater,
+    #[token("&&")]
+    And,
+    #[token("||")]
+    Or,
+    #[token("!")]
+    Not,
     #[token("(")]
     LeftParen,
     #[token(")")]
@@ -85,6 +103,15 @@ impl LogosTokenKind {
             LogosTokenKind::Minus => (TokenKind::Minus, lexeme.to_string()),
             LogosTokenKind::Multiply => (TokenKind::Multiply, lexeme.to_string()),
             LogosTokenKind::Divide => (TokenKind::Divide, lexeme.to_string()),
+            LogosTokenKind::EqualEqual => (TokenKind::EqualEqual, lexeme.to_string()),
+            LogosTokenKind::NotEqual => (TokenKind::NotEqual, lexeme.to_string()),
+            LogosTokenKind::Less => (TokenKind::Less, lexeme.to_string()),
+            LogosTokenKind::Greater => (TokenKind::Greater, lexeme.to_string()),
+            LogosTokenKind::LessEqual => (TokenKind::LessEqual, lexeme.to_string()),
+            LogosTokenKind::GreaterEqual => (TokenKind::GreaterEqual, lexeme.to_string()),
+            LogosTokenKind::And => (TokenKind::And, lexeme.to_string()),
+            LogosTokenKind::Or => (TokenKind::Or, lexeme.to_string()),
+            LogosTokenKind::Not => (TokenKind::Not, lexeme.to_string()),
             LogosTokenKind::LeftParen => (TokenKind::LeftParen, lexeme.to_string()),
             LogosTokenKind::RightParen => (TokenKind::RightParen, lexeme.to_string()),
             LogosTokenKind::Comma => (TokenKind::Comma, lexeme.to_string()),

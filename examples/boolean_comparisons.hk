@@ -1,0 +1,7 @@
+let x = 10;
+let y = 20;
+
+print(x < y);
+print(x == 10);
+print(true && (x < y));
+print(!(x >= y));

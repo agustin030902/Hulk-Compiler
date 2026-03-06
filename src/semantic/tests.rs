@@ -73,3 +73,63 @@ fn rejects_concat_between_boolean_and_string_with_specific_error() {
         "Operator '@' expects (String, String), (String, Number), or (Number, String), but got Boolean and String."
     );
 }
+
+#[test]
+fn allows_boolean_comparison_and_logic_expressions() {
+    let source = r#"
+let x = 10;
+let y = 5;
+
+print(x > y);
+print(x == 10);
+print(true && false);
+print(!(x < y));
+print((x + y) > 10);
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_logical_operator_with_non_boolean_operands() {
+    let source = r#"print(1 && true);"#;
+
+    let errors = analyze_source(source);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].category, ErrorCategory::Type);
+    assert_eq!(
+        errors[0].message,
+        "logical operator requires Boolean operands"
+    );
+}
+
+#[test]
+fn rejects_comparison_with_non_numeric_operands() {
+    let source = r#"print("a" < "b");"#;
+
+    let errors = analyze_source(source);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].category, ErrorCategory::Type);
+    assert_eq!(
+        errors[0].message,
+        "Comparison operator '<' expects Number and Number, but got String and String."
+    );
+}
+
+#[test]
+fn rejects_equality_with_mismatched_types() {
+    let source = r#"print(1 == true);"#;
+
+    let errors = analyze_source(source);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].category, ErrorCategory::Type);
+    assert_eq!(
+        errors[0].message,
+        "Operator '==' expects operands of the same type, but got Number and Boolean."
+    );
+}

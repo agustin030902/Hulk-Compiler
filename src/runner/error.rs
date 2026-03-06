@@ -56,7 +56,11 @@ impl fmt::Display for RunnerError {
                 source,
             } => {
                 if let Some(p) = path {
-                    write!(f, "I/O error while {action} '{path}': {source}", path = p.display())
+                    write!(
+                        f,
+                        "I/O error while {action} '{path}': {source}",
+                        path = p.display()
+                    )
                 } else {
                     write!(f, "I/O error while {action}: {source}")
                 }

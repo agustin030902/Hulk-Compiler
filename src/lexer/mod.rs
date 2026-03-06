@@ -1,8 +1,8 @@
-mod token;
 #[cfg(test)]
 mod string_escape_tests;
 #[cfg(test)]
 mod tests;
+mod token;
 
 use logos::Logos;
 
@@ -42,6 +42,8 @@ enum LogosTokenKind {
     String,
     #[token("+")]
     Add,
+    #[token("^")]
+    Power,
     #[token("@")]
     Concat,
     #[token("-")]
@@ -120,6 +122,7 @@ impl LogosTokenKind {
                 (TokenKind::String(value.clone()), value)
             }
             LogosTokenKind::Add => (TokenKind::Add, lexeme.to_string()),
+            LogosTokenKind::Power => (TokenKind::Power, lexeme.to_string()),
             LogosTokenKind::Concat => (TokenKind::Concat, lexeme.to_string()),
             LogosTokenKind::Minus => (TokenKind::Minus, lexeme.to_string()),
             LogosTokenKind::Multiply => (TokenKind::Multiply, lexeme.to_string()),
@@ -166,40 +169,53 @@ impl Lexer {
 
     pub fn lex(&mut self) -> Vec<Token> {
         let input = self.input.as_str();
-        let line_starts = compute_line_starts(input);
         let mut logos_lexer = LogosTokenKind::lexer(input);
         let mut tokens = Vec::new();
         self.errors.clear();
+        let mut line = 1usize;
+        let mut column = 1usize;
+        let mut cursor = 0usize;
 
         while let Some(next) = logos_lexer.next() {
             let span = logos_lexer.span();
             let lexeme = &input[span.clone()];
-            let (line, column) = line_column_at(span.start, &line_starts);
+            advance_position(input, cursor, span.start, &mut line, &mut column);
+            let token_line = line;
+            let token_column = column;
 
             match next {
                 Ok(kind) => {
-                    tokens.push(kind.into_token(lexeme, line, column, span.start, span.end))
+                    tokens.push(kind.into_token(
+                        lexeme,
+                        token_line,
+                        token_column,
+                        span.start,
+                        span.end,
+                    ))
                 }
                 Err(_) => {
                     self.errors.push(CompilerError::new(
                         ErrorCategory::Lexical,
                         format!("Unexpected character sequence: {}", lexeme),
-                        line,
-                        column,
+                        token_line,
+                        token_column,
                     ));
                     tokens.push(Token {
                         kind: TokenKind::Unknown,
                         value: lexeme.to_string(),
-                        line,
-                        column,
+                        line: token_line,
+                        column: token_column,
                         start: span.start,
                         end: span.end,
                     });
                 }
             }
+
+            advance_position(input, span.start, span.end, &mut line, &mut column);
+            cursor = span.end;
         }
 
-        let (line, column) = line_column_at(input.len(), &line_starts);
+        advance_position(input, cursor, input.len(), &mut line, &mut column);
         tokens.push(Token {
             kind: TokenKind::EOF,
             value: String::new(),
@@ -221,23 +237,15 @@ impl Lexer {
     }
 }
 
-fn compute_line_starts(input: &str) -> Vec<usize> {
-    let mut starts = vec![0];
-    for (index, ch) in input.char_indices() {
-        if ch == '\n' {
-            starts.push(index + ch.len_utf8());
+fn advance_position(input: &str, from: usize, to: usize, line: &mut usize, column: &mut usize) {
+    for byte in &input.as_bytes()[from..to] {
+        if *byte == b'\n' {
+            *line += 1;
+            *column = 1;
+        } else {
+            *column += 1;
         }
     }
-    starts
-}
-
-fn line_column_at(offset: usize, line_starts: &[usize]) -> (usize, usize) {
-    let line_index = line_starts
-        .partition_point(|&line_start| line_start <= offset)
-        .saturating_sub(1);
-    let line_start = line_starts[line_index];
-    let column = offset.saturating_sub(line_start);
-    (line_index + 1, column + 1)
 }
 
 fn unescape_string_contents(raw: &str) -> String {

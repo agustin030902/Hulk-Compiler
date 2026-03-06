@@ -62,8 +62,8 @@ fn writes_llvm_ir_txt_for_valid_concat() {
     );
     assert_eq!(report.output_kind, Some(OutputKind::LlvmIr));
 
-    let llvm_ir =
-        fs::read_to_string(&output_path).expect("compiler should write llvm output file on success");
+    let llvm_ir = fs::read_to_string(&output_path)
+        .expect("compiler should write llvm output file on success");
     assert!(
         llvm_ir.contains("define i32 @main()"),
         "output file should contain LLVM IR entrypoint, got:\n{}",
@@ -243,6 +243,63 @@ fn writes_diagnostics_for_invalid_builtin_log_arguments() {
     assert!(
         diagnostics.contains("Function 'log' expects (Number, Number), but got Number and String."),
         "diagnostics file should contain builtin type error, got:\n{}",
+        diagnostics
+    );
+}
+
+#[test]
+fn writes_llvm_ir_for_power_operator() {
+    let source = r#"
+let a = 2 ^ 3 ^ 2;
+print(a);
+"#;
+    let output_path = unique_output_path("valid_power_ir");
+
+    let mut compiler = Compiler::new();
+    let report = compiler.compile(
+        source,
+        &CompileOptions {
+            output_path: output_path.clone(),
+        },
+    );
+
+    assert!(
+        report.errors.is_empty(),
+        "expected successful compilation, got errors: {:?}",
+        report.errors
+    );
+    assert_eq!(report.output_kind, Some(OutputKind::LlvmIr));
+
+    let llvm_ir = fs::read_to_string(&output_path)
+        .expect("compiler should write llvm output file on success");
+    assert!(
+        llvm_ir.contains("@llvm.pow.f64"),
+        "IR should include pow intrinsic, got:\n{}",
+        llvm_ir
+    );
+}
+
+#[test]
+fn writes_diagnostics_for_invalid_power_operands() {
+    let source = r#"print("x" ^ 2);"#;
+    let output_path = unique_output_path("invalid_power_operands");
+
+    let mut compiler = Compiler::new();
+    let report = compiler.compile(
+        source,
+        &CompileOptions {
+            output_path: output_path.clone(),
+        },
+    );
+
+    assert!(!report.errors.is_empty());
+    assert_eq!(report.output_kind, Some(OutputKind::Diagnostics));
+
+    let diagnostics = fs::read_to_string(&output_path)
+        .expect("compiler should write diagnostics output file on error");
+    assert!(
+        diagnostics.contains("Operator '^' expects Number and Number, but got String and Number."),
+        "diagnostics file should contain power type error, got:\n{}",
         diagnostics
     );
 }

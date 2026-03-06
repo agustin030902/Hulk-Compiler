@@ -1,0 +1,2 @@
+let bad = "hola" ^ 2;
+print(bad);

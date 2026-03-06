@@ -42,6 +42,21 @@ Números de punto flotante.
 - Literales con decimales
 - Operaciones entre floats
 
+### `builtin_math_ok.hk`
+Uso de builtins y constantes matemáticas.
+- `sin`, `cos`, `sqrt`, `exp`, `log`
+- constantes `PI` y `E`
+
+### `reassignment_ok.hk`
+Reasignación de variables.
+- `let x = ...;`
+- `x = ...;`
+
+### `power_ok.hk`
+Operador de potencia `^` con precedencia y asociatividad.
+- Potencia simple y encadenada (`2 ^ 3 ^ 2`)
+- Combinación con builtins (`sin(...) ^ 2`)
+
 ## Archivos de Prueba de Error
 
 ### `error_type_mismatch_add.hk`
@@ -83,6 +98,16 @@ Números de punto flotante.
 **Tipo de error:** Lexical
 - Tokens inválidos o malformados
 - Error esperado: Token desconocido
+
+### `builtin_math_type_error.hk`
+**Tipo de error:** Semantic - Type Mismatch
+- Llamada a `log` con tipos inválidos
+- Error esperado: `Function 'log' expects (Number, Number), but got Number and String`
+
+### `power_type_error.hk`
+**Tipo de error:** Semantic - Type Mismatch
+- Uso de `^` con `String` y `Number`
+- Error esperado: `Operator '^' expects Number and Number, but got String and Number`
 
 ## Cómo ejecutar los ejemplos
 

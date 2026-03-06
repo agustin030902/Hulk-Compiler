@@ -94,9 +94,7 @@ impl LlvmRunner {
                 .file_stem()
                 .and_then(|s| s.to_str())
                 .unwrap_or("output");
-            let dirname = ll_path
-                .parent()
-                .unwrap_or_else(|| Path::new("."));
+            let dirname = ll_path.parent().unwrap_or_else(|| Path::new("."));
             Platform::as_executable_path(&dirname.join(stem))
         };
 
@@ -167,9 +165,8 @@ impl LlvmRunner {
         cmd.stdout(std::process::Stdio::piped());
         cmd.stderr(std::process::Stdio::piped());
 
-        cmd.output().map_err(|e| {
-            RunnerError::io("executing program", Some(exe_path.to_path_buf()), e)
-        })
+        cmd.output()
+            .map_err(|e| RunnerError::io("executing program", Some(exe_path.to_path_buf()), e))
     }
 }
 

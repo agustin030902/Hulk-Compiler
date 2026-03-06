@@ -6,7 +6,9 @@ mod tests;
 
 use crate::{
     error::{CompilerError, ErrorCategory, offset_to_line_column},
-    parser::expression::{BinaryOp, BuiltinFunction, Expr, Literal, Program, Span, Statement, UnaryOp},
+    parser::expression::{
+        BinaryOp, BuiltinFunction, Expr, Literal, Program, Span, Statement, UnaryOp,
+    },
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -165,7 +167,9 @@ impl SemanticAnalyzer {
                     }
                 }
             }
-            Expr::BuiltinCall(call) => self.check_builtin_call(call.function, &call.args, call.span, source),
+            Expr::BuiltinCall(call) => {
+                self.check_builtin_call(call.function, &call.args, call.span, source)
+            }
             Expr::Binary(binary) => {
                 let left_type = self.check_expr(&binary.left, source);
                 let right_type = self.check_expr(&binary.right, source);
@@ -175,7 +179,11 @@ impl SemanticAnalyzer {
                 };
 
                 match binary.op {
-                    BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
+                    BinaryOp::Add
+                    | BinaryOp::Sub
+                    | BinaryOp::Mul
+                    | BinaryOp::Div
+                    | BinaryOp::Pow => {
                         if left_type == SemanticType::Unknown || right_type == SemanticType::Unknown
                         {
                             return Some(SemanticType::Unknown);
@@ -408,6 +416,7 @@ impl SemanticAnalyzer {
 fn op_symbol(op: BinaryOp) -> &'static str {
     match op {
         BinaryOp::Add => "+",
+        BinaryOp::Pow => "^",
         BinaryOp::Concat => "@",
         BinaryOp::Sub => "-",
         BinaryOp::Mul => "*",

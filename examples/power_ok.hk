@@ -1,0 +1,10 @@
+let base = 2;
+let expv = 3;
+
+let direct = base ^ expv;
+let chained = 2 ^ 3 ^ 2;
+let trig = sin(PI / 2) ^ 2 + cos(0);
+
+print(direct);
+print(chained);
+print(trig);

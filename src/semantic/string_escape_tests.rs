@@ -1,8 +1,4 @@
-use crate::{
-    error::ErrorCategory,
-    lexer::Lexer,
-    parser::Parser,
-};
+use crate::{error::ErrorCategory, lexer::Lexer, parser::Parser};
 
 use super::SemanticAnalyzer;
 

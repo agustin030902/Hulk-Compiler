@@ -40,8 +40,8 @@ print(final_msg);
     );
     assert_eq!(report.output_kind, Some(OutputKind::LlvmIr));
 
-    let llvm_ir =
-        fs::read_to_string(&output_path).expect("compiler should write llvm output file on success");
+    let llvm_ir = fs::read_to_string(&output_path)
+        .expect("compiler should write llvm output file on success");
     assert!(
         llvm_ir.contains("define i32 @main()"),
         "output file should contain LLVM IR entrypoint, got:\n{}",

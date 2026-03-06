@@ -22,6 +22,7 @@ extern {
         "log" => TokenKind::Log,
         "=" => TokenKind::Assign,
         "+" => TokenKind::Add,
+        "^" => TokenKind::Power,
         "@" => TokenKind::Concat,
         "-" => TokenKind::Minus,
         "*" => TokenKind::Multiply,
@@ -186,6 +187,16 @@ Unary: Expr = {
     <l:@L> "-" <expr:Unary> <r:@R> => Expr::Unary(UnaryExpr {
         op: UnaryOp::Neg,
         expr: Box::new(expr),
+        span: Span::new(l, r),
+    }),
+    Power,
+};
+
+Power: Expr = {
+    <l:@L> <left:Primary> "^" <right:Unary> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Pow,
+        right: Box::new(right),
         span: Span::new(l, r),
     }),
     Primary,

@@ -121,6 +121,25 @@ impl SemanticAnalyzer {
                             None
                         }
                     }
+                    UnaryOp::Not => {
+                        if expr_type == SemanticType::Unknown {
+                            return Some(SemanticType::Unknown);
+                        }
+
+                        if expr_type == SemanticType::Boolean {
+                            Some(SemanticType::Boolean)
+                        } else {
+                            self.push_type_error(
+                                unary.span,
+                                source,
+                                format!(
+                                    "Unary '!' expects Boolean, but got {}.",
+                                    expr_type.display_name()
+                                ),
+                            );
+                            None
+                        }
+                    }
                 }
             }
             Expr::Binary(binary) => {
@@ -176,6 +195,83 @@ impl SemanticAnalyzer {
                             None
                         }
                     }
+                    BinaryOp::Less
+                    | BinaryOp::Greater
+                    | BinaryOp::LessEqual
+                    | BinaryOp::GreaterEqual => {
+                        if left_type == SemanticType::Unknown || right_type == SemanticType::Unknown
+                        {
+                            return Some(SemanticType::Unknown);
+                        }
+
+                        if left_type == SemanticType::Number && right_type == SemanticType::Number {
+                            Some(SemanticType::Boolean)
+                        } else {
+                            self.push_type_error(
+                                binary.span,
+                                source,
+                                format!(
+                                    "Comparison operator '{}' expects Number and Number, but got {} and {}.",
+                                    op_symbol(binary.op.clone()),
+                                    left_type.display_name(),
+                                    right_type.display_name()
+                                ),
+                            );
+                            None
+                        }
+                    }
+                    BinaryOp::Equal | BinaryOp::NotEqual => {
+                        if left_type == SemanticType::Unknown || right_type == SemanticType::Unknown
+                        {
+                            return Some(SemanticType::Unknown);
+                        }
+
+                        if left_type != right_type {
+                            self.push_type_error(
+                                binary.span,
+                                source,
+                                format!(
+                                    "Operator '{}' expects operands of the same type, but got {} and {}.",
+                                    op_symbol(binary.op.clone()),
+                                    left_type.display_name(),
+                                    right_type.display_name()
+                                ),
+                            );
+                            return None;
+                        }
+
+                        if is_equality_type(left_type) {
+                            Some(SemanticType::Boolean)
+                        } else {
+                            self.push_type_error(
+                                binary.span,
+                                source,
+                                format!(
+                                    "Operator '{}' only supports Number, Boolean, or String operands.",
+                                    op_symbol(binary.op.clone())
+                                ),
+                            );
+                            None
+                        }
+                    }
+                    BinaryOp::And | BinaryOp::Or => {
+                        if left_type == SemanticType::Unknown || right_type == SemanticType::Unknown
+                        {
+                            return Some(SemanticType::Unknown);
+                        }
+
+                        if left_type == SemanticType::Boolean && right_type == SemanticType::Boolean
+                        {
+                            Some(SemanticType::Boolean)
+                        } else {
+                            self.push_type_error(
+                                binary.span,
+                                source,
+                                "logical operator requires Boolean operands".to_string(),
+                            );
+                            None
+                        }
+                    }
                 }
             }
         }
@@ -217,6 +313,14 @@ fn op_symbol(op: BinaryOp) -> &'static str {
         BinaryOp::Sub => "-",
         BinaryOp::Mul => "*",
         BinaryOp::Div => "/",
+        BinaryOp::Equal => "==",
+        BinaryOp::NotEqual => "!=",
+        BinaryOp::Less => "<",
+        BinaryOp::Greater => ">",
+        BinaryOp::LessEqual => "<=",
+        BinaryOp::GreaterEqual => ">=",
+        BinaryOp::And => "&&",
+        BinaryOp::Or => "||",
     }
 }
 
@@ -226,5 +330,12 @@ fn is_valid_concat_pair(left: SemanticType, right: SemanticType) -> bool {
         (SemanticType::String, SemanticType::String)
             | (SemanticType::String, SemanticType::Number)
             | (SemanticType::Number, SemanticType::String)
+    )
+}
+
+fn is_equality_type(value_type: SemanticType) -> bool {
+    matches!(
+        value_type,
+        SemanticType::Number | SemanticType::Boolean | SemanticType::String
     )
 }

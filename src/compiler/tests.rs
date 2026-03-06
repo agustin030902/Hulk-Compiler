@@ -75,3 +75,55 @@ fn writes_llvm_ir_txt_for_valid_concat() {
         llvm_ir
     );
 }
+
+#[test]
+fn writes_llvm_ir_for_boolean_and_comparison_expressions() {
+    let source = r#"
+let x = 10;
+let y = 20;
+
+print(x < y);
+print(x == 10);
+print(true && (x < y));
+print(!(x >= y));
+"#;
+    let output_path = unique_output_path("valid_boolean_comparison_ir");
+
+    let mut compiler = Compiler::new();
+    let report = compiler.compile(
+        source,
+        &CompileOptions {
+            output_path: output_path.clone(),
+        },
+    );
+
+    assert!(
+        report.errors.is_empty(),
+        "expected successful compilation, got errors: {:?}",
+        report.errors
+    );
+    assert_eq!(report.output_kind, Some(OutputKind::LlvmIr));
+
+    let llvm_ir = fs::read_to_string(&output_path)
+        .expect("compiler should write llvm output file on success");
+    assert!(
+        llvm_ir.contains("fcmp olt double"),
+        "expected numeric comparison in LLVM IR, got:\n{}",
+        llvm_ir
+    );
+    assert!(
+        llvm_ir.contains("fcmp oeq double"),
+        "expected numeric equality in LLVM IR, got:\n{}",
+        llvm_ir
+    );
+    assert!(
+        llvm_ir.contains(" and i1 "),
+        "expected logical and in LLVM IR, got:\n{}",
+        llvm_ir
+    );
+    assert!(
+        llvm_ir.contains(" xor i1 "),
+        "expected logical not in LLVM IR, got:\n{}",
+        llvm_ir
+    );
+}

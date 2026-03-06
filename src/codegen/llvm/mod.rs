@@ -245,6 +245,19 @@ impl LlvmBackend {
                     repr: result,
                 })
             }
+            UnaryOp::Not => {
+                if value.value_type != ValueType::Bool {
+                    self.semantic_error("Unary '!' only supports boolean values");
+                    return None;
+                }
+
+                let result = self.next_temp();
+                self.emit_body(format!("{result} = xor i1 {}, true", value.repr));
+                Some(ValueRef {
+                    value_type: ValueType::Bool,
+                    repr: result,
+                })
+            }
         }
     }
 
@@ -265,7 +278,7 @@ impl LlvmBackend {
                     BinaryOp::Sub => "fsub",
                     BinaryOp::Mul => "fmul",
                     BinaryOp::Div => "fdiv",
-                    BinaryOp::Concat => unreachable!("concat handled in outer match"),
+                    _ => unreachable!("non-arithmetic operator in arithmetic branch"),
                 };
 
                 let result = self.next_temp();
@@ -279,7 +292,134 @@ impl LlvmBackend {
                     repr: result,
                 })
             }
+            BinaryOp::Less | BinaryOp::Greater | BinaryOp::LessEqual | BinaryOp::GreaterEqual => {
+                self.emit_numeric_comparison(op, &left, &right)
+            }
+            BinaryOp::Equal | BinaryOp::NotEqual => self.emit_equality(op, &left, &right),
+            BinaryOp::And | BinaryOp::Or => self.emit_boolean_binary(op, &left, &right),
         }
+    }
+
+    fn emit_numeric_comparison(
+        &mut self,
+        op: BinaryOp,
+        left: &ValueRef,
+        right: &ValueRef,
+    ) -> Option<ValueRef> {
+        if left.value_type != ValueType::Double || right.value_type != ValueType::Double {
+            self.semantic_error("Comparison operators only support numeric values");
+            return None;
+        }
+
+        let predicate = match op {
+            BinaryOp::Less => "olt",
+            BinaryOp::Greater => "ogt",
+            BinaryOp::LessEqual => "ole",
+            BinaryOp::GreaterEqual => "oge",
+            _ => unreachable!("non-comparison operator in emit_numeric_comparison"),
+        };
+
+        let result = self.next_temp();
+        self.emit_body(format!(
+            "{result} = fcmp {predicate} double {}, {}",
+            left.repr, right.repr
+        ));
+        Some(ValueRef {
+            value_type: ValueType::Bool,
+            repr: result,
+        })
+    }
+
+    fn emit_equality(&mut self, op: BinaryOp, left: &ValueRef, right: &ValueRef) -> Option<ValueRef> {
+        if left.value_type != right.value_type {
+            self.semantic_error("Equality operators require operands of the same type");
+            return None;
+        }
+
+        match left.value_type {
+            ValueType::Double => {
+                let predicate = match op {
+                    BinaryOp::Equal => "oeq",
+                    BinaryOp::NotEqual => "one",
+                    _ => unreachable!("non-equality operator in emit_equality"),
+                };
+
+                let result = self.next_temp();
+                self.emit_body(format!(
+                    "{result} = fcmp {predicate} double {}, {}",
+                    left.repr, right.repr
+                ));
+                Some(ValueRef {
+                    value_type: ValueType::Bool,
+                    repr: result,
+                })
+            }
+            ValueType::Bool => {
+                let predicate = match op {
+                    BinaryOp::Equal => "eq",
+                    BinaryOp::NotEqual => "ne",
+                    _ => unreachable!("non-equality operator in emit_equality"),
+                };
+
+                let result = self.next_temp();
+                self.emit_body(format!(
+                    "{result} = icmp {predicate} i1 {}, {}",
+                    left.repr, right.repr
+                ));
+                Some(ValueRef {
+                    value_type: ValueType::Bool,
+                    repr: result,
+                })
+            }
+            ValueType::StringPtr => {
+                let cmp_tmp = self.next_temp();
+                self.emit_body(format!(
+                    "{cmp_tmp} = call i32 @strcmp(i8* {}, i8* {})",
+                    left.repr, right.repr
+                ));
+
+                let predicate = match op {
+                    BinaryOp::Equal => "eq",
+                    BinaryOp::NotEqual => "ne",
+                    _ => unreachable!("non-equality operator in emit_equality"),
+                };
+
+                let result = self.next_temp();
+                self.emit_body(format!("{result} = icmp {predicate} i32 {cmp_tmp}, 0"));
+                Some(ValueRef {
+                    value_type: ValueType::Bool,
+                    repr: result,
+                })
+            }
+        }
+    }
+
+    fn emit_boolean_binary(
+        &mut self,
+        op: BinaryOp,
+        left: &ValueRef,
+        right: &ValueRef,
+    ) -> Option<ValueRef> {
+        if left.value_type != ValueType::Bool || right.value_type != ValueType::Bool {
+            self.semantic_error("Logical operators only support boolean values");
+            return None;
+        }
+
+        let instruction = match op {
+            BinaryOp::And => "and",
+            BinaryOp::Or => "or",
+            _ => unreachable!("non-logical operator in emit_boolean_binary"),
+        };
+
+        let result = self.next_temp();
+        self.emit_body(format!(
+            "{result} = {instruction} i1 {}, {}",
+            left.repr, right.repr
+        ));
+        Some(ValueRef {
+            value_type: ValueType::Bool,
+            repr: result,
+        })
     }
 
     fn emit_concat(&mut self, left: &ValueRef, right: &ValueRef) -> Option<ValueRef> {
@@ -326,6 +466,7 @@ impl LlvmBackend {
             "; Hulk LLVM IR (intermediate code)".to_string(),
             "declare i32 @printf(i8*, ...)".to_string(),
             "declare i32 @asprintf(i8**, i8*, ...)".to_string(),
+            "declare i32 @strcmp(i8*, i8*)".to_string(),
             "@.fmt.number = private unnamed_addr constant [4 x i8] c\"%g\\0A\\00\"".to_string(),
             "@.fmt.string = private unnamed_addr constant [4 x i8] c\"%s\\0A\\00\"".to_string(),
             "@.fmt.bool = private unnamed_addr constant [4 x i8] c\"%d\\0A\\00\"".to_string(),

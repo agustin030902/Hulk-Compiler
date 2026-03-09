@@ -13,6 +13,7 @@ pub enum TokenKind {
     Sqrt,
     Exp,
     Log,
+    Rand,
     Assign,
     Add,
     Power,

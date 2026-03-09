@@ -1,3 +1,5 @@
+mod string_escape;
+
 use super::{Lexer, TokenKind};
 
 #[test]
@@ -174,6 +176,49 @@ fn lexes_power_operator_with_right_associative_shape() {
             TokenKind::Power,
             TokenKind::Number("2".to_string()),
             TokenKind::RightParen,
+            TokenKind::Semicolon,
+            TokenKind::EOF,
+        ]
+    );
+}
+
+#[test]
+fn lexes_rand_builtin_without_arguments() {
+    let source = r#"print(rand());"#.to_string();
+    let mut lexer = Lexer::new(source);
+
+    let tokens = lexer.lex();
+    let kinds: Vec<TokenKind> = tokens.into_iter().map(|token| token.kind).collect();
+
+    assert!(!lexer.has_errors());
+    assert_eq!(
+        kinds,
+        vec![
+            TokenKind::Print,
+            TokenKind::LeftParen,
+            TokenKind::Rand,
+            TokenKind::LeftParen,
+            TokenKind::RightParen,
+            TokenKind::RightParen,
+            TokenKind::Semicolon,
+            TokenKind::EOF,
+        ]
+    );
+}
+
+#[test]
+fn lexes_expression_statement_literal() {
+    let source = "42;".to_string();
+    let mut lexer = Lexer::new(source);
+
+    let tokens = lexer.lex();
+    let kinds: Vec<TokenKind> = tokens.into_iter().map(|token| token.kind).collect();
+
+    assert!(!lexer.has_errors());
+    assert_eq!(
+        kinds,
+        vec![
+            TokenKind::Number("42".to_string()),
             TokenKind::Semicolon,
             TokenKind::EOF,
         ]

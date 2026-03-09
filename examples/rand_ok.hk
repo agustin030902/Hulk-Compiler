@@ -1,0 +1,7 @@
+let r1 = rand();
+let r2 = rand();
+
+print(r1);
+print(r2);
+
+rand();

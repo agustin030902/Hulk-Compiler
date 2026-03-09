@@ -3,8 +3,6 @@ use std::{
     path::{Path, PathBuf},
 };
 #[cfg(test)]
-mod string_escape_tests;
-#[cfg(test)]
 mod tests;
 
 use crate::{

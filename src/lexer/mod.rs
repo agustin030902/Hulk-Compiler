@@ -1,6 +1,4 @@
 #[cfg(test)]
-mod string_escape_tests;
-#[cfg(test)]
 mod tests;
 mod token;
 
@@ -32,6 +30,8 @@ enum LogosTokenKind {
     Exp,
     #[token("log", priority = 3)]
     Log,
+    #[token("rand", priority = 3)]
+    Rand,
     #[regex(r"true|false")]
     Boolean,
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
@@ -101,6 +101,7 @@ impl LogosTokenKind {
             LogosTokenKind::Sqrt => (TokenKind::Sqrt, lexeme.to_string()),
             LogosTokenKind::Exp => (TokenKind::Exp, lexeme.to_string()),
             LogosTokenKind::Log => (TokenKind::Log, lexeme.to_string()),
+            LogosTokenKind::Rand => (TokenKind::Rand, lexeme.to_string()),
             LogosTokenKind::Boolean => {
                 let value = lexeme.to_string();
                 (TokenKind::Boolean(value.clone()), value)
@@ -184,15 +185,13 @@ impl Lexer {
             let token_column = column;
 
             match next {
-                Ok(kind) => {
-                    tokens.push(kind.into_token(
-                        lexeme,
-                        token_line,
-                        token_column,
-                        span.start,
-                        span.end,
-                    ))
-                }
+                Ok(kind) => tokens.push(kind.into_token(
+                    lexeme,
+                    token_line,
+                    token_column,
+                    span.start,
+                    span.end,
+                )),
                 Err(_) => {
                     self.errors.push(CompilerError::new(
                         ErrorCategory::Lexical,

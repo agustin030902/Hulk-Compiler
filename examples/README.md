@@ -57,6 +57,16 @@ Operador de potencia `^` con precedencia y asociatividad.
 - Potencia simple y encadenada (`2 ^ 3 ^ 2`)
 - Combinación con builtins (`sin(...) ^ 2`)
 
+### `rand_ok.hk`
+Builtin `rand()` para generar números pseudoaleatorios.
+- `rand()` retorna un `Number` entre `0` y `1`
+- Uso en asignaciones y `print(...)`
+
+### `expression_statement_ok.hk`
+Statements de expresión en un lenguaje basado en expresiones.
+- Expresiones como `42;`, `x;`, `(1 + 2) * 3;`
+- No imprimen por sí mismas, salvo que uses `print(...)`
+
 ## Archivos de Prueba de Error
 
 ### `error_type_mismatch_add.hk`
@@ -108,6 +118,11 @@ Operador de potencia `^` con precedencia y asociatividad.
 **Tipo de error:** Semantic - Type Mismatch
 - Uso de `^` con `String` y `Number`
 - Error esperado: `Operator '^' expects Number and Number, but got String and Number`
+
+### `rand_invalid_args.hk`
+**Tipo de error:** Syntax
+- Llamada inválida `rand(1)`
+- Error esperado: `rand` solo admite 0 argumentos
 
 ## Cómo ejecutar los ejemplos
 

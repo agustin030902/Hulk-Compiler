@@ -1,3 +1,5 @@
+mod string_escape;
+
 use crate::{error::ErrorCategory, lexer::Lexer, parser::Parser};
 
 use super::SemanticAnalyzer;
@@ -232,5 +234,36 @@ fn rejects_power_with_non_numeric_operands() {
     assert_eq!(
         errors[0].message,
         "Operator '^' expects Number and Number, but got String and Number."
+    );
+}
+
+#[test]
+fn allows_expression_statement_without_side_effects() {
+    let source = r#"
+42;
+let x = 1 + 2;
+print(x);
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn allows_rand_builtin_call() {
+    let source = r#"
+let r = rand();
+print(r);
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
     );
 }

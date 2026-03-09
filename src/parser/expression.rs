@@ -33,6 +33,10 @@ pub enum Statement {
         value: Expr,
         span: Span,
     },
+    Expr {
+        value: Expr,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -117,6 +121,7 @@ pub enum BuiltinFunction {
     Sqrt,
     Exp,
     Log,
+    Rand,
 }
 
 impl BuiltinFunction {
@@ -127,6 +132,7 @@ impl BuiltinFunction {
             BuiltinFunction::Sqrt => "sqrt",
             BuiltinFunction::Exp => "exp",
             BuiltinFunction::Log => "log",
+            BuiltinFunction::Rand => "rand",
         }
     }
 }

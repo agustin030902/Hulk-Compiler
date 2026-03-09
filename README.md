@@ -75,6 +75,7 @@ Responsabilidades:
 - `sqrt`
 - `exp`
 - `log`
+- `rand`
 - `true`, `false`
 
 ### Literales
@@ -105,6 +106,7 @@ Program        := Statement* EOF
 Statement      := "let" Identifier "=" Expr ";"
                 | Identifier "=" Expr ";"
                 | "print" "(" Expr ")" ";"
+                | Expr ";"
 
 Expr           := LogicalOr
 
@@ -150,6 +152,7 @@ BuiltinCall    := "sin"  "(" Expr ")"
                 | "sqrt" "(" Expr ")"
                 | "exp"  "(" Expr ")"
                 | "log"  "(" Expr "," Expr ")"
+                | "rand" "(" ")"
 
 Literal        := "PI"
                 | "E"
@@ -176,6 +179,7 @@ Notas:
 - `^` es asociativo a derecha (`2 ^ 3 ^ 2` se interpreta como `2 ^ (3 ^ 2)`).
 - El resto de operadores binarios son asociativos a izquierda.
 - La asignacion (`x = ...;`) es sentencia, no expresion.
+- El lenguaje acepta statement de expresion (`42;`, `x + 1;`, `rand();`).
 
 ## 6. Reglas semanticas actuales
 
@@ -213,6 +217,7 @@ print(x);
 - `sqrt(Number) -> Number`
 - `exp(Number) -> Number`
 - `log(Number, Number) -> Number`
+- `rand() -> Number` (uniforme en `[0, 1]`)
 
 ### Constantes globales
 - `PI` (Number)
@@ -223,7 +228,7 @@ print(x);
 Si no hay errores, se escribe LLVM IR en el `.txt` indicado.
 
 Incluye declaraciones para:
-- `printf`, `asprintf`, `strcmp`
+- `printf`, `asprintf`, `strcmp`, `rand`, `time`, `srand`
 - `@llvm.sin.f64`, `@llvm.cos.f64`, `@llvm.sqrt.f64`, `@llvm.exp.f64`, `@llvm.log.f64`, `@llvm.pow.f64`
 
 Si hay errores, el `.txt` contiene diagnosticos y no IR.
@@ -310,10 +315,13 @@ Validos:
 - `examples/reassignment_ok.hk`
 - `examples/builtin_math_ok.hk`
 - `examples/power_ok.hk`
+- `examples/rand_ok.hk`
+- `examples/expression_statement_ok.hk`
 
 Con error (para validar diagnosticos):
 - `examples/builtin_math_type_error.hk`
 - `examples/power_type_error.hk`
+- `examples/rand_invalid_args.hk`
 - `examples/error_lexical_invalid.hk`
 - `examples/error_syntax_missing_semicolon.hk`
 - `examples/error_type_mismatch_add.hk`
@@ -325,6 +333,6 @@ Para anadir nuevos features sin romper arquitectura:
 - Parser: extender AST en `src/parser/expression.rs` y gramatica en `src/parser/grammar.lalrpop`.
 - Semantic: definir reglas en `src/semantic/mod.rs`.
 - Codegen: emitir IR en `src/codegen/llvm/mod.rs`.
-- Tests: agregar tests en el modulo correspondiente (`lexer`, `parser`, `semantic`, `compiler`).
+- Tests: agregar tests en `src/<fase>/tests/` (`lexer`, `parser`, `semantic`, `compiler`).
 
 Regla practica: cada feature nuevo debe incluir tests de fase y un ejemplo `.hk`.

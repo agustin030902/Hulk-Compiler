@@ -1,3 +1,6 @@
+mod rand_expression;
+mod string_escape;
+
 use std::{
     fs,
     path::PathBuf,
@@ -301,5 +304,79 @@ fn writes_diagnostics_for_invalid_power_operands() {
         diagnostics.contains("Operator '^' expects Number and Number, but got String and Number."),
         "diagnostics file should contain power type error, got:\n{}",
         diagnostics
+    );
+}
+
+#[test]
+fn writes_llvm_ir_for_rand_builtin() {
+    let source = r#"
+let r = rand();
+print(r);
+"#;
+    let output_path = unique_output_path("valid_rand_ir");
+
+    let mut compiler = Compiler::new();
+    let report = compiler.compile(
+        source,
+        &CompileOptions {
+            output_path: output_path.clone(),
+        },
+    );
+
+    assert!(
+        report.errors.is_empty(),
+        "expected successful compilation, got errors: {:?}",
+        report.errors
+    );
+    assert_eq!(report.output_kind, Some(OutputKind::LlvmIr));
+
+    let llvm_ir = fs::read_to_string(&output_path)
+        .expect("compiler should write llvm output file on success");
+    assert!(
+        llvm_ir.contains("declare i32 @rand()"),
+        "IR should declare rand runtime, got:\n{}",
+        llvm_ir
+    );
+    assert!(
+        llvm_ir.contains("call i32 @rand()"),
+        "IR should call rand runtime, got:\n{}",
+        llvm_ir
+    );
+}
+
+#[test]
+fn writes_llvm_ir_for_expression_statement_program() {
+    let source = r#"
+42;
+print(42);
+"#;
+    let output_path = unique_output_path("expression_statement_ir");
+
+    let mut compiler = Compiler::new();
+    let report = compiler.compile(
+        source,
+        &CompileOptions {
+            output_path: output_path.clone(),
+        },
+    );
+
+    assert!(
+        report.errors.is_empty(),
+        "expected successful compilation, got errors: {:?}",
+        report.errors
+    );
+    assert_eq!(report.output_kind, Some(OutputKind::LlvmIr));
+
+    let llvm_ir = fs::read_to_string(&output_path)
+        .expect("compiler should write llvm output file on success");
+    assert!(
+        llvm_ir.contains("define i32 @main()"),
+        "output file should contain LLVM IR entrypoint, got:\n{}",
+        llvm_ir
+    );
+    assert!(
+        llvm_ir.contains("@printf"),
+        "print should still emit runtime call with expression statements present, got:\n{}",
+        llvm_ir
     );
 }

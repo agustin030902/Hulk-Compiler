@@ -1,6 +1,5 @@
 use crate::lexer::{Lexer, Token, TokenKind};
-
-use super::{
+use crate::parser::{
     Parser,
     expression::{Expr, Literal, Program, Statement},
 };
@@ -52,6 +51,7 @@ fn token(kind: TokenKind, start: usize, end: usize) -> Token {
         TokenKind::Sqrt => "sqrt".to_string(),
         TokenKind::Exp => "exp".to_string(),
         TokenKind::Log => "log".to_string(),
+        TokenKind::Rand => "rand".to_string(),
         TokenKind::Assign => "=".to_string(),
         TokenKind::Add => "+".to_string(),
         TokenKind::Power => "^".to_string(),

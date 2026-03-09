@@ -1,3 +1,5 @@
+mod string_escape;
+
 use crate::lexer::Lexer;
 
 use super::{
@@ -273,4 +275,38 @@ fn parses_power_as_right_associative() {
         panic!("expected right-nested power expression");
     };
     assert!(matches!(inner_pow.op, BinaryOp::Pow));
+}
+
+#[test]
+fn parses_expression_statement_literal() {
+    let program = parse_program("42;");
+    assert_eq!(program.statements.len(), 1);
+
+    let Statement::Expr { value, .. } = &program.statements[0] else {
+        panic!("expected expression statement");
+    };
+
+    assert!(matches!(
+        value,
+        Expr::Literal {
+            value: Literal::Integer(42),
+            ..
+        }
+    ));
+}
+
+#[test]
+fn parses_rand_builtin_call_without_arguments() {
+    let program = parse_program("print(rand());");
+    assert_eq!(program.statements.len(), 1);
+
+    let Statement::Print { value, .. } = &program.statements[0] else {
+        panic!("expected print statement");
+    };
+    let Expr::BuiltinCall(call) = value else {
+        panic!("expected builtin call");
+    };
+
+    assert_eq!(call.function, BuiltinFunction::Rand);
+    assert!(call.args.is_empty());
 }

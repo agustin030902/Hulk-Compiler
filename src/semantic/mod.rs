@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 #[cfg(test)]
-mod string_escape_tests;
-#[cfg(test)]
 mod tests;
 
 use crate::{
@@ -78,6 +76,9 @@ impl SemanticAnalyzer {
                 self.symbols.insert(name.clone(), value_type);
             }
             Statement::Print { value, .. } => {
+                let _ = self.check_expr(value, source);
+            }
+            Statement::Expr { value, .. } => {
                 let _ = self.check_expr(value, source);
             }
             Statement::Assign {
@@ -380,6 +381,18 @@ impl SemanticAnalyzer {
                     );
                     None
                 }
+            }
+            BuiltinFunction::Rand => {
+                if !args.is_empty() {
+                    self.push_semantic_error(
+                        span,
+                        source,
+                        "Function 'rand' expects 0 arguments.".to_string(),
+                    );
+                    return None;
+                }
+
+                Some(SemanticType::Number)
             }
         }
     }

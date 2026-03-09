@@ -156,6 +156,9 @@ impl LlvmBackend {
                     }
                 }
             }
+            Statement::Expr { value, .. } => {
+                let _ = self.emit_expr(value);
+            }
             Statement::Assign { name, value, .. } => {
                 let Some(existing) = self.variables.get(name).cloned() else {
                     self.semantic_error(format!("Variable '{}' is not declared", name));
@@ -233,6 +236,7 @@ impl LlvmBackend {
                     BuiltinFunction::Sqrt => "llvm.sqrt.f64",
                     BuiltinFunction::Exp => "llvm.exp.f64",
                     BuiltinFunction::Log => unreachable!("log handled in dedicated branch"),
+                    BuiltinFunction::Rand => unreachable!("rand handled in dedicated branch"),
                 };
 
                 let result = self.next_temp();
@@ -277,6 +281,28 @@ impl LlvmBackend {
                 Some(ValueRef {
                     value_type: ValueType::Double,
                     repr: result,
+                })
+            }
+            BuiltinFunction::Rand => {
+                if !args.is_empty() {
+                    self.semantic_error("Function 'rand' expects 0 arguments");
+                    return None;
+                }
+
+                let raw = self.next_temp();
+                self.emit_body(format!("{raw} = call i32 @rand()"));
+
+                let as_double = self.next_temp();
+                self.emit_body(format!("{as_double} = sitofp i32 {raw} to double"));
+
+                let normalized = self.next_temp();
+                self.emit_body(format!(
+                    "{normalized} = fdiv double {as_double}, 2147483647.0"
+                ));
+
+                Some(ValueRef {
+                    value_type: ValueType::Double,
+                    repr: normalized,
                 })
             }
         }
@@ -604,6 +630,9 @@ impl LlvmBackend {
             "declare i32 @printf(i8*, ...)".to_string(),
             "declare i32 @asprintf(i8**, i8*, ...)".to_string(),
             "declare i32 @strcmp(i8*, i8*)".to_string(),
+            "declare i32 @rand()".to_string(),
+            "declare i64 @time(i64*)".to_string(),
+            "declare void @srand(i32)".to_string(),
             "declare double @llvm.sin.f64(double)".to_string(),
             "declare double @llvm.cos.f64(double)".to_string(),
             "declare double @llvm.sqrt.f64(double)".to_string(),
@@ -622,6 +651,9 @@ impl LlvmBackend {
         out.push(String::new());
         out.push("define i32 @main() {".to_string());
         out.push("entry:".to_string());
+        out.push("  %t_seed_raw = call i64 @time(i64* null)".to_string());
+        out.push("  %t_seed_i32 = trunc i64 %t_seed_raw to i32".to_string());
+        out.push("  call void @srand(i32 %t_seed_i32)".to_string());
 
         for line in &self.body_lines {
             out.push(format!("  {line}"));

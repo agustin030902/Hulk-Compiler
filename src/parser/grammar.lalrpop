@@ -20,6 +20,7 @@ extern {
         "sqrt" => TokenKind::Sqrt,
         "exp" => TokenKind::Exp,
         "log" => TokenKind::Log,
+        "rand" => TokenKind::Rand,
         "=" => TokenKind::Assign,
         "+" => TokenKind::Add,
         "^" => TokenKind::Power,
@@ -67,6 +68,10 @@ Statement: Statement = {
         span: Span::new(l, r),
     },
     <l:@L> "print" "(" <value:Expr> ")" ";" <r:@R> => Statement::Print {
+        value,
+        span: Span::new(l, r),
+    },
+    <l:@L> <value:Expr> ";" <r:@R> => Statement::Expr {
         value,
         span: Span::new(l, r),
     },
@@ -233,6 +238,11 @@ BuiltinCallExpr: Expr = {
     <l:@L> "log" "(" <base:Expr> "," <value:Expr> ")" <r:@R> => Expr::BuiltinCall(BuiltinCallExpr {
         function: BuiltinFunction::Log,
         args: vec![base, value],
+        span: Span::new(l, r),
+    }),
+    <l:@L> "rand" "(" ")" <r:@R> => Expr::BuiltinCall(BuiltinCallExpr {
+        function: BuiltinFunction::Rand,
+        args: vec![],
         span: Span::new(l, r),
     }),
 };

@@ -7,8 +7,6 @@ use crate::{
 
 pub mod expression;
 #[cfg(test)]
-mod string_escape_tests;
-#[cfg(test)]
 mod tests;
 
 pub use expression::Program;
@@ -130,6 +128,7 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::Sqrt => "sqrt".to_string(),
         TokenKind::Exp => "exp".to_string(),
         TokenKind::Log => "log".to_string(),
+        TokenKind::Rand => "rand".to_string(),
         TokenKind::Assign => "=".to_string(),
         TokenKind::Add => "+".to_string(),
         TokenKind::Power => "^".to_string(),

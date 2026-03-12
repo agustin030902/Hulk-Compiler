@@ -74,6 +74,10 @@ enum LogosTokenKind {
     LeftParen,
     #[token(")")]
     RightParen,
+    #[token("{")]
+    LeftBrace,
+    #[token("}")]
+    RightBrace,
     #[token(",")]
     Comma,
     #[token(";")]
@@ -139,6 +143,8 @@ impl LogosTokenKind {
             LogosTokenKind::Not => (TokenKind::Not, lexeme.to_string()),
             LogosTokenKind::LeftParen => (TokenKind::LeftParen, lexeme.to_string()),
             LogosTokenKind::RightParen => (TokenKind::RightParen, lexeme.to_string()),
+            LogosTokenKind::LeftBrace => (TokenKind::LeftBrace, lexeme.to_string()),
+            LogosTokenKind::RightBrace => (TokenKind::RightBrace, lexeme.to_string()),
             LogosTokenKind::Comma => (TokenKind::Comma, lexeme.to_string()),
             LogosTokenKind::Semicolon => (TokenKind::Semicolon, lexeme.to_string()),
             LogosTokenKind::Assign => (TokenKind::Assign, lexeme.to_string()),

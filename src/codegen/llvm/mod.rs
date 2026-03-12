@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use crate::{
     codegen::CodegenBackend,
     error::{CompilerError, ErrorCategory},
-    parser::expression::{BinaryOp, BuiltinFunction, Expr, Literal, Program, Statement, UnaryOp},
+    parser::expression::{
+        BinaryOp, BlockExpr, BuiltinFunction, Expr, Literal, Program, Statement, UnaryOp,
+    },
 };
 
 #[derive(Debug, Default)]
@@ -11,7 +13,7 @@ pub struct LlvmBackend {
     body_lines: Vec<String>,
     global_lines: Vec<String>,
     errors: Vec<CompilerError>,
-    variables: HashMap<String, VariableInfo>,
+    scopes: Vec<HashMap<String, VariableInfo>>,
     temp_counter: usize,
     string_counter: usize,
 }
@@ -44,9 +46,10 @@ impl LlvmBackend {
         self.body_lines.clear();
         self.global_lines.clear();
         self.errors.clear();
-        self.variables.clear();
+        self.scopes.clear();
         self.temp_counter = 0;
         self.string_counter = 0;
+        self.push_scope();
     }
 
     fn emit_body(&mut self, line: impl Into<String>) {
@@ -89,22 +92,58 @@ impl LlvmBackend {
             .push(CompilerError::new(ErrorCategory::Semantic, message, 1, 1));
     }
 
+    fn push_scope(&mut self) {
+        self.scopes.push(HashMap::new());
+    }
+
+    fn pop_scope(&mut self) {
+        self.scopes.pop();
+    }
+
+    fn current_scope_mut(&mut self) -> &mut HashMap<String, VariableInfo> {
+        self.scopes
+            .last_mut()
+            .expect("a scope should always be present")
+    }
+
+    fn is_declared_in_current_scope(&self, name: &str) -> bool {
+        self.scopes
+            .last()
+            .map(|scope| scope.contains_key(name))
+            .unwrap_or(false)
+    }
+
+    fn lookup_var(&self, name: &str) -> Option<VariableInfo> {
+        self.scopes
+            .iter()
+            .rev()
+            .find_map(|scope| scope.get(name).cloned())
+    }
+
+    fn lookup_var_with_index(&self, name: &str) -> Option<(usize, VariableInfo)> {
+        self.scopes
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(idx, scope)| scope.get(name).cloned().map(|info| (idx, info)))
+    }
+
     fn emit_program(&mut self, program: &Program) {
         for statement in &program.statements {
-            self.emit_statement(statement);
+            let _ = self.emit_statement(statement);
         }
     }
 
-    fn emit_statement(&mut self, statement: &Statement) {
+    fn emit_statement(&mut self, statement: &Statement) -> Option<ValueRef> {
         match statement {
             Statement::Let { name, value, .. } => {
-                if self.variables.contains_key(name) {
+                if self.is_declared_in_current_scope(name) {
                     self.semantic_error(format!("Variable '{}' already declared", name));
-                    return;
+                    return None;
                 }
 
                 let Some(value_ref) = self.emit_expr(value) else {
-                    return;
+                    return None;
                 };
 
                 let ptr_name = self.next_temp();
@@ -115,17 +154,19 @@ impl LlvmBackend {
                     value_ref.repr
                 ));
 
-                self.variables.insert(
+                self.current_scope_mut().insert(
                     name.clone(),
                     VariableInfo {
-                        ptr_name,
+                        ptr_name: ptr_name.clone(),
                         value_type: value_ref.value_type,
                     },
                 );
+
+                Some(value_ref)
             }
             Statement::Print { value, .. } => {
                 let Some(value_ref) = self.emit_expr(value) else {
-                    return;
+                    return None;
                 };
 
                 match value_ref.value_type {
@@ -155,18 +196,18 @@ impl LlvmBackend {
                         ));
                     }
                 }
+
+                Some(value_ref)
             }
-            Statement::Expr { value, .. } => {
-                let _ = self.emit_expr(value);
-            }
+            Statement::Expr { value, .. } => self.emit_expr(value),
             Statement::Assign { name, value, .. } => {
-                let Some(existing) = self.variables.get(name).cloned() else {
+                let Some((scope_index, existing)) = self.lookup_var_with_index(name) else {
                     self.semantic_error(format!("Variable '{}' is not declared", name));
-                    return;
+                    return None;
                 };
 
                 let Some(value_ref) = self.emit_expr(value) else {
-                    return;
+                    return None;
                 };
 
                 if existing.value_type == value_ref.value_type {
@@ -175,6 +216,7 @@ impl LlvmBackend {
                         "store {llvm_ty} {}, {llvm_ty}* {}",
                         value_ref.repr, existing.ptr_name
                     ));
+                    Some(value_ref)
                 } else {
                     let new_ptr_name = self.next_temp();
                     let llvm_ty = Self::llvm_type(value_ref.value_type);
@@ -183,13 +225,14 @@ impl LlvmBackend {
                         "store {llvm_ty} {}, {llvm_ty}* {new_ptr_name}",
                         value_ref.repr
                     ));
-                    self.variables.insert(
+                    self.scopes[scope_index].insert(
                         name.clone(),
                         VariableInfo {
                             ptr_name: new_ptr_name,
                             value_type: value_ref.value_type,
                         },
                     );
+                    Some(value_ref)
                 }
             }
         }
@@ -200,6 +243,7 @@ impl LlvmBackend {
             Expr::Literal { value, .. } => self.emit_literal(value),
             Expr::Variable { name, .. } => self.emit_variable(name),
             Expr::Unary(unary) => self.emit_unary(unary.op.clone(), &unary.expr),
+            Expr::Block(block) => self.emit_block_expr(block),
             Expr::BuiltinCall(call) => self.emit_builtin_call(call.function, &call.args),
             Expr::Binary(binary) => {
                 self.emit_binary(binary.op.clone(), &binary.left, &binary.right)
@@ -348,7 +392,7 @@ impl LlvmBackend {
     }
 
     fn emit_variable(&mut self, name: &str) -> Option<ValueRef> {
-        let Some(info) = self.variables.get(name).cloned() else {
+        let Some(info) = self.lookup_var(name) else {
             self.semantic_error(format!("Variable '{}' is not declared", name));
             return None;
         };
@@ -364,6 +408,26 @@ impl LlvmBackend {
             value_type: info.value_type,
             repr: loaded,
         })
+    }
+
+    fn emit_block_expr(&mut self, block: &BlockExpr) -> Option<ValueRef> {
+        self.push_scope();
+
+        let mut last_value: Option<ValueRef> = None;
+        for statement in &block.statements {
+            if let Some(value) = self.emit_statement(statement) {
+                last_value = Some(value);
+            }
+        }
+
+        self.pop_scope();
+
+        if let Some(value) = last_value {
+            Some(value)
+        } else {
+            self.semantic_error("Block expression must produce a value");
+            None
+        }
     }
 
     fn emit_unary(&mut self, op: UnaryOp, expr: &Expr) -> Option<ValueRef> {
@@ -709,5 +773,44 @@ fn value_type_name(value_type: ValueType) -> &'static str {
         ValueType::Double => "Number",
         ValueType::Bool => "Boolean",
         ValueType::StringPtr => "String",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{lexer::Lexer, parser::Parser};
+
+    fn compile_source(source: &str) -> Result<String, Vec<CompilerError>> {
+        let mut lexer = Lexer::new(source.to_string());
+        let tokens = lexer.lex();
+        assert!(
+            lexer.errors().is_empty(),
+            "lexer produced errors: {:?}",
+            lexer.errors()
+        );
+
+        let mut parser = Parser::new(source);
+        let program = parser
+            .parse_program(tokens)
+            .expect("parser should return a program");
+
+        let mut backend = LlvmBackend::new();
+        backend.generate(&program)
+    }
+
+    #[test]
+    fn generates_ir_for_block_expression_scope() {
+        let source = "let y = 1; let x = { let x = 9; let z = 1; x + y }; print(x)";
+        let ir = compile_source(source).expect("codegen should succeed");
+
+        assert!(
+            ir.contains("fadd double"),
+            "expected block result to include addition"
+        );
+        assert!(
+            ir.contains("@printf"),
+            "expected printf call for print statement"
+        );
     }
 }

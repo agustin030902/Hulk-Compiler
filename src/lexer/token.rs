@@ -32,6 +32,8 @@ pub enum TokenKind {
     Not,
     Comma,
     Semicolon,
+    LeftBrace,
+    RightBrace,
     LeftParen,
     RightParen,
     Unknown,

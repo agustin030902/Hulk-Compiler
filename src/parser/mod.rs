@@ -147,6 +147,8 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::Not => "!".to_string(),
         TokenKind::Comma => ",".to_string(),
         TokenKind::Semicolon => ";".to_string(),
+        TokenKind::LeftBrace => "{".to_string(),
+        TokenKind::RightBrace => "}".to_string(),
         TokenKind::LeftParen => "(".to_string(),
         TokenKind::RightParen => ")".to_string(),
         TokenKind::Unknown => "unknown".to_string(),

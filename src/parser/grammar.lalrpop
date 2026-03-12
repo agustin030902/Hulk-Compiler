@@ -1,6 +1,6 @@
 use crate::lexer::TokenKind;
 use crate::parser::expression::{
-    BinaryExpr, BinaryOp, BuiltinCallExpr, BuiltinFunction, Expr, Literal, Program, Span,
+    BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction, Expr, Literal, Program, Span,
     Statement, UnaryExpr, UnaryOp,
 };
 
@@ -41,6 +41,8 @@ extern {
         ";" => TokenKind::Semicolon,
         "(" => TokenKind::LeftParen,
         ")" => TokenKind::RightParen,
+        "{" => TokenKind::LeftBrace,
+        "}" => TokenKind::RightBrace,
         "identifier" => TokenKind::Identifier(<String>),
         "number" => TokenKind::Number(<String>),
         "string" => TokenKind::String(<String>),
@@ -51,27 +53,50 @@ extern {
 }
 
 pub Program: Program = {
-    <statements:Statement*> "eof" => Program { statements },
+    <statements:Statements> "eof" => Program { statements },
+};
+
+Statements: Vec<Statement> = {
+    => vec![],
+    <first:Statement> <rest:StatementTail> => {
+        let mut statements = vec![first];
+        statements.extend(rest);
+        statements
+    },
+};
+
+StatementTail: Vec<Statement> = {
+    ";" <rest:StatementsAfterSemicolon> => rest,
+    => vec![],
+};
+
+StatementsAfterSemicolon: Vec<Statement> = {
+    => vec![],
+    <next:Statement> <rest:StatementTail> => {
+        let mut statements = vec![next];
+        statements.extend(rest);
+        statements
+    },
 };
 
 Statement: Statement = {
-    <l:@L> "let" <id:IdentifierWithSpan> "=" <value:Expr> ";" <r:@R> => Statement::Let {
+    <l:@L> "let" <id:IdentifierWithSpan> "=" <value:Expr> <r:@R> => Statement::Let {
         name: id.0,
         name_span: id.1,
         value,
         span: Span::new(l, r),
     },
-    <l:@L> <id:IdentifierWithSpan> "=" <value:Expr> ";" <r:@R> => Statement::Assign {
+    <l:@L> <id:IdentifierWithSpan> "=" <value:Expr> <r:@R> => Statement::Assign {
         name: id.0,
         name_span: id.1,
         value,
         span: Span::new(l, r),
     },
-    <l:@L> "print" "(" <value:Expr> ")" ";" <r:@R> => Statement::Print {
+    <l:@L> "print" "(" <value:Expr> ")" <r:@R> => Statement::Print {
         value,
         span: Span::new(l, r),
     },
-    <l:@L> <value:Expr> ";" <r:@R> => Statement::Expr {
+    <l:@L> <value:Expr> <r:@R> => Statement::Expr {
         value,
         span: Span::new(l, r),
     },
@@ -208,6 +233,7 @@ Power: Expr = {
 };
 
 Primary: Expr = {
+    BlockExpr,
     <call:BuiltinCallExpr> => call,
     <literal:LiteralExpr> => literal,
     <variable:VariableExpr> => variable,
@@ -256,6 +282,13 @@ VariableExpr: Expr = {
         name,
         span: Span::new(l, r),
     },
+};
+
+BlockExpr: Expr = {
+    <l:@L> "{" <statements:Statements> "}" <r:@R> => Expr::Block(BlockExpr {
+        statements,
+        span: Span::new(l, r),
+    }),
 };
 
 LiteralExpr: Expr = {

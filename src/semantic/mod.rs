@@ -5,7 +5,7 @@ mod tests;
 use crate::{
     error::{CompilerError, ErrorCategory, offset_to_line_column},
     parser::expression::{
-        BinaryOp, BuiltinFunction, Expr, Literal, Program, Span, Statement, UnaryOp,
+        BinaryOp, BlockExpr, BuiltinFunction, Expr, Literal, Program, Span, Statement, UnaryOp,
     },
 };
 
@@ -30,7 +30,7 @@ impl SemanticType {
 
 #[derive(Debug, Default)]
 pub struct SemanticAnalyzer {
-    symbols: HashMap<String, SemanticType>,
+    scopes: Vec<HashMap<String, SemanticType>>,
     errors: Vec<CompilerError>,
 }
 
@@ -40,17 +40,18 @@ impl SemanticAnalyzer {
     }
 
     pub fn analyze(&mut self, program: &Program, source: &str) -> Vec<CompilerError> {
-        self.symbols.clear();
+        self.scopes.clear();
         self.errors.clear();
+        self.push_scope();
 
         for statement in &program.statements {
-            self.check_statement(statement, source);
+            let _ = self.check_statement(statement, source);
         }
 
         self.errors.clone()
     }
 
-    fn check_statement(&mut self, statement: &Statement, source: &str) {
+    fn check_statement(&mut self, statement: &Statement, source: &str) -> Option<SemanticType> {
         match statement {
             Statement::Let {
                 name,
@@ -58,7 +59,7 @@ impl SemanticAnalyzer {
                 value,
                 ..
             } => {
-                if self.symbols.contains_key(name) {
+                if self.is_declared_in_current_scope(name) {
                     self.push_semantic_error(
                         *name_span,
                         source,
@@ -67,19 +68,20 @@ impl SemanticAnalyzer {
                             name
                         ),
                     );
-                    return;
+                    return None;
                 }
 
                 let value_type = self
                     .check_expr(value, source)
                     .unwrap_or(SemanticType::Unknown);
-                self.symbols.insert(name.clone(), value_type);
+                self.current_scope_mut().insert(name.clone(), value_type);
+                Some(value_type)
             }
             Statement::Print { value, .. } => {
-                let _ = self.check_expr(value, source);
+                self.check_expr(value, source)
             }
             Statement::Expr { value, .. } => {
-                let _ = self.check_expr(value, source);
+                self.check_expr(value, source)
             }
             Statement::Assign {
                 name,
@@ -87,7 +89,7 @@ impl SemanticAnalyzer {
                 value,
                 ..
             } => {
-                if !self.symbols.contains_key(name) {
+                let Some(scope_index) = self.find_scope_index(name) else {
                     self.push_semantic_error(
                         *name_span,
                         source,
@@ -96,13 +98,12 @@ impl SemanticAnalyzer {
                             name
                         ),
                     );
-                    return;
-                }
+                    return None;
+                };
 
-                let value_type = self
-                    .check_expr(value, source)
-                    .unwrap_or(SemanticType::Unknown);
-                self.symbols.insert(name.clone(), value_type);
+                let value_type = self.check_expr(value, source)?;
+                self.scopes[scope_index].insert(name.clone(), value_type);
+                Some(value_type)
             }
         }
     }
@@ -111,7 +112,7 @@ impl SemanticAnalyzer {
         match expr {
             Expr::Literal { value, .. } => Some(self.type_of_literal(value)),
             Expr::Variable { name, span } => {
-                if let Some(var_type) = self.symbols.get(name).copied() {
+                if let Some(var_type) = self.lookup(name) {
                     Some(var_type)
                 } else {
                     self.push_semantic_error(
@@ -168,6 +169,7 @@ impl SemanticAnalyzer {
                     }
                 }
             }
+            Expr::Block(block) => self.check_block_expr(block, source),
             Expr::BuiltinCall(call) => {
                 self.check_builtin_call(call.function, &call.args, call.span, source)
             }
@@ -310,6 +312,26 @@ impl SemanticAnalyzer {
         }
     }
 
+    fn check_block_expr(&mut self, block: &BlockExpr, source: &str) -> Option<SemanticType> {
+        self.push_scope();
+
+        let mut last_type: Option<SemanticType> = None;
+        for statement in &block.statements {
+            let stmt_type = self.check_statement(statement, source);
+            if stmt_type.is_some() {
+                last_type = stmt_type;
+            }
+        }
+
+        self.pop_scope();
+
+        if block.statements.is_empty() {
+            Some(SemanticType::Unknown)
+        } else {
+            last_type
+        }
+    }
+
     fn check_builtin_call(
         &mut self,
         function: BuiltinFunction,
@@ -423,6 +445,42 @@ impl SemanticAnalyzer {
             line,
             column,
         ));
+    }
+
+    fn push_scope(&mut self) {
+        self.scopes.push(HashMap::new());
+    }
+
+    fn pop_scope(&mut self) {
+        self.scopes.pop();
+    }
+
+    fn current_scope_mut(&mut self) -> &mut HashMap<String, SemanticType> {
+        self.scopes
+            .last_mut()
+            .expect("at least one scope should be present")
+    }
+
+    fn lookup(&self, name: &str) -> Option<SemanticType> {
+        self.scopes
+            .iter()
+            .rev()
+            .find_map(|scope| scope.get(name).copied())
+    }
+
+    fn find_scope_index(&self, name: &str) -> Option<usize> {
+        self.scopes
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(idx, scope)| scope.contains_key(name).then_some(idx))
+    }
+
+    fn is_declared_in_current_scope(&self, name: &str) -> bool {
+        self.scopes
+            .last()
+            .map(|scope| scope.contains_key(name))
+            .unwrap_or(false)
     }
 }
 

@@ -310,3 +310,49 @@ fn parses_rand_builtin_call_without_arguments() {
     assert_eq!(call.function, BuiltinFunction::Rand);
     assert!(call.args.is_empty());
 }
+
+#[test]
+fn parses_program_without_trailing_semicolon() {
+    let program = parse_program("let a = 1; print(a)");
+
+    assert_eq!(program.statements.len(), 2);
+    if let Statement::Let { name, .. } = &program.statements[0] {
+        assert_eq!(name, "a");
+    } else {
+        panic!("expected let statement for a");
+    }
+    assert!(matches!(program.statements[1], Statement::Print { .. }));
+}
+
+#[test]
+fn parses_block_expression_and_scoping_shape() {
+    let program = parse_program("let y = 1; let x = { let x = 9; let z = 1; x + y }");
+
+    assert_eq!(program.statements.len(), 2);
+    let Statement::Let { value, .. } = &program.statements[1] else {
+        panic!("expected let binding for x");
+    };
+
+    let Expr::Block(block) = value else {
+        panic!("expected block expression as initializer");
+    };
+
+    assert_eq!(block.statements.len(), 3);
+    let Statement::Expr { value: final_expr, .. } = &block.statements[2] else {
+        panic!("expected final expression inside block");
+    };
+
+    let Expr::Binary(add_expr) = final_expr else {
+        panic!("expected addition as last expression");
+    };
+    assert!(matches!(add_expr.op, BinaryOp::Add));
+
+    assert!(matches!(
+        add_expr.left.as_ref(),
+        Expr::Variable { name, .. } if name == "x"
+    ));
+    assert!(matches!(
+        add_expr.right.as_ref(),
+        Expr::Variable { name, .. } if name == "y"
+    ));
+}

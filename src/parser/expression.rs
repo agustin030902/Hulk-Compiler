@@ -15,7 +15,7 @@ pub struct Program {
     pub statements: Vec<Statement>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
     Let {
         name: String,
@@ -44,6 +44,7 @@ pub enum Expr {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
     BuiltinCall(BuiltinCallExpr),
+    Block(BlockExpr),
     Literal { value: Literal, span: Span },
     Variable { name: String, span: Span },
 }
@@ -54,6 +55,7 @@ impl Expr {
             Expr::Binary(binary) => binary.span,
             Expr::Unary(unary) => unary.span,
             Expr::BuiltinCall(call) => call.span,
+            Expr::Block(block) => block.span,
             Expr::Literal { span, .. } => *span,
             Expr::Variable { span, .. } => *span,
         }
@@ -87,6 +89,12 @@ pub struct UnaryExpr {
 pub struct BuiltinCallExpr {
     pub function: BuiltinFunction,
     pub args: Vec<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct BlockExpr {
+    pub statements: Vec<Statement>,
     pub span: Span,
 }
 

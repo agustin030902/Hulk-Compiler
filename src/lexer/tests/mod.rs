@@ -224,3 +224,31 @@ fn lexes_expression_statement_literal() {
         ]
     );
 }
+
+#[test]
+fn lexes_block_tokens_without_trailing_semicolon() {
+    let source = "let x = { let y = 1; y }".to_string();
+    let mut lexer = Lexer::new(source);
+
+    let tokens = lexer.lex();
+    let kinds: Vec<TokenKind> = tokens.into_iter().map(|token| token.kind).collect();
+
+    assert!(!lexer.has_errors());
+    assert_eq!(
+        kinds,
+        vec![
+            TokenKind::Let,
+            TokenKind::Identifier("x".to_string()),
+            TokenKind::Assign,
+            TokenKind::LeftBrace,
+            TokenKind::Let,
+            TokenKind::Identifier("y".to_string()),
+            TokenKind::Assign,
+            TokenKind::Number("1".to_string()),
+            TokenKind::Semicolon,
+            TokenKind::Identifier("y".to_string()),
+            TokenKind::RightBrace,
+            TokenKind::EOF,
+        ]
+    );
+}

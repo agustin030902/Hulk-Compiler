@@ -67,6 +67,12 @@ Statements de expresión en un lenguaje basado en expresiones.
 - Expresiones como `42;`, `x;`, `(1 + 2) * 3;`
 - No imprimen por sí mismas, salvo que uses `print(...)`
 
+### `block_scope_ok.hk`
+Bloques como expresiones con scope léxico.
+- Shadowing dentro del bloque
+- El valor del bloque es la última expresión (sin `;` obligatorio)
+- Variables internas no se filtran afuera
+
 ## Archivos de Prueba de Error
 
 ### `error_type_mismatch_add.hk`
@@ -123,6 +129,11 @@ Statements de expresión en un lenguaje basado en expresiones.
 **Tipo de error:** Syntax
 - Llamada inválida `rand(1)`
 - Error esperado: `rand` solo admite 0 argumentos
+
+### `error_scope_leak.hk`
+**Tipo de error:** Semantic - Undefined Variable
+- Usa una variable declarada dentro de un bloque fuera de su scope
+- Error esperado: variable no declarada
 
 ## Cómo ejecutar los ejemplos
 

@@ -1,0 +1,6 @@
+let outer = {
+    let hidden = 5;
+    hidden
+};
+
+print(hidden);

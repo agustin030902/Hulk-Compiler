@@ -267,3 +267,35 @@ print(r);
         errors
     );
 }
+
+#[test]
+fn allows_block_expression_and_shadows_inner_variables() {
+    let source = r#"
+let y = 1;
+let x = { let x = 9; let z = 1; x + y };
+print(x);
+print(y);
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_access_to_inner_block_bindings() {
+    let source = r#"
+let outer = { let inner = 5; inner };
+print(inner);
+"#;
+
+    let errors = analyze_source(source);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(
+        errors[0].message,
+        "Variable 'inner' is used before declaration. Declare it with 'let' first."
+    );
+}

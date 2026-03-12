@@ -91,7 +91,7 @@ Responsabilidades:
 - Logicos: `&&`, `||`, `!`
 
 ### Delimitadores
-- `(` `)` `,` `;`
+- `(` `)` `{` `}` `,` `;`
 
 ### Escapes en string implementados actualmente
 - `\"` (comilla)
@@ -101,12 +101,14 @@ Responsabilidades:
 ## 4. Gramatica completa (resumen EBNF)
 
 ```ebnf
-Program        := Statement* EOF
+Program        := Statements? EOF
 
-Statement      := "let" Identifier "=" Expr ";"
-                | Identifier "=" Expr ";"
-                | "print" "(" Expr ")" ";"
-                | Expr ";"
+Statements     := Statement (";" Statement)* ";"?
+
+Statement      := "let" Identifier "=" Expr
+                | Identifier "=" Expr
+                | "print" "(" Expr ")"
+                | Expr
 
 Expr           := LogicalOr
 
@@ -142,10 +144,13 @@ Unary          := "!" Unary
 Power          := Primary "^" Unary
                 | Primary
 
-Primary        := BuiltinCall
+Primary        := Block
+                | BuiltinCall
                 | Literal
                 | Identifier
                 | "(" Expr ")"
+
+Block          := "{" Statements? "}"
 
 BuiltinCall    := "sin"  "(" Expr ")"
                 | "cos"  "(" Expr ")"
@@ -179,7 +184,8 @@ Notas:
 - `^` es asociativo a derecha (`2 ^ 3 ^ 2` se interpreta como `2 ^ (3 ^ 2)`).
 - El resto de operadores binarios son asociativos a izquierda.
 - La asignacion (`x = ...;`) es sentencia, no expresion.
-- El lenguaje acepta statement de expresion (`42;`, `x + 1;`, `rand();`).
+- El lenguaje acepta statement de expresion (`42`, `x + 1`, `rand()`).
+- El ultimo `;` es opcional tanto en el programa como dentro de bloques.
 
 ## 6. Reglas semanticas actuales
 
@@ -187,6 +193,8 @@ Notas:
 - `let x = expr;` declara `x`.
 - `x = expr;` reasigna `x` (debe existir previamente).
 - Si se reasigna una variable declarada, por ahora se permite cambiar el tipo.
+- Los bloques `{ ... }` crean un nuevo scope léxico: las variables declaradas dentro no son visibles fuera. Se permite shadowing en un scope interno pero no redeclarar en el mismo nivel.
+- Un bloque es una **expresión**: su valor es el de la última sentencia/expresión evaluada dentro del bloque.
 
 Ejemplo valido:
 
@@ -195,6 +203,10 @@ let x = 45;
 x = true;
 x = log(2, 8);
 print(x);
+
+let y = 1;
+let result = { let x = 9; let z = 1; x + y };
+print(result); // imprime 10
 ```
 
 ### Tipos soportados

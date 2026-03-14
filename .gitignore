@@ -2,6 +2,7 @@
 
 # Generated outputs
 /artifacts/
+*.vsix
 
 # Local playground inputs/samples
 #/examples/

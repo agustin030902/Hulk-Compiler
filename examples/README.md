@@ -1,73 +1,73 @@
 # Hulk Compiler Examples
 
-Esta carpeta contiene archivos de prueba (`.hk`) para validar el compilador Hulk.
+Esta carpeta contiene archivos de prueba (`.hulk`) para validar el compilador Hulk. La CLI acepta también `.hk` como alias legacy, pero todos los ejemplos se distribuyen con la nueva extensión.
 
 ## Archivos de Ejemplo Válidos (OK)
 
-### `calculator_ok.hk`
+### `calculator_ok.hulk`
 Ejemplo básico con operaciones aritméticas simples.
 - Declara variables con valores numéricos
 - Suma de dos números
 - Imprime el resultado
 
-### `arithmetic_operations.hk`
+### `arithmetic_operations.hulk`
 Demuestra todas las operaciones aritméticas básicas.
 - Suma (+)
 - Resta (-)
 - Multiplicación (*)
 - Llamadas a `print()` múltiples
 
-### `unary_operator.hk`
+### `unary_operator.hulk`
 Prueba el operador unario de negación (-).
 - Negación de variable
 - Negación de literal
 
-### `string_operations.hk`
+### `string_operations.hulk`
 Declaración y impresión de strings.
 - Literales de string
 - Impresión de strings
 
-### `boolean_literals.hk`
+### `boolean_literals.hulk`
 Declaración de booleanos.
 - Literales `true` y `false`
 - Impresión de booleanos
 
-### `complex_expressions.hk`
+### `complex_expressions.hulk`
 Expresiones complejas con precedencia de operadores.
 - Operadores combinados
 - Paréntesis para cambiar precedencia
 
-### `floats.hk`
+### `floats.hulk`
 Números de punto flotante.
 - Literales con decimales
 - Operaciones entre floats
 
-### `builtin_math_ok.hk`
+### `builtin_math_ok.hulk`
 Uso de builtins y constantes matemáticas.
 - `sin`, `cos`, `sqrt`, `exp`, `log`
 - constantes `PI` y `E`
 
-### `reassignment_ok.hk`
+### `reassignment_ok.hulk`
 Reasignación de variables.
 - `let x = ...;`
 - `x = ...;`
 
-### `power_ok.hk`
+### `power_ok.hulk`
 Operador de potencia `^` con precedencia y asociatividad.
 - Potencia simple y encadenada (`2 ^ 3 ^ 2`)
 - Combinación con builtins (`sin(...) ^ 2`)
 
-### `rand_ok.hk`
+### `rand_ok.hulk`
 Builtin `rand()` para generar números pseudoaleatorios.
 - `rand()` retorna un `Number` entre `0` y `1`
 - Uso en asignaciones y `print(...)`
 
-### `expression_statement_ok.hk`
+### `expression_statement_ok.hulk`
 Statements de expresión en un lenguaje basado en expresiones.
 - Expresiones como `42;`, `x;`, `(1 + 2) * 3;`
 - No imprimen por sí mismas, salvo que uses `print(...)`
 
-### `block_scope_ok.hk`
+### `block_scope_ok.hulk`
 Bloques como expresiones con scope léxico.
 - Shadowing dentro del bloque
 - El valor del bloque es la última expresión (sin `;` obligatorio)
@@ -75,62 +75,62 @@ Bloques como expresiones con scope léxico.
 
 ## Archivos de Prueba de Error
 
-### `error_type_mismatch_add.hk`
+### `error_type_mismatch_add.hulk`
 **Tipo de error:** Semantic - Type Mismatch
 - Intenta sumar un string con un número
 - Error esperado: `Operator '+' expects Number and Number, but got String and Number`
 
-### `error_type_mismatch_mul.hk`
+### `error_type_mismatch_mul.hulk`
 **Tipo de error:** Semantic - Type Mismatch
 - Intenta multiplicar un booleano con un número
 - Error esperado: Incompatibilidad de tipos
 
-### `error_type_mismatch_div.hk`
+### `error_type_mismatch_div.hulk`
 **Tipo de error:** Semantic - Type Mismatch
 - Intenta dividir un string entre un número
 - Error esperado: El operador `/` requiere dos números
 
-### `error_syntax_missing_semicolon.hk`
+### `error_syntax_missing_semicolon.hulk`
 **Tipo de error:** Syntax
 - Declaración sin punto y coma al final
 - Error esperado: Error de análisis sintáctico
 
-### `error_syntax_incomplete_expr.hk`
+### `error_syntax_incomplete_expr.hulk`
 **Tipo de error:** Syntax
 - Operador sin el segundo operando
 - Error esperado: Expresión incompleta
 
-### `error_syntax_unmatched_paren.hk`
+### `error_syntax_unmatched_paren.hulk`
 **Tipo de error:** Syntax
 - Paréntesis de apertura sin cerrar
 - Error esperado: Paréntesis no emparejado
 
-### `error_undefined_variable.hk`
+### `error_undefined_variable.hulk`
 **Tipo de error:** Semantic - Undefined Variable
 - Intenta usar una variable que no fue declarada
 - Error esperado: Variable no definida
 
-### `error_lexical_invalid.hk`
+### `error_lexical_invalid.hulk`
 **Tipo de error:** Lexical
 - Tokens inválidos o malformados
 - Error esperado: Token desconocido
 
-### `builtin_math_type_error.hk`
+### `builtin_math_type_error.hulk`
 **Tipo de error:** Semantic - Type Mismatch
 - Llamada a `log` con tipos inválidos
 - Error esperado: `Function 'log' expects (Number, Number), but got Number and String`
 
-### `power_type_error.hk`
+### `power_type_error.hulk`
 **Tipo de error:** Semantic - Type Mismatch
 - Uso de `^` con `String` y `Number`
 - Error esperado: `Operator '^' expects Number and Number, but got String and Number`
 
-### `rand_invalid_args.hk`
+### `rand_invalid_args.hulk`
 **Tipo de error:** Syntax
 - Llamada inválida `rand(1)`
 - Error esperado: `rand` solo admite 0 argumentos
 
-### `error_scope_leak.hk`
+### `error_scope_leak.hulk`
 **Tipo de error:** Semantic - Undefined Variable
 - Usa una variable declarada dentro de un bloque fuera de su scope
 - Error esperado: variable no declarada
@@ -139,14 +139,14 @@ Bloques como expresiones con scope léxico.
 
 ### Ejecutar un archivo individual:
 ```bash
-cargo run -- --input examples/calculator_ok.hk --emit-ir artifacts/output.txt
+cargo run -- --input examples/calculator_ok.hulk --emit-ir artifacts/output.txt
 ```
 
-### Ejecutar todos los archivos `.hk`:
+### Ejecutar todos los archivos `.hulk`:
 ```bash
 cargo run -- --run-all examples --emit-dir artifacts/batch
 ```
 
-Esto generará un archivo `.txt` por cada `.hk` con:
+Esto generará un archivo `.txt` por cada `.hulk` con:
 - LLVM IR (si compila correctamente)
 - Diagnóstico de errores (si hay problemas)

@@ -101,6 +101,19 @@ impl LlvmRunner {
         // Construir y ejecutar el comando clang
         let mut cmd = Command::new(&opts.clang_bin);
         cmd.arg(opts.opt_level_flag());
+        // Si el archivo no es .ll, forzar a clang a interpretarlo como LLVM IR textual.
+        let needs_ir_flag = match ll_path
+            .extension()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_ascii_lowercase())
+        {
+            Some(ext) if ext == "ll" || ext == "bc" => false,
+            _ => true,
+        };
+        if needs_ir_flag {
+            cmd.arg("-x");
+            cmd.arg("ir");
+        }
         cmd.arg(ll_path);
         cmd.arg("-o");
         cmd.arg(&exe_path);

@@ -34,8 +34,12 @@ impl Platform {
             path.to_path_buf()
         } else {
             let mut new_path = path.to_path_buf();
-            let new_name = format!("{}{}", path.display(), ext);
-            new_path.set_file_name(&new_name);
+            if let Some(file_name) = path.file_name().and_then(|s| s.to_str()) {
+                let new_name = format!("{}{}", file_name, ext);
+                new_path.set_file_name(&new_name);
+            } else {
+                new_path.push(format!("output{}", ext));
+            }
             new_path
         }
     }

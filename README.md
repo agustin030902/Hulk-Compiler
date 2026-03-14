@@ -283,6 +283,33 @@ cargo run -- --run-all examples --emit-dir artifacts/batch
 cargo run -- run examples/calculator_ok.hulk
 ```
 
+#### Windows (requisitos y salida)
+
+Para generar `.exe` necesitas `clang` instalado y en el `PATH`.
+Verifica con:
+
+```powershell
+where.exe clang
+```
+
+Si no aparece, instala LLVM (que incluye `clang`) o pasa la ruta explícita:
+
+```powershell
+cargo run -- run examples/calculator_ok.hulk --clang "C:\Program Files\LLVM\bin\clang.exe"
+```
+
+Si ejecutas por lotes en Windows, los `.exe` se generan en:
+
+```text
+artifacts\program\*.exe
+```
+
+Para ejecutar un `.exe`:
+
+```powershell
+.\artifacts\program\calculator_ok.exe
+```
+
 Opciones utiles del comando `run`:
 
 ```bash

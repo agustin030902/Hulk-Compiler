@@ -171,6 +171,11 @@ fn run_all(config: RunAllConfig) {
 
     let mut ok_count = 0usize;
     let mut fail_count = 0usize;
+    let is_windows = cfg!(target_os = "windows");
+    let mut exe_ok = 0usize;
+    let mut exe_fail = 0usize;
+    let program_dir = PathBuf::from("artifacts").join("program");
+    let mut program_dir_ready = false;
 
     println!(
         "Running batch compilation for {} file(s) from '{}'",
@@ -208,6 +213,53 @@ fn run_all(config: RunAllConfig) {
                 file_path.display(),
                 output_path.display()
             );
+
+            if is_windows {
+                if !program_dir_ready {
+                    match fs::create_dir_all(&program_dir) {
+                        Ok(()) => program_dir_ready = true,
+                        Err(error) => {
+                            eprintln!(
+                                "EXE DIR FAIL [{}]: cannot create '{}' ({})",
+                                file_path.display(),
+                                program_dir.display(),
+                                error
+                            );
+                            program_dir_ready = false;
+                        }
+                    }
+                }
+
+                if program_dir_ready {
+                    let exe_base = program_dir.join(&stem);
+                    let exe_path = runner::platform::Platform::as_executable_path(&exe_base);
+                    let runner_opts = RunnerOptions::default();
+                    match LlvmRunner::compile_ll_to_executable(
+                        &output_path,
+                        Some(&exe_path),
+                        &runner_opts,
+                    ) {
+                        Ok(exe) => {
+                            exe_ok += 1;
+                            println!(
+                                "EXE   [{}] -> {}",
+                                file_path.display(),
+                                exe.display()
+                            );
+                        }
+                        Err(err) => {
+                            exe_fail += 1;
+                            eprintln!(
+                                "EXE FAIL [{}]: {}",
+                                file_path.display(),
+                                err
+                            );
+                        }
+                    }
+                } else {
+                    exe_fail += 1;
+                }
+            }
         } else {
             fail_count += 1;
             println!(
@@ -228,6 +280,10 @@ fn run_all(config: RunAllConfig) {
         ok_count,
         fail_count
     );
+
+    if is_windows {
+        println!("EXE summary: ok={}, failed={}", exe_ok, exe_fail);
+    }
 }
 
 fn run_with_execution(config: RunConfig) {

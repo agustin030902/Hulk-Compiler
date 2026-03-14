@@ -52,7 +52,8 @@ impl Default for RunAllConfig {
     }
 }
 
-/// Configuración para el comando 'run': compilar un archivo .hk a ejecutable y ejecutarlo.
+/// Configuración para el comando 'run': compilar un archivo .hulk a ejecutable y ejecutarlo
+/// (también se acepta la extensión legacy .hk).
 #[derive(Debug)]
 struct RunConfig {
     input_path: PathBuf,
@@ -150,7 +151,7 @@ fn run_one(config: RunOneConfig) {
 
 fn run_all(config: RunAllConfig) {
     let mut compiler = Compiler::new();
-    let mut files = match list_hk_files(&config.input_dir) {
+    let mut files = match list_hulk_files(&config.input_dir) {
         Ok(files) => files,
         Err(message) => {
             eprintln!("Batch error: {message}");
@@ -160,7 +161,7 @@ fn run_all(config: RunAllConfig) {
 
     if files.is_empty() {
         println!(
-            "No .hk files found in directory '{}'.",
+            "No .hulk (or .hk) files found in directory '{}'.",
             config.input_dir.display()
         );
         return;
@@ -380,10 +381,10 @@ fn parse_command() -> Result<Command, String> {
 fn parse_run_command(args: Vec<String>) -> Result<Command, String> {
     // Mostrar ayuda si se solicita
     if args.iter().any(|a| a == "--help" || a == "-h") {
-        println!("Usage: run [<file.hk>] [options]");
+        println!("Usage: run [<file.hulk>] [options]");
         println!();
         println!("Options:");
-        println!("  --input <file>         Input .hk file");
+        println!("  --input <file>         Input .hulk file (alias: .hk)");
         println!("  --emit-ir <path>       Output LLVM IR file");
         println!("  --out <exe>            Output executable path");
         println!("  --clang <path>         Path to clang binary (default: 'clang')");
@@ -469,7 +470,7 @@ fn parse_run_command(args: Vec<String>) -> Result<Command, String> {
     }
 
     let input = input_path.ok_or_else(|| {
-        "Missing input file. Usage: run [<file.hk>] [options] [-- program_args]".to_string()
+        "Missing input file. Usage: run [<file.hulk>] [options] [-- program_args]".to_string()
     })?;
 
     Ok(Command::Run(RunConfig {
@@ -483,7 +484,7 @@ fn parse_run_command(args: Vec<String>) -> Result<Command, String> {
     }))
 }
 
-fn list_hk_files(dir: &Path) -> Result<Vec<PathBuf>, String> {
+fn list_hulk_files(dir: &Path) -> Result<Vec<PathBuf>, String> {
     let entries = fs::read_dir(dir)
         .map_err(|error| format!("Failed to read directory '{}': {}", dir.display(), error))?;
 
@@ -491,10 +492,17 @@ fn list_hk_files(dir: &Path) -> Result<Vec<PathBuf>, String> {
         .filter_map(|entry| entry.ok())
         .map(|entry| entry.path())
         .filter(|path| path.is_file())
-        .filter(|path| path.extension().and_then(|x| x.to_str()) == Some("hk"))
+        .filter(|path| has_hulk_extension(path))
         .collect::<Vec<_>>();
 
     Ok(files)
+}
+
+fn has_hulk_extension(path: &Path) -> bool {
+    match path.extension().and_then(|x| x.to_str()) {
+        Some("hulk") | Some("hk") => true,
+        _ => false,
+    }
 }
 
 fn file_stem_or_default(path: &Path) -> String {
@@ -524,15 +532,15 @@ print (x);
 
 fn print_usage() {
     println!("Usage:");
-    println!("  cargo run -- [--input <source.hk>] [--emit-ir <output.txt>]");
+    println!("  cargo run -- [--input <source.hulk>] [--emit-ir <output.txt>]");
     println!("  cargo run -- --run-all <input_dir> [--emit-dir <output_dir>]");
-    println!("  cargo run -- run [--input <file.hk>] [options] [-- args...]");
+    println!("  cargo run -- run [--input <file.hulk>] [options] [-- args...]");
     println!();
     println!("Commands:");
-    println!("  run                    Compile a .hk file to executable and run it");
+    println!("  run                    Compile a .hulk file to executable and run it (alias: .hk)");
     println!();
     println!("Run options:");
-    println!("  --input <file>         Input .hk file (required for 'run')");
+    println!("  --input <file>         Input .hulk file (alias: .hk) (required for 'run')");
     println!("  --emit-ir <path>       Output LLVM IR file (optional)");
     println!("  --out <exe>            Output executable path (optional)");
     println!("  --clang <path>         Path to clang binary (default: 'clang')");
@@ -543,9 +551,9 @@ fn print_usage() {
     println!("Examples:");
     println!("  cargo run -- --emit-ir artifacts/intermediate.txt");
     println!(
-        "  cargo run -- --input examples/calculator_ok.hk --emit-ir artifacts/calculator_ir.txt"
+        "  cargo run -- --input examples/calculator_ok.hulk --emit-ir artifacts/calculator_ir.txt"
     );
-    println!("  cargo run -- run --input examples/calculator_ok.hk");
-    println!("  cargo run -- run examples/calculator_ok.hk --opt-level 3");
-    println!("  cargo run -- run examples/calculator_ok.hk -- arg1 arg2");
+    println!("  cargo run -- run --input examples/calculator_ok.hulk");
+    println!("  cargo run -- run examples/calculator_ok.hulk --opt-level 3");
+    println!("  cargo run -- run examples/calculator_ok.hulk -- arg1 arg2");
 }

@@ -10,6 +10,8 @@ lexer -> parser (LR1) -> semantic -> LLVM IR
 
 Si una fase falla, el pipeline se detiene ahi (fail-fast).
 
+Extensión de código fuente: `.hulk` (la CLI sigue aceptando `.hk` como alias legacy).
+
 ## 1. Arquitectura del proyecto
 
 ```text
@@ -198,7 +200,7 @@ Notas:
 
 Ejemplo valido:
 
-```hk
+```hulk
 let x = 45;
 x = true;
 x = log(2, 8);
@@ -261,13 +263,15 @@ Categorias posibles:
 
 ## 9. Comandos de uso
 
-### Compilar un archivo `.hk` a `.txt`
+Compatibilidad: usa archivos `.hulk` como predeterminado; la CLI sigue aceptando `.hk` para compatibilidad hacia atrás, pero los ejemplos se distribuyen con `.hulk`.
+
+### Compilar un archivo `.hulk` a `.txt`
 
 ```bash
-cargo run -- --input examples/calculator_ok.hk --emit-ir artifacts/output.txt
+cargo run -- --input examples/calculator_ok.hulk --emit-ir artifacts/output.txt
 ```
 
-### Compilar todos los `.hk` de una carpeta
+### Compilar todos los `.hulk` de una carpeta
 
 ```bash
 cargo run -- --run-all examples --emit-dir artifacts/batch
@@ -276,16 +280,16 @@ cargo run -- --run-all examples --emit-dir artifacts/batch
 ### Compilar a ejecutable nativo y ejecutar
 
 ```bash
-cargo run -- run examples/calculator_ok.hk
+cargo run -- run examples/calculator_ok.hulk
 ```
 
 Opciones utiles del comando `run`:
 
 ```bash
-cargo run -- run examples/calculator_ok.hk --no-exec
-cargo run -- run examples/calculator_ok.hk --opt-level 3
-cargo run -- run examples/calculator_ok.hk --emit-ir artifacts/demo.ll --out artifacts/demo_bin
-cargo run -- run examples/calculator_ok.hk -- arg1 arg2
+cargo run -- run examples/calculator_ok.hulk --no-exec
+cargo run -- run examples/calculator_ok.hulk --opt-level 3
+cargo run -- run examples/calculator_ok.hulk --emit-ir artifacts/demo.ll --out artifacts/demo_bin
+cargo run -- run examples/calculator_ok.hulk -- arg1 arg2
 ```
 
 ### Ejecutar IR manualmente
@@ -323,20 +327,20 @@ cargo test -q
 ## 11. Ejemplos recomendados
 
 Validos:
-- `examples/calculator_ok.hk`
-- `examples/reassignment_ok.hk`
-- `examples/builtin_math_ok.hk`
-- `examples/power_ok.hk`
-- `examples/rand_ok.hk`
-- `examples/expression_statement_ok.hk`
+- `examples/calculator_ok.hulk`
+- `examples/reassignment_ok.hulk`
+- `examples/builtin_math_ok.hulk`
+- `examples/power_ok.hulk`
+- `examples/rand_ok.hulk`
+- `examples/expression_statement_ok.hulk`
 
 Con error (para validar diagnosticos):
-- `examples/builtin_math_type_error.hk`
-- `examples/power_type_error.hk`
-- `examples/rand_invalid_args.hk`
-- `examples/error_lexical_invalid.hk`
-- `examples/error_syntax_missing_semicolon.hk`
-- `examples/error_type_mismatch_add.hk`
+- `examples/builtin_math_type_error.hulk`
+- `examples/power_type_error.hulk`
+- `examples/rand_invalid_args.hulk`
+- `examples/error_lexical_invalid.hulk`
+- `examples/error_syntax_missing_semicolon.hulk`
+- `examples/error_type_mismatch_add.hulk`
 
 ## 12. Extender el proyecto
 
@@ -347,4 +351,4 @@ Para anadir nuevos features sin romper arquitectura:
 - Codegen: emitir IR en `src/codegen/llvm/mod.rs`.
 - Tests: agregar tests en `src/<fase>/tests/` (`lexer`, `parser`, `semantic`, `compiler`).
 
-Regla practica: cada feature nuevo debe incluir tests de fase y un ejemplo `.hk`.
+Regla practica: cada feature nuevo debe incluir tests de fase y un ejemplo `.hulk`.

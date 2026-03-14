@@ -352,3 +352,25 @@ Para anadir nuevos features sin romper arquitectura:
 - Tests: agregar tests en `src/<fase>/tests/` (`lexer`, `parser`, `semantic`, `compiler`).
 
 Regla practica: cada feature nuevo debe incluir tests de fase y un ejemplo `.hulk`.
+
+## 13. GUI prototipo (eframe/egui)
+
+Hay un binario opcional para probar el compilador con interfaz gráfica.
+
+```bash
+cargo run --bin gui
+```
+
+Funciones:
+- Editor de código a la izquierda.
+- Barra superior con lista de ejemplos de `examples/*.hulk` (ComboBox) y campo para ruta custom; botón **Cargar**.
+- **Compilar** genera LLVM IR y muestra tokens, AST, errores e IR.
+- Ejecuta automáticamente el IR con `lli` y enseña stdout/stderr en la sección **Salida lli**; puedes editar la ruta de `lli` o re-ejecutar.
+- Botón **Demo rápida** carga un snippet de ejemplo.
+
+### Cómo instalar `lli` (Unix)
+- macOS (Homebrew): `brew install llvm` y luego agregar a tu PATH  
+  `echo 'export PATH="/usr/local/opt/llvm/bin:$PATH"' >> ~/.zshrc` (ajusta si usas bash o Apple Silicon con `/opt/homebrew`).
+- Ubuntu/Debian: `sudo apt update && sudo apt install llvm` (opcional: `llvm-15` o la versión disponible en tu repo).
+- Arch/Manjaro: `sudo pacman -S llvm`.
+- Verifica: `lli --version` debería mostrar la versión instalada.

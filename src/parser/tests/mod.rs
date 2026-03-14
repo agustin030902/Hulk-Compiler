@@ -338,7 +338,10 @@ fn parses_block_expression_and_scoping_shape() {
     };
 
     assert_eq!(block.statements.len(), 3);
-    let Statement::Expr { value: final_expr, .. } = &block.statements[2] else {
+    let Statement::Expr {
+        value: final_expr, ..
+    } = &block.statements[2]
+    else {
         panic!("expected final expression inside block");
     };
 

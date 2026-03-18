@@ -60,7 +60,7 @@ impl HulkGui {
             ir_text: None,
             exec_output: String::new(),
             output_path: PathBuf::from("artifacts/gui_output.ll"),
-            input_path: "examples/calculator_ok.hulk".to_string(),
+            input_path: "examples/power_ok.hulk".to_string(),
             example_files,
             lli_path: "lli".to_string(),
         }
@@ -275,11 +275,17 @@ fn format_token(token: &Token) -> String {
 
 fn default_source() -> String {
     r#"
-print("zzzz");
+let base = 2;
+let expv = 3;
 
-let x = 90/ 4.567 + 1 - 9 + (9 -1) * 2 ;
+let direct = base ^ expv;
+let chained = 2 ^ 3 ^ 2;
+let trig = sin(PI / 2) ^ 2 + cos(0);
 
-print (x);
+print(direct);
+print(chained);
+print(trig);
+
 "#
     .trim_start_matches('\n')
     .to_string()

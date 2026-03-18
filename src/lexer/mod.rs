@@ -32,6 +32,8 @@ enum LogosTokenKind {
     Log,
     #[token("rand", priority = 3)]
     Rand,
+    #[token("in", priority = 3)]
+    In,
     #[regex(r"true|false")]
     Boolean,
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
@@ -106,6 +108,7 @@ impl LogosTokenKind {
             LogosTokenKind::Exp => (TokenKind::Exp, lexeme.to_string()),
             LogosTokenKind::Log => (TokenKind::Log, lexeme.to_string()),
             LogosTokenKind::Rand => (TokenKind::Rand, lexeme.to_string()),
+            LogosTokenKind::In => (TokenKind::In, lexeme.to_string()),
             LogosTokenKind::Boolean => {
                 let value = lexeme.to_string();
                 (TokenKind::Boolean(value.clone()), value)

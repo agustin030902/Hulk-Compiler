@@ -52,6 +52,7 @@ fn token(kind: TokenKind, start: usize, end: usize) -> Token {
         TokenKind::Exp => "exp".to_string(),
         TokenKind::Log => "log".to_string(),
         TokenKind::Rand => "rand".to_string(),
+        TokenKind::In => "in".to_string(),
         TokenKind::Assign => "=".to_string(),
         TokenKind::Add => "+".to_string(),
         TokenKind::Power => "^".to_string(),

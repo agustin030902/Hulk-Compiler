@@ -4,7 +4,7 @@ use crate::{
     codegen::CodegenBackend,
     error::{CompilerError, ErrorCategory},
     parser::expression::{
-        BinaryOp, BlockExpr, BuiltinFunction, Expr, Literal, Program, Statement, UnaryOp,
+        BinaryOp, BlockExpr, BuiltinFunction, Expr, LetInExpr, Literal, Program, Statement, UnaryOp,
     },
 };
 
@@ -244,6 +244,7 @@ impl LlvmBackend {
             Expr::Variable { name, .. } => self.emit_variable(name),
             Expr::Unary(unary) => self.emit_unary(unary.op.clone(), &unary.expr),
             Expr::Block(block) => self.emit_block_expr(block),
+            Expr::LetIn(let_in) => self.emit_let_in_expr(let_in),
             Expr::BuiltinCall(call) => self.emit_builtin_call(call.function, &call.args),
             Expr::Binary(binary) => {
                 self.emit_binary(binary.op.clone(), &binary.left, &binary.right)
@@ -428,6 +429,46 @@ impl LlvmBackend {
             self.semantic_error("Block expression must produce a value");
             None
         }
+    }
+
+    fn emit_let_in_expr(&mut self, let_in: &LetInExpr) -> Option<ValueRef> {
+        self.push_scope();
+
+        for binding in &let_in.bindings {
+            if self.is_declared_in_current_scope(&binding.name) {
+                self.semantic_error(format!(
+                    "Variable '{}' redeclared in let-in binding",
+                    binding.name
+                ));
+                continue;
+            }
+
+            let Some(value_ref) = self.emit_expr(&binding.value) else {
+                return None;
+            };
+
+            let ptr_name = self.next_temp();
+            let llvm_ty = Self::llvm_type(value_ref.value_type);
+            self.emit_body(format!("{ptr_name} = alloca {llvm_ty}"));
+            self.emit_body(format!(
+                "store {llvm_ty} {}, {llvm_ty}* {ptr_name}",
+                value_ref.repr
+            ));
+
+            self.current_scope_mut().insert(
+                binding.name.clone(),
+                VariableInfo {
+                    ptr_name,
+                    value_type: value_ref.value_type,
+                },
+            );
+        }
+
+        let body_value = self.emit_expr(&let_in.body);
+
+        self.pop_scope();
+
+        body_value
     }
 
     fn emit_unary(&mut self, op: UnaryOp, expr: &Expr) -> Option<ValueRef> {

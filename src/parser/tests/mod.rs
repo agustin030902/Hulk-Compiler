@@ -1,3 +1,4 @@
+mod let_in;
 mod string_escape;
 
 use crate::lexer::Lexer;

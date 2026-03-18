@@ -14,6 +14,7 @@ pub enum TokenKind {
     Exp,
     Log,
     Rand,
+    In,
     Assign,
     Add,
     Power,

@@ -5,7 +5,8 @@ mod tests;
 use crate::{
     error::{CompilerError, ErrorCategory, offset_to_line_column},
     parser::expression::{
-        BinaryOp, BlockExpr, BuiltinFunction, Expr, Literal, Program, Span, Statement, UnaryOp,
+        BinaryOp, BlockExpr, BuiltinFunction, Expr, LetInExpr, Literal, Program, Span, Statement,
+        UnaryOp,
     },
 };
 
@@ -166,6 +167,7 @@ impl SemanticAnalyzer {
                 }
             }
             Expr::Block(block) => self.check_block_expr(block, source),
+            Expr::LetIn(let_in) => self.check_let_in_expr(let_in, source),
             Expr::BuiltinCall(call) => {
                 self.check_builtin_call(call.function, &call.args, call.span, source)
             }
@@ -326,6 +328,33 @@ impl SemanticAnalyzer {
         } else {
             last_type
         }
+    }
+
+    fn check_let_in_expr(&mut self, let_in: &LetInExpr, source: &str) -> Option<SemanticType> {
+        self.push_scope();
+
+        for binding in &let_in.bindings {
+            if self.is_declared_in_current_scope(&binding.name) {
+                self.push_semantic_error(
+                    binding.span,
+                    source,
+                    format!("Variable '{}' redeclared in let-in binding.", binding.name),
+                );
+                continue;
+            }
+
+            let value_type = self
+                .check_expr(&binding.value, source)
+                .unwrap_or(SemanticType::Unknown);
+            self.current_scope_mut()
+                .insert(binding.name.clone(), value_type);
+        }
+
+        let body_type = self.check_expr(&let_in.body, source);
+
+        self.pop_scope();
+
+        body_type
     }
 
     fn check_builtin_call(

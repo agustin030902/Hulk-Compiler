@@ -44,6 +44,7 @@ pub enum Expr {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
     BuiltinCall(BuiltinCallExpr),
+    LetIn(LetInExpr),
     Block(BlockExpr),
     Literal { value: Literal, span: Span },
     Variable { name: String, span: Span },
@@ -55,6 +56,7 @@ impl Expr {
             Expr::Binary(binary) => binary.span,
             Expr::Unary(unary) => unary.span,
             Expr::BuiltinCall(call) => call.span,
+            Expr::LetIn(let_in) => let_in.span,
             Expr::Block(block) => block.span,
             Expr::Literal { span, .. } => *span,
             Expr::Variable { span, .. } => *span,
@@ -95,6 +97,20 @@ pub struct BuiltinCallExpr {
 #[derive(Debug, Clone)]
 pub struct BlockExpr {
     pub statements: Vec<Statement>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct LetInExpr {
+    pub bindings: Vec<LetBinding>,
+    pub body: Box<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct LetBinding {
+    pub name: String,
+    pub value: Expr,
     pub span: Span,
 }
 

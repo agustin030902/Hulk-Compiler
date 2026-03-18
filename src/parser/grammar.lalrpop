@@ -1,7 +1,7 @@
 use crate::lexer::TokenKind;
 use crate::parser::expression::{
-    BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction, Expr, Literal, Program, Span,
-    Statement, UnaryExpr, UnaryOp,
+    BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction, Expr, LetBinding, LetInExpr,
+    Literal, Program, Span, Statement, UnaryExpr, UnaryOp,
 };
 
 grammar;
@@ -21,6 +21,7 @@ extern {
         "exp" => TokenKind::Exp,
         "log" => TokenKind::Log,
         "rand" => TokenKind::Rand,
+        "in" => TokenKind::In,
         "=" => TokenKind::Assign,
         "+" => TokenKind::Add,
         "^" => TokenKind::Power,
@@ -103,7 +104,35 @@ Statement: Statement = {
 };
 
 Expr: Expr = {
+    LetIn,
+};
+
+LetIn: Expr = {
+    <l:@L> "let" <bindings:LetBindings> "in" <body:LetIn> <r:@R> => Expr::LetIn(LetInExpr {
+        bindings,
+        body: Box::new(body),
+        span: Span::new(l, r),
+    }),
     LogicalOr,
+};
+
+LetBindings: Vec<LetBinding> = {
+    <first:LetBinding> <rest:("," <LetBinding>)*> => {
+        let mut items = Vec::new();
+        items.push(first);
+        for binding in rest {
+            items.push(binding);
+        }
+        items
+    }
+};
+
+LetBinding: LetBinding = {
+    <l:@L> <id:IdentifierWithSpan> "=" <value:Expr> <r:@R> => LetBinding {
+        name: id.0,
+        value,
+        span: Span::new(l, r),
+    },
 };
 
 LogicalOr: Expr = {

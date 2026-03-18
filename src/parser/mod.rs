@@ -146,6 +146,7 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::And => "&&".to_string(),
         TokenKind::Or => "||".to_string(),
         TokenKind::Not => "!".to_string(),
+        TokenKind::DestructiveAssign => ":=".to_string(),
         TokenKind::Comma => ",".to_string(),
         TokenKind::Semicolon => ";".to_string(),
         TokenKind::LeftBrace => "{".to_string(),

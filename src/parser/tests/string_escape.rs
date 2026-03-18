@@ -54,6 +54,7 @@ fn token(kind: TokenKind, start: usize, end: usize) -> Token {
         TokenKind::Rand => "rand".to_string(),
         TokenKind::In => "in".to_string(),
         TokenKind::Assign => "=".to_string(),
+        TokenKind::DestructiveAssign => ":=".to_string(),
         TokenKind::Add => "+".to_string(),
         TokenKind::Power => "^".to_string(),
         TokenKind::Concat => "@".to_string(),

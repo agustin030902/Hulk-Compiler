@@ -4,7 +4,8 @@ use crate::{
     codegen::CodegenBackend,
     error::{CompilerError, ErrorCategory},
     parser::expression::{
-        BinaryOp, BlockExpr, BuiltinFunction, Expr, LetInExpr, Literal, Program, Statement, UnaryOp,
+        BinaryOp, BlockExpr, BuiltinFunction, DestructiveAssignExpr, Expr, LetInExpr, Literal,
+        Program, Statement, UnaryOp,
     },
 };
 
@@ -244,6 +245,7 @@ impl LlvmBackend {
             Expr::Variable { name, .. } => self.emit_variable(name),
             Expr::Unary(unary) => self.emit_unary(unary.op.clone(), &unary.expr),
             Expr::Block(block) => self.emit_block_expr(block),
+            Expr::DestructiveAssign(assign) => self.emit_destructive_assign(assign),
             Expr::LetIn(let_in) => self.emit_let_in_expr(let_in),
             Expr::BuiltinCall(call) => self.emit_builtin_call(call.function, &call.args),
             Expr::Binary(binary) => {
@@ -429,6 +431,36 @@ impl LlvmBackend {
             self.semantic_error("Block expression must produce a value");
             None
         }
+    }
+
+    fn emit_destructive_assign(&mut self, assign: &DestructiveAssignExpr) -> Option<ValueRef> {
+        let Some(existing) = self.lookup_var(&assign.name) else {
+            self.semantic_error(format!(
+                "Variable '{}' is assigned before declaration. Declare it with 'let' first.",
+                assign.name
+            ));
+            return None;
+        };
+
+        let Some(value_ref) = self.emit_expr(&assign.value) else {
+            return None;
+        };
+
+        if value_ref.value_type != existing.value_type {
+            self.semantic_error(format!(
+                "Destructive assignment ':=' requires the same type. Variable '{}' is {:?} but expression is {:?}.",
+                assign.name, existing.value_type, value_ref.value_type
+            ));
+            return None;
+        }
+
+        let llvm_ty = Self::llvm_type(existing.value_type);
+        self.emit_body(format!(
+            "store {llvm_ty} {}, {llvm_ty}* {}",
+            value_ref.repr, existing.ptr_name
+        ));
+
+        Some(value_ref)
     }
 
     fn emit_let_in_expr(&mut self, let_in: &LetInExpr) -> Option<ValueRef> {

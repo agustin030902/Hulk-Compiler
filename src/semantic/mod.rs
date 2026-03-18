@@ -5,8 +5,8 @@ mod tests;
 use crate::{
     error::{CompilerError, ErrorCategory, offset_to_line_column},
     parser::expression::{
-        BinaryOp, BlockExpr, BuiltinFunction, Expr, LetInExpr, Literal, Program, Span, Statement,
-        UnaryOp,
+        BinaryOp, BlockExpr, BuiltinFunction, DestructiveAssignExpr, Expr, LetInExpr, Literal,
+        Program, Span, Statement, UnaryOp,
     },
 };
 
@@ -108,6 +108,7 @@ impl SemanticAnalyzer {
     fn check_expr(&mut self, expr: &Expr, source: &str) -> Option<SemanticType> {
         match expr {
             Expr::Literal { value, .. } => Some(self.type_of_literal(value)),
+            Expr::DestructiveAssign(assign) => self.check_destructive_assign(assign, source),
             Expr::Variable { name, span } => {
                 if let Some(var_type) = self.lookup(name) {
                     Some(var_type)
@@ -442,6 +443,45 @@ impl SemanticAnalyzer {
                 Some(SemanticType::Number)
             }
         }
+    }
+
+    fn check_destructive_assign(
+        &mut self,
+        assign: &DestructiveAssignExpr,
+        source: &str,
+    ) -> Option<SemanticType> {
+        let Some(scope_index) = self.find_scope_index(&assign.name) else {
+            self.push_semantic_error(
+                assign.name_span,
+                source,
+                format!(
+                    "Variable '{}' is assigned before declaration. Declare it with 'let' first.",
+                    assign.name
+                ),
+            );
+            return None;
+        };
+
+        let value_type = self.check_expr(&assign.value, source)?;
+        let existing = self.scopes[scope_index]
+            .get(&assign.name)
+            .copied()
+            .unwrap_or(SemanticType::Unknown);
+
+        if existing != SemanticType::Unknown && existing != value_type {
+            self.push_type_error(
+                assign.span,
+                source,
+                format!(
+                    "Destructive assignment ':=' requires the same type. Variable '{}' is {:?} but expression is {:?}.",
+                    assign.name, existing, value_type
+                ),
+            );
+            return None;
+        }
+
+        self.scopes[scope_index].insert(assign.name.clone(), value_type);
+        Some(value_type)
     }
 
     fn type_of_literal(&self, literal: &Literal) -> SemanticType {

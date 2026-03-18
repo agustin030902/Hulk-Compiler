@@ -73,6 +73,11 @@ Bloques como expresiones con scope léxico.
 - El valor del bloque es la última expresión (sin `;` obligatorio)
 - Variables internas no se filtran afuera
 
+### `destructive_assign_ok.hulk`
+Asignación destructiva `:=` que sobrescribe variables declaradas.
+- Devuelve el valor asignado (es una expresión)
+- Mantiene el tipo declarado
+
 ### `let_in_ok.hulk`
 Ligaduras locales con `let ... in ...`.
 - Varias ligaduras separadas por coma
@@ -140,6 +145,16 @@ Shadowing dentro de `let-in`.
 **Tipo de error:** Syntax
 - Llamada inválida `rand(1)`
 - Error esperado: `rand` solo admite 0 argumentos
+
+### `destructive_assign_type_error.hulk`
+**Tipo de error:** Semantic - Type Mismatch
+- Reasigna con `:=` cambiando el tipo de la variable
+- Error esperado: mensaje de tipo incompatible en `:=`
+
+### `identifier_invalid.hulk`
+**Tipo de error:** Lexical
+- Usa identificadores inválidos (`_x`, `8ball`)
+- Error esperado: reporte léxico de tokens desconocidos
 
 ### `let_in_type_error.hulk`
 **Tipo de error:** Semantic - Type Mismatch

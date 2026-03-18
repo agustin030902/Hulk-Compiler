@@ -1,7 +1,7 @@
 use crate::lexer::TokenKind;
 use crate::parser::expression::{
-    BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction, Expr, LetBinding, LetInExpr,
-    Literal, Program, Span, Statement, UnaryExpr, UnaryOp,
+    BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction, DestructiveAssignExpr, Expr,
+    LetBinding, LetInExpr, Literal, Program, Span, Statement, UnaryExpr, UnaryOp,
 };
 
 grammar;
@@ -22,6 +22,7 @@ extern {
         "log" => TokenKind::Log,
         "rand" => TokenKind::Rand,
         "in" => TokenKind::In,
+        ":=" => TokenKind::DestructiveAssign,
         "=" => TokenKind::Assign,
         "+" => TokenKind::Add,
         "^" => TokenKind::Power,
@@ -113,7 +114,7 @@ LetIn: Expr = {
         body: Box::new(body),
         span: Span::new(l, r),
     }),
-    LogicalOr,
+    Assignment,
 };
 
 LetBindings: Vec<LetBinding> = {
@@ -133,6 +134,16 @@ LetBinding: LetBinding = {
         value,
         span: Span::new(l, r),
     },
+};
+
+Assignment: Expr = {
+    <l:@L> <id:IdentifierWithSpan> ":=" <value:Assignment> <r:@R> => Expr::DestructiveAssign(DestructiveAssignExpr {
+        name: id.0,
+        name_span: id.1,
+        value: Box::new(value),
+        span: Span::new(l, r),
+    }),
+    LogicalOr,
 };
 
 LogicalOr: Expr = {

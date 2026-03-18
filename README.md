@@ -92,6 +92,7 @@ Responsabilidades:
 - Aritmeticos: `+`, `-`, `*`, `/`, `^`
 - Concatenacion: `@`
 - Asignacion: `=`
+- Asignacion destructiva: `:=` (expresion que sobrescribe y devuelve el valor)
 - Comparacion: `==`, `!=`, `<`, `>`, `<=`, `>=`
 - Logicos: `&&`, `||`, `!`
 
@@ -118,10 +119,13 @@ Statement      := "let" Identifier "=" Expr
 Expr           := LetIn
 
 LetIn          := "let" LetBindings "in" LetIn
-                | LogicalOr
+                | Assignment
 
 LetBindings    := LetBinding ("," LetBinding)*
 LetBinding     := Identifier "=" Expr
+
+Assignment     := Identifier ":=" Assignment
+                | LogicalOr
 
 LogicalOr      := LogicalOr "||" LogicalAnd
                 | LogicalAnd
@@ -195,6 +199,7 @@ De mayor a menor precedencia:
 7. `==`, `!=`
 8. `&&`
 9. `||`
+10. Asignación destructiva `:=` (asociativa a derecha)
 
 Notas:
 - `^` es asociativo a derecha (`2 ^ 3 ^ 2` se interpreta como `2 ^ (3 ^ 2)`).
@@ -212,6 +217,12 @@ Notas:
 - Los bloques `{ ... }` crean un nuevo scope léxico: las variables declaradas dentro no son visibles fuera. Se permite shadowing en un scope interno pero no redeclarar en el mismo nivel.
 - Un bloque es una **expresión**: su valor es el de la última sentencia/expresión evaluada dentro del bloque.
 - `let ... in ...` también crea un scope: las ligaduras solo viven dentro del cuerpo y se evalúan en orden. Es asociativo a la derecha.
+- Asignación destructiva `:=` (expresión): sobreescribe una variable ya declarada y devuelve el valor asignado. Requiere que el tipo coincida con el declarado en ese scope.
+
+### Reglas de nombres (identificadores)
+- Deben comenzar con letra (`a-zA-Z`).
+- Pueden contener letras, dígitos y guión bajo después del primer carácter.
+- No pueden comenzar con `_` ni con dígitos. Ejemplos válidos: `x`, `x0`, `x_0`, `snake_case`, `camelCase`. Ejemplos inválidos: `_x`, `8ball`, `x+y`.
 
 Ejemplo valido:
 
@@ -351,6 +362,7 @@ Validos:
 - `examples/block_scope_ok.hulk`
 - `examples/let_in_ok.hulk`
 - `examples/let_in_shadow.hulk`
+- `examples/destructive_assign_ok.hulk`
 
 Con error (para validar diagnosticos):
 - `examples/builtin_math_type_error.hulk`
@@ -361,6 +373,8 @@ Con error (para validar diagnosticos):
 - `examples/error_type_mismatch_add.hulk`
 - `examples/let_in_type_error.hulk`
 - `examples/let_in_parser_error.hulk`
+- `examples/destructive_assign_type_error.hulk`
+- `examples/identifier_invalid.hulk`
 
 ## 12. Extender el proyecto
 

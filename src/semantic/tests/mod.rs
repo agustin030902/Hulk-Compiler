@@ -1,3 +1,5 @@
+mod destructive_assign;
+mod let_in;
 mod string_escape;
 
 use crate::{error::ErrorCategory, lexer::Lexer, parser::Parser};

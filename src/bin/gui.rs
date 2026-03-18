@@ -33,6 +33,8 @@ struct HulkGui {
     input_path: String,
     example_files: Vec<String>,
     lli_path: String,
+    new_example_name: String,
+    show_tutorial: bool,
 }
 
 fn main() -> eframe::Result<()> {
@@ -60,9 +62,11 @@ impl HulkGui {
             ir_text: None,
             exec_output: String::new(),
             output_path: PathBuf::from("artifacts/gui_output.ll"),
-            input_path: "examples/calculator_ok.hulk".to_string(),
+            input_path: "examples/power_ok.hulk".to_string(),
             example_files,
             lli_path: "lli".to_string(),
+            new_example_name: "mi_ejemplo.hulk".to_string(),
+            show_tutorial: false,
         }
     }
 
@@ -117,6 +121,28 @@ impl HulkGui {
     fn refresh_examples(&mut self) {
         self.example_files = list_example_files();
     }
+
+    fn save_current_source_as_example(&mut self) {
+        let mut name = self.new_example_name.trim().to_string();
+        if name.is_empty() {
+            self.status = "Ponle un nombre al nuevo ejemplo".to_string();
+            return;
+        }
+        if !name.ends_with(".hulk") && !name.ends_with(".hk") {
+            name.push_str(".hulk");
+        }
+        let path = PathBuf::from("examples").join(name);
+        match fs::write(&path, &self.source) {
+            Ok(_) => {
+                self.status = format!("Ejemplo guardado en {}", path.display());
+                self.input_path = path.to_string_lossy().to_string();
+                self.refresh_examples();
+            }
+            Err(err) => {
+                self.status = format!("No se pudo guardar: {}", err);
+            }
+        }
+    }
 }
 
 impl eframe::App for HulkGui {
@@ -149,6 +175,14 @@ impl eframe::App for HulkGui {
                 if ui.button("Demo rápida").clicked() {
                     self.source = default_source();
                     self.status = "Ejemplo precargado".to_string();
+                }
+                ui.label("Nuevo ejemplo:");
+                ui.text_edit_singleline(&mut self.new_example_name);
+                if ui.button("Guardar en examples").clicked() {
+                    self.save_current_source_as_example();
+                }
+                if ui.button("Guía rápida").clicked() {
+                    self.show_tutorial = true;
                 }
                 if ui.button("Compilar").clicked() {
                     self.compile_source();
@@ -263,6 +297,26 @@ impl eframe::App for HulkGui {
                 }
             });
         });
+
+        if self.show_tutorial {
+            egui::Window::new("Guía rápida de sintaxis Hulk")
+                .resizable(true)
+                .collapsible(true)
+                .open(&mut self.show_tutorial)
+                .show(ctx, |ui| {
+                    ui.label("Conceptos clave:");
+                    ui.monospace("- El lenguaje es basado en expresiones; el último ';' es opcional.");
+                    ui.monospace("- Bloques y let-in devuelven el valor de su última expresión.");
+                    ui.monospace("- Declaración: let x = expr;");
+                    ui.monospace("- Asignación destructiva: x := expr (mismo tipo).");
+                    ui.monospace("- Builtins: sin, cos, sqrt, exp, log(base, value), rand().");
+                    ui.monospace("- Constantes: PI, E.");
+                    ui.monospace("- Operadores: + - * / ^ @ && || ! == != < > <= >=.");
+                    ui.monospace("- Precedencia (alta -> baja): ^, unarios (!,-), *, /, +, @, comparaciones, ==, &&, ||, :=.");
+                    ui.monospace("- Identificadores: empiezan con letra; luego letras, dígitos, '_'. No inician con '_' ni dígito.");
+                    ui.monospace("- let ... in ... es asociativo a la derecha y puede tener varias ligaduras separadas por coma.");
+                });
+        }
     }
 }
 
@@ -275,11 +329,17 @@ fn format_token(token: &Token) -> String {
 
 fn default_source() -> String {
     r#"
-print("zzzz");
+let base = 2;
+let expv = 3;
 
-let x = 90/ 4.567 + 1 - 9 + (9 -1) * 2 ;
+let direct = base ^ expv;
+let chained = 2 ^ 3 ^ 2;
+let trig = sin(PI / 2) ^ 2 + cos(0);
 
-print (x);
+print(direct);
+print(chained);
+print(trig);
+
 "#
     .trim_start_matches('\n')
     .to_string()

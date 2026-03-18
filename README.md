@@ -2,15 +2,17 @@
 
 Compilador en Rust organizado por fases, con salida a archivo `.txt`.
 
-Pipeline actual:
+Pipeline actual (fail-fast: si falla una fase no se ejecutan las siguientes):
 
 ```text
 lexer -> parser (LR1) -> semantic -> LLVM IR
 ```
 
-Si una fase falla, el pipeline se detiene ahi (fail-fast).
+Extensión de código fuente recomendada: `.hulk` (la CLI acepta también `.hk`).
 
-Extensión de código fuente: `.hulk` (la CLI sigue aceptando `.hk` como alias legacy).
+Notas rápidas del lenguaje:
+- Es **basado en expresiones**: cualquier expresión puede ser un `Statement`. El último `;` es opcional en programas y bloques.
+- Los bloques `{ ... }` y las expresiones `let ... in ...` devuelven el valor de su última expresión.
 
 ## 1. Arquitectura del proyecto
 
@@ -78,6 +80,7 @@ Responsabilidades:
 - `exp`
 - `log`
 - `rand`
+- `in`
 - `true`, `false`
 
 ### Literales
@@ -89,6 +92,7 @@ Responsabilidades:
 - Aritmeticos: `+`, `-`, `*`, `/`, `^`
 - Concatenacion: `@`
 - Asignacion: `=`
+- Asignacion destructiva: `:=` (expresion que sobrescribe y devuelve el valor)
 - Comparacion: `==`, `!=`, `<`, `>`, `<=`, `>=`
 - Logicos: `&&`, `||`, `!`
 
@@ -112,7 +116,16 @@ Statement      := "let" Identifier "=" Expr
                 | "print" "(" Expr ")"
                 | Expr
 
-Expr           := LogicalOr
+Expr           := LetIn
+
+LetIn          := "let" LetBindings "in" LetIn
+                | Assignment
+
+LetBindings    := LetBinding ("," LetBinding)*
+LetBinding     := Identifier "=" Expr
+
+Assignment     := Identifier ":=" Assignment
+                | LogicalOr
 
 LogicalOr      := LogicalOr "||" LogicalAnd
                 | LogicalAnd
@@ -168,6 +181,11 @@ Literal        := "PI"
                 | Boolean
 ```
 
+Apuntes gramaticales:
+- `LetIn` es **asociativo a la derecha**: `let a = 1 in let b = 2 in a + b`.
+- Se permiten varias ligaduras en `let ... in ...`: `let a = 1, b = 2 in a + b`.
+- Un bloque `{ ... }` es una expresión y su valor es la **última sentencia/expresión** que contiene.
+
 ## 5. Precedencia y asociatividad
 
 De mayor a menor precedencia:
@@ -181,6 +199,7 @@ De mayor a menor precedencia:
 7. `==`, `!=`
 8. `&&`
 9. `||`
+10. Asignación destructiva `:=` (asociativa a derecha)
 
 Notas:
 - `^` es asociativo a derecha (`2 ^ 3 ^ 2` se interpreta como `2 ^ (3 ^ 2)`).
@@ -197,6 +216,13 @@ Notas:
 - Si se reasigna una variable declarada, por ahora se permite cambiar el tipo.
 - Los bloques `{ ... }` crean un nuevo scope léxico: las variables declaradas dentro no son visibles fuera. Se permite shadowing en un scope interno pero no redeclarar en el mismo nivel.
 - Un bloque es una **expresión**: su valor es el de la última sentencia/expresión evaluada dentro del bloque.
+- `let ... in ...` también crea un scope: las ligaduras solo viven dentro del cuerpo y se evalúan en orden. Es asociativo a la derecha.
+- Asignación destructiva `:=` (expresión): sobreescribe una variable ya declarada y devuelve el valor asignado. Requiere que el tipo coincida con el declarado en ese scope.
+
+### Reglas de nombres (identificadores)
+- Deben comenzar con letra (`a-zA-Z`).
+- Pueden contener letras, dígitos y guión bajo después del primer carácter.
+- No pueden comenzar con `_` ni con dígitos. Ejemplos válidos: `x`, `x0`, `x_0`, `snake_case`, `camelCase`. Ejemplos inválidos: `_x`, `8ball`, `x+y`.
 
 Ejemplo valido:
 
@@ -333,6 +359,10 @@ Validos:
 - `examples/power_ok.hulk`
 - `examples/rand_ok.hulk`
 - `examples/expression_statement_ok.hulk`
+- `examples/block_scope_ok.hulk`
+- `examples/let_in_ok.hulk`
+- `examples/let_in_shadow.hulk`
+- `examples/destructive_assign_ok.hulk`
 
 Con error (para validar diagnosticos):
 - `examples/builtin_math_type_error.hulk`
@@ -341,6 +371,10 @@ Con error (para validar diagnosticos):
 - `examples/error_lexical_invalid.hulk`
 - `examples/error_syntax_missing_semicolon.hulk`
 - `examples/error_type_mismatch_add.hulk`
+- `examples/let_in_type_error.hulk`
+- `examples/let_in_parser_error.hulk`
+- `examples/destructive_assign_type_error.hulk`
+- `examples/identifier_invalid.hulk`
 
 ## 12. Extender el proyecto
 

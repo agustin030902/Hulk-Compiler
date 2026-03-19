@@ -78,6 +78,11 @@ Asignación destructiva `:=` que sobrescribe variables declaradas.
 - Devuelve el valor asignado (es una expresión)
 - Mantiene el tipo declarado
 
+### `print_expr_ok.hulk`
+`print` como expresión que devuelve el valor impreso.
+- Puede usarse dentro de `let ... in ...`
+- El valor de retorno es el argumento de `print`
+
 ### `let_in_ok.hulk`
 Ligaduras locales con `let ... in ...`.
 - Varias ligaduras separadas por coma

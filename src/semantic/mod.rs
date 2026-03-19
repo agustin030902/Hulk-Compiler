@@ -366,6 +366,18 @@ impl SemanticAnalyzer {
         source: &str,
     ) -> Option<SemanticType> {
         match function {
+            BuiltinFunction::Print => {
+                let Some(arg) = args.first() else {
+                    self.push_semantic_error(
+                        span,
+                        source,
+                        "Function 'print' expects 1 argument.".to_string(),
+                    );
+                    return None;
+                };
+                let ty = self.check_expr(arg, source)?;
+                Some(ty)
+            }
             BuiltinFunction::Sin
             | BuiltinFunction::Cos
             | BuiltinFunction::Sqrt

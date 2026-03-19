@@ -94,10 +94,6 @@ Statement: Statement = {
         value,
         span: Span::new(l, r),
     },
-    <l:@L> "print" "(" <value:Expr> ")" <r:@R> => Statement::Print {
-        value,
-        span: Span::new(l, r),
-    },
     <l:@L> <value:Expr> <r:@R> => Statement::Expr {
         value,
         span: Span::new(l, r),
@@ -109,7 +105,7 @@ Expr: Expr = {
 };
 
 LetIn: Expr = {
-    <l:@L> "let" <bindings:LetBindings> "in" <body:LetIn> <r:@R> => Expr::LetIn(LetInExpr {
+    <l:@L> "let" <bindings:LetBindings> "in" <body:Expr> <r:@R> => Expr::LetIn(LetInExpr {
         bindings,
         body: Box::new(body),
         span: Span::new(l, r),
@@ -295,6 +291,11 @@ BuiltinCallExpr: Expr = {
         function: BuiltinFunction::Sqrt,
         args: vec![arg],
         span: Span::new(l, r),
+    }),
+    <l:@L> "print" "(" <arg:Expr> ")" <r:@R> => Expr::BuiltinCall(BuiltinCallExpr {
+    function: BuiltinFunction::Print,
+    args: vec![arg],
+    span: Span::new(l, r),
     }),
     <l:@L> "exp" "(" <arg:Expr> ")" <r:@R> => Expr::BuiltinCall(BuiltinCallExpr {
         function: BuiltinFunction::Exp,

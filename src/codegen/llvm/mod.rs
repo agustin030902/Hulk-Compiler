@@ -169,35 +169,7 @@ impl LlvmBackend {
                 let Some(value_ref) = self.emit_expr(value) else {
                     return None;
                 };
-
-                match value_ref.value_type {
-                    ValueType::Double => {
-                        let fmt = Self::format_ptr_global("@.fmt.number", 4);
-                        let call_tmp = self.next_temp();
-                        self.emit_body(format!(
-                            "{call_tmp} = call i32 (i8*, ...) @printf(i8* {fmt}, double {})",
-                            value_ref.repr
-                        ));
-                    }
-                    ValueType::StringPtr => {
-                        let fmt = Self::format_ptr_global("@.fmt.string", 4);
-                        let call_tmp = self.next_temp();
-                        self.emit_body(format!(
-                            "{call_tmp} = call i32 (i8*, ...) @printf(i8* {fmt}, i8* {})",
-                            value_ref.repr
-                        ));
-                    }
-                    ValueType::Bool => {
-                        let bool_tmp = self.next_temp();
-                        self.emit_body(format!("{bool_tmp} = zext i1 {} to i32", value_ref.repr));
-                        let fmt = Self::format_ptr_global("@.fmt.bool", 4);
-                        let call_tmp = self.next_temp();
-                        self.emit_body(format!(
-                            "{call_tmp} = call i32 (i8*, ...) @printf(i8* {fmt}, i32 {bool_tmp})"
-                        ));
-                    }
-                }
-
+                self.emit_print_value(&value_ref);
                 Some(value_ref)
             }
             Statement::Expr { value, .. } => self.emit_expr(value),
@@ -256,6 +228,15 @@ impl LlvmBackend {
 
     fn emit_builtin_call(&mut self, function: BuiltinFunction, args: &[Expr]) -> Option<ValueRef> {
         match function {
+            BuiltinFunction::Print => {
+                let Some(arg_expr) = args.first() else {
+                    self.semantic_error("Function 'print' expects 1 argument");
+                    return None;
+                };
+                let value = self.emit_expr(arg_expr)?;
+                self.emit_print_value(&value);
+                Some(value)
+            }
             BuiltinFunction::Sin
             | BuiltinFunction::Cos
             | BuiltinFunction::Sqrt
@@ -284,6 +265,7 @@ impl LlvmBackend {
                     BuiltinFunction::Exp => "llvm.exp.f64",
                     BuiltinFunction::Log => unreachable!("log handled in dedicated branch"),
                     BuiltinFunction::Rand => unreachable!("rand handled in dedicated branch"),
+                    BuiltinFunction::Print => unreachable!("print handled in dedicated branch"),
                 };
 
                 let result = self.next_temp();
@@ -411,6 +393,36 @@ impl LlvmBackend {
             value_type: info.value_type,
             repr: loaded,
         })
+    }
+
+    fn emit_print_value(&mut self, value_ref: &ValueRef) {
+        match value_ref.value_type {
+            ValueType::Double => {
+                let fmt = Self::format_ptr_global("@.fmt.number", 4);
+                let call_tmp = self.next_temp();
+                self.emit_body(format!(
+                    "{call_tmp} = call i32 (i8*, ...) @printf(i8* {fmt}, double {})",
+                    value_ref.repr
+                ));
+            }
+            ValueType::StringPtr => {
+                let fmt = Self::format_ptr_global("@.fmt.string", 4);
+                let call_tmp = self.next_temp();
+                self.emit_body(format!(
+                    "{call_tmp} = call i32 (i8*, ...) @printf(i8* {fmt}, i8* {})",
+                    value_ref.repr
+                ));
+            }
+            ValueType::Bool => {
+                let bool_tmp = self.next_temp();
+                self.emit_body(format!("{bool_tmp} = zext i1 {} to i32", value_ref.repr));
+                let fmt = Self::format_ptr_global("@.fmt.bool", 4);
+                let call_tmp = self.next_temp();
+                self.emit_body(format!(
+                    "{call_tmp} = call i32 (i8*, ...) @printf(i8* {fmt}, i32 {bool_tmp})"
+                ));
+            }
+        }
     }
 
     fn emit_block_expr(&mut self, block: &BlockExpr) -> Option<ValueRef> {

@@ -66,8 +66,21 @@ fn parses_let_in_with_multiple_bindings_and_body_expr() {
     };
     assert_eq!(block.statements.len(), 2);
 
-    let crate::parser::expression::Statement::Print { value, .. } = &block.statements[0] else {
-        panic!("expected first statement to be print");
+    let value = match &block.statements[0] {
+        crate::parser::expression::Statement::Expr { value, .. } => value,
+        crate::parser::expression::Statement::Print { value, .. } => value,
+        _ => panic!("expected first statement to be print"),
+    };
+    let value = match value {
+        Expr::BuiltinCall(call)
+            if matches!(
+                call.function,
+                crate::parser::expression::BuiltinFunction::Print
+            ) =>
+        {
+            call.args.first().expect("print should have arg")
+        }
+        other => other,
     };
     assert!(matches!(value, Expr::Binary(bin) if matches!(bin.op, BinaryOp::Add)));
 }

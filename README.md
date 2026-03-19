@@ -252,6 +252,7 @@ print(result); // imprime 10
 - Unary `!`: `Boolean -> Boolean`
 
 ### Builtins matematicas
+- `print(T) -> T` (imprime y devuelve el valor pasado)
 - `sin(Number) -> Number`
 - `cos(Number) -> Number`
 - `sqrt(Number) -> Number`
@@ -363,6 +364,7 @@ Validos:
 - `examples/let_in_ok.hulk`
 - `examples/let_in_shadow.hulk`
 - `examples/destructive_assign_ok.hulk`
+- `examples/print_expr_ok.hulk`
 
 Con error (para validar diagnosticos):
 - `examples/builtin_math_type_error.hulk`

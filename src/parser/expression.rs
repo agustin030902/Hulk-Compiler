@@ -150,6 +150,7 @@ pub enum UnaryOp {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuiltinFunction {
+    Print,
     Sin,
     Cos,
     Sqrt,
@@ -161,6 +162,7 @@ pub enum BuiltinFunction {
 impl BuiltinFunction {
     pub const fn name(self) -> &'static str {
         match self {
+            BuiltinFunction::Print => "print",
             BuiltinFunction::Sin => "sin",
             BuiltinFunction::Cos => "cos",
             BuiltinFunction::Sqrt => "sqrt",

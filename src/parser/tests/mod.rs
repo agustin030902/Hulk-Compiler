@@ -1,5 +1,6 @@
 mod destructive_assign;
 mod let_in;
+mod print_expr;
 mod string_escape;
 
 use crate::lexer::Lexer;
@@ -29,14 +30,27 @@ fn parse_program(source: &str) -> Program {
     program.expect("parser did not produce a program")
 }
 
+fn unwrap_print_arg<'a>(expr: &'a Expr) -> &'a Expr {
+    if let Expr::BuiltinCall(call) = expr {
+        if matches!(call.function, BuiltinFunction::Print) {
+            return call.args.first().expect("print call should have one arg");
+        }
+    }
+    expr
+}
+
 #[test]
 fn parses_string_concat_with_number() {
     let program = parse_program(r#"print("The meaning of life is " @ 42);"#);
 
     assert_eq!(program.statements.len(), 1);
-    let Statement::Print { value, .. } = &program.statements[0] else {
-        panic!("expected print statement");
+    let value = match &program.statements[0] {
+        Statement::Expr { value, .. } => value,
+        Statement::Print { value, .. } => value,
+        _ => panic!("expected print statement"),
     };
+    let value = unwrap_print_arg(value);
+    let value = unwrap_print_arg(value);
 
     let Expr::Binary(binary) = value else {
         panic!("expected binary expression");
@@ -64,9 +78,13 @@ fn parses_concat_as_left_associative() {
     let program = parse_program(r#"print("a" @ 1 @ "b");"#);
 
     assert_eq!(program.statements.len(), 1);
-    let Statement::Print { value, .. } = &program.statements[0] else {
-        panic!("expected print statement");
+    let value = match &program.statements[0] {
+        Statement::Expr { value, .. } => value,
+        Statement::Print { value, .. } => value,
+        _ => panic!("expected print statement"),
     };
+    let value = unwrap_print_arg(value);
+    let value = unwrap_print_arg(value);
 
     let Expr::Binary(outer) = value else {
         panic!("expected outer binary expression");
@@ -105,9 +123,12 @@ fn parses_concat_as_left_associative() {
 fn parses_logical_and_comparison_precedence() {
     let program = parse_program(r#"print(5 > 3 && 2 < 8 || !false);"#);
 
-    let Statement::Print { value, .. } = &program.statements[0] else {
-        panic!("expected print statement");
+    let value = match &program.statements[0] {
+        Statement::Expr { value, .. } => value,
+        Statement::Print { value, .. } => value,
+        _ => panic!("expected print statement"),
     };
+    let value = unwrap_print_arg(value);
 
     let Expr::Binary(or_expr) = value else {
         panic!("expected top-level or binary expression");
@@ -139,9 +160,12 @@ fn parses_logical_and_comparison_precedence() {
 fn parses_arithmetic_before_comparison() {
     let program = parse_program(r#"print(x + 5 > y * 2);"#);
 
-    let Statement::Print { value, .. } = &program.statements[0] else {
-        panic!("expected print statement");
+    let value = match &program.statements[0] {
+        Statement::Expr { value, .. } => value,
+        Statement::Print { value, .. } => value,
+        _ => panic!("expected print statement"),
     };
+    let value = unwrap_print_arg(value);
 
     let Expr::Binary(cmp_expr) = value else {
         panic!("expected comparison expression");
@@ -179,16 +203,22 @@ print(x);
         &program.statements[1],
         Statement::Assign { name, .. } if name == "x"
     ));
-    assert!(matches!(&program.statements[2], Statement::Print { .. }));
+    assert!(matches!(
+        &program.statements[2],
+        Statement::Expr { .. } | Statement::Print { .. }
+    ));
 }
 
 #[test]
 fn parses_builtin_calls_with_primary_precedence() {
     let program = parse_program(r#"print(sin(2 + 1) * cos(0));"#);
 
-    let Statement::Print { value, .. } = &program.statements[0] else {
-        panic!("expected print statement");
+    let value = match &program.statements[0] {
+        Statement::Expr { value, .. } => value,
+        Statement::Print { value, .. } => value,
+        _ => panic!("expected print statement"),
     };
+    let value = unwrap_print_arg(value);
 
     let Expr::Binary(mul_expr) = value else {
         panic!("expected multiplication at top level");
@@ -210,9 +240,12 @@ fn parses_builtin_calls_with_primary_precedence() {
 fn parses_log_with_two_arguments() {
     let program = parse_program(r#"print(log(4, 64));"#);
 
-    let Statement::Print { value, .. } = &program.statements[0] else {
-        panic!("expected print statement");
+    let value = match &program.statements[0] {
+        Statement::Expr { value, .. } => value,
+        Statement::Print { value, .. } => value,
+        _ => panic!("expected print statement"),
     };
+    let value = unwrap_print_arg(value);
 
     let Expr::BuiltinCall(call) = value else {
         panic!("expected builtin call");
@@ -240,9 +273,12 @@ fn parses_log_with_two_arguments() {
 fn parses_power_with_higher_precedence_than_mul_and_add() {
     let program = parse_program(r#"print(2 + 3 * 2 ^ 3);"#);
 
-    let Statement::Print { value, .. } = &program.statements[0] else {
-        panic!("expected print statement");
+    let value = match &program.statements[0] {
+        Statement::Expr { value, .. } => value,
+        Statement::Print { value, .. } => value,
+        _ => panic!("expected print statement"),
     };
+    let value = unwrap_print_arg(value);
 
     let Expr::Binary(add_expr) = value else {
         panic!("expected top-level addition");
@@ -264,9 +300,12 @@ fn parses_power_with_higher_precedence_than_mul_and_add() {
 fn parses_power_as_right_associative() {
     let program = parse_program(r#"print(2 ^ 3 ^ 2);"#);
 
-    let Statement::Print { value, .. } = &program.statements[0] else {
-        panic!("expected print statement");
+    let value = match &program.statements[0] {
+        Statement::Expr { value, .. } => value,
+        Statement::Print { value, .. } => value,
+        _ => panic!("expected print statement"),
     };
+    let value = unwrap_print_arg(value);
 
     let Expr::Binary(outer_pow) = value else {
         panic!("expected top-level power expression");
@@ -302,9 +341,12 @@ fn parses_rand_builtin_call_without_arguments() {
     let program = parse_program("print(rand());");
     assert_eq!(program.statements.len(), 1);
 
-    let Statement::Print { value, .. } = &program.statements[0] else {
-        panic!("expected print statement");
+    let value = match &program.statements[0] {
+        Statement::Expr { value, .. } => value,
+        Statement::Print { value, .. } => value,
+        _ => panic!("expected print statement"),
     };
+    let value = unwrap_print_arg(value);
     let Expr::BuiltinCall(call) = value else {
         panic!("expected builtin call");
     };
@@ -323,7 +365,10 @@ fn parses_program_without_trailing_semicolon() {
     } else {
         panic!("expected let statement for a");
     }
-    assert!(matches!(program.statements[1], Statement::Print { .. }));
+    assert!(matches!(
+        program.statements[1],
+        Statement::Expr { .. } | Statement::Print { .. }
+    ));
 }
 
 #[test]

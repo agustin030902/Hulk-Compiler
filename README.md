@@ -8,6 +8,10 @@ Pipeline actual (fail-fast: si falla una fase no se ejecutan las siguientes):
 lexer -> parser (LR1) -> semantic -> LLVM IR
 ```
 
+![Pipeline fail-fast del compilador Hulk](docs/images/fail-fast-pipeline.svg)
+
+Cada fase alimenta a la siguiente. Si una fase encuentra errores, el compilador corta ahi y escribe diagnosticos en vez de seguir avanzando.
+
 Extensión de código fuente recomendada: `.hulk` (la CLI acepta también `.hk`).
 
 Notas rápidas del lenguaje:

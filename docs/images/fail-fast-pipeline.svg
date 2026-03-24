@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 760" role="img" aria-labelledby="title desc">
+  <title id="title">Hulk compiler fail-fast pipeline</title>
+  <desc id="desc">Diagrama del pipeline fail-fast del compilador Hulk. Source entra a lexer, parser, semantic y LLVM IR. Si una fase falla, el flujo se corta y va a diagnosticos. Si todas pasan, se genera LLVM IR.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#f5fbff"/>
+      <stop offset="100%" stop-color="#eef7f2"/>
+    </linearGradient>
+    <linearGradient id="successPanel" x1="0%" x2="100%" y1="0%" y2="0%">
+      <stop offset="0%" stop-color="#e8fff1"/>
+      <stop offset="100%" stop-color="#f4fff7"/>
+    </linearGradient>
+    <linearGradient id="errorPanel" x1="0%" x2="100%" y1="0%" y2="0%">
+      <stop offset="0%" stop-color="#fff2f1"/>
+      <stop offset="100%" stop-color="#fff8f5"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#153b5722"/>
+    </filter>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1d8b5a"/>
+    </marker>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#d14f45"/>
+    </marker>
+    <style>
+      .title { font: 700 34px 'Segoe UI', Arial, sans-serif; fill: #16344d; }
+      .subtitle { font: 500 18px 'Segoe UI', Arial, sans-serif; fill: #4a6273; }
+      .chip { font: 700 12px 'Segoe UI', Arial, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; }
+      .chip-green { fill: #1d8b5a; }
+      .chip-red { fill: #c44a41; }
+      .box-title { font: 700 24px 'Segoe UI', Arial, sans-serif; fill: #18364d; }
+      .box-sub { font: 500 15px 'Segoe UI', Arial, sans-serif; fill: #597082; }
+      .panel-title { font: 700 26px 'Segoe UI', Arial, sans-serif; fill: #18364d; }
+      .panel-text { font: 500 16px 'Segoe UI', Arial, sans-serif; fill: #536a79; }
+      .label { font: 700 14px 'Segoe UI', Arial, sans-serif; fill: #34546b; }
+      .mono { font: 700 14px 'SFMono-Regular', Consolas, monospace; fill: #24445d; }
+      .stage { fill: #ffffff; stroke: #bfd7e8; stroke-width: 2; rx: 24; filter: url(#shadow); }
+      .source { fill: #fff7dc; stroke: #f2cf63; stroke-width: 2; rx: 24; filter: url(#shadow); }
+      .success-box { fill: url(#successPanel); stroke: #9bd2b0; stroke-width: 2; rx: 28; filter: url(#shadow); }
+      .error-box { fill: url(#errorPanel); stroke: #efb3ad; stroke-width: 2; rx: 28; filter: url(#shadow); }
+      .success-line { stroke: #1d8b5a; stroke-width: 6; fill: none; marker-end: url(#arrowGreen); }
+      .error-line { stroke: #d14f45; stroke-width: 5; fill: none; marker-end: url(#arrowRed); }
+      .thin-line { stroke: #cfe0ec; stroke-width: 2; stroke-dasharray: 8 8; }
+    </style>
+  </defs>
+
+  <rect width="1280" height="760" fill="url(#bg)"/>
+  <rect x="32" y="32" width="1216" height="696" rx="36" fill="#ffffff" opacity="0.62"/>
+
+  <text x="72" y="92" class="title">Fail-fast pipeline del compilador Hulk</text>
+  <text x="72" y="126" class="subtitle">Cada fase solo corre si la anterior termina sin errores. Cuando una falla, se corta el flujo y se escriben diagnosticos.</text>
+
+  <text x="72" y="170" class="chip chip-green">camino de exito</text>
+  <line x1="200" y1="165" x2="1210" y2="165" class="thin-line"/>
+
+  <rect x="72" y="208" width="188" height="124" class="source"/>
+  <text x="96" y="252" class="box-title">Source</text>
+  <text x="96" y="282" class="box-sub">archivo .hulk / .hk</text>
+  <text x="96" y="308" class="mono">texto fuente</text>
+
+  <rect x="302" y="208" width="188" height="124" class="stage"/>
+  <text x="326" y="252" class="box-title">Lexer</text>
+  <text x="326" y="282" class="box-sub">source -&gt; tokens</text>
+  <text x="326" y="308" class="mono">logos</text>
+
+  <rect x="532" y="208" width="188" height="124" class="stage"/>
+  <text x="556" y="252" class="box-title">Parser</text>
+  <text x="556" y="282" class="box-sub">tokens -&gt; AST</text>
+  <text x="556" y="308" class="mono">LR(1) / lalrpop</text>
+
+  <rect x="762" y="208" width="188" height="124" class="stage"/>
+  <text x="786" y="252" class="box-title">Semantic</text>
+  <text x="786" y="282" class="box-sub">AST -&gt; programa valido</text>
+  <text x="786" y="308" class="mono">tipos + scopes</text>
+
+  <rect x="992" y="208" width="188" height="124" class="stage"/>
+  <text x="1016" y="252" class="box-title">LLVM IR</text>
+  <text x="1016" y="282" class="box-sub">program -&gt; IR</text>
+  <text x="1016" y="308" class="mono">codegen</text>
+
+  <path d="M 260 270 L 302 270" class="success-line"/>
+  <path d="M 490 270 L 532 270" class="success-line"/>
+  <path d="M 720 270 L 762 270" class="success-line"/>
+  <path d="M 950 270 L 992 270" class="success-line"/>
+
+  <text x="360" y="196" class="label">sin errores</text>
+  <text x="590" y="196" class="label">sin errores</text>
+  <text x="820" y="196" class="label">sin errores</text>
+  <text x="1050" y="196" class="label">sin errores</text>
+
+  <text x="72" y="402" class="chip chip-red">camino de error</text>
+  <line x1="188" y1="398" x2="1210" y2="398" class="thin-line"/>
+
+  <rect x="72" y="452" width="830" height="196" class="error-box"/>
+  <text x="104" y="504" class="panel-title">Diagnosticos (.txt)</text>
+  <text x="104" y="538" class="panel-text">Si lexer, parser, semantic o codegen reportan errores, el compilador para ahi.</text>
+  <text x="104" y="566" class="panel-text">No se ejecutan las fases restantes. El orquestador devuelve el reporte y lo escribe en salida.</text>
+  <text x="104" y="608" class="mono">[Lexical] [Syntax] [Semantic] [Type]</text>
+
+  <rect x="938" y="452" width="242" height="196" class="success-box"/>
+  <text x="970" y="504" class="panel-title">Salida final</text>
+  <text x="970" y="538" class="panel-text">Solo aparece cuando todo</text>
+  <text x="970" y="564" class="panel-text">el pipeline pasa limpio.</text>
+  <text x="970" y="608" class="mono">LLVM IR listo para guardar</text>
+
+  <path d="M 396 332 L 396 452" class="error-line"/>
+  <path d="M 626 332 L 626 452" class="error-line"/>
+  <path d="M 856 332 L 856 452" class="error-line"/>
+  <path d="M 1086 332 L 1086 452 L 902 452" class="error-line"/>
+
+  <text x="352" y="386" class="label">error -&gt; stop</text>
+  <text x="582" y="386" class="label">error -&gt; stop</text>
+  <text x="812" y="386" class="label">error -&gt; stop</text>
+  <text x="1036" y="386" class="label">error -&gt; stop</text>
+
+  <path d="M 1086 332 L 1086 452" class="success-line"/>
+  <text x="1016" y="430" class="label">todo OK</text>
+</svg>

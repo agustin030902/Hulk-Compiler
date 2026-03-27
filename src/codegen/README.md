@@ -4,6 +4,39 @@ Este modulo implementa la ultima fase del compilador: convertir el AST validado 
 
 Hoy solo existe un backend concreto: [`llvm`](./llvm), expuesto por el trait [`CodegenBackend`](./mod.rs).
 
+## Estructura interna actual de `llvm`
+
+La implementacion ya no esta concentrada en un solo archivo. La organizacion actual es:
+
+```text
+src/codegen/llvm/
+  mod.rs
+  backend.rs
+  statement.rs
+  helper/
+    mod.rs
+    state.rs
+    module_writer.rs
+  expr/
+    mod.rs
+    binary.rs
+    block.rs
+    builtin_call.rs
+    destructive_assign.rs
+    let_in.rs
+    literal.rs
+    unary.rs
+    variable.rs
+  tests.rs
+```
+
+Regla practica:
+
+- `backend.rs` contiene el backend principal y el estado comun.
+- `statement.rs` contiene la emision de statements.
+- `expr/*.rs` contiene la emision por nodo del AST.
+- `helper/` contiene soporte compartido, no logica especifica de una sola expresion.
+
 ## Que recibe codegen
 
 `codegen` no recibe texto fuente ni tokens. Tampoco recibe un AST "tipado" distinto al del parser.

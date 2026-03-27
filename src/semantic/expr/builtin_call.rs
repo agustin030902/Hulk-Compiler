@@ -1,0 +1,104 @@
+use crate::parser::expression::{BuiltinFunction, Expr, Span};
+
+use super::super::{SemanticType, analyzer::SemanticAnalyzer};
+
+impl SemanticAnalyzer {
+    pub(super) fn check_builtin_call(
+        &mut self,
+        function: BuiltinFunction,
+        args: &[Expr],
+        span: Span,
+        source: &str,
+    ) -> Option<SemanticType> {
+        match function {
+            BuiltinFunction::Print => {
+                let Some(arg) = args.first() else {
+                    self.push_semantic_error(
+                        span,
+                        source,
+                        "Function 'print' expects 1 argument.".to_string(),
+                    );
+                    return None;
+                };
+                let ty = self.check_expr(arg, source)?;
+                Some(ty)
+            }
+            BuiltinFunction::Sin
+            | BuiltinFunction::Cos
+            | BuiltinFunction::Sqrt
+            | BuiltinFunction::Exp => {
+                let Some(arg) = args.first() else {
+                    self.push_semantic_error(
+                        span,
+                        source,
+                        format!("Function '{}' expects 1 argument.", function.name()),
+                    );
+                    return None;
+                };
+
+                let arg_type = self.check_expr(arg, source)?;
+                if arg_type == SemanticType::Unknown {
+                    return Some(SemanticType::Unknown);
+                }
+
+                if arg_type == SemanticType::Number {
+                    Some(SemanticType::Number)
+                } else {
+                    self.push_type_error(
+                        span,
+                        source,
+                        format!(
+                            "Function '{}' expects Number, but got {}.",
+                            function.name(),
+                            arg_type.display_name()
+                        ),
+                    );
+                    None
+                }
+            }
+            BuiltinFunction::Log => {
+                if args.len() != 2 {
+                    self.push_semantic_error(
+                        span,
+                        source,
+                        "Function 'log' expects 2 arguments.".to_string(),
+                    );
+                    return None;
+                }
+
+                let left_type = self.check_expr(&args[0], source)?;
+                let right_type = self.check_expr(&args[1], source)?;
+                if left_type == SemanticType::Unknown || right_type == SemanticType::Unknown {
+                    return Some(SemanticType::Unknown);
+                }
+
+                if left_type == SemanticType::Number && right_type == SemanticType::Number {
+                    Some(SemanticType::Number)
+                } else {
+                    self.push_type_error(
+                        span,
+                        source,
+                        format!(
+                            "Function 'log' expects (Number, Number), but got {} and {}.",
+                            left_type.display_name(),
+                            right_type.display_name()
+                        ),
+                    );
+                    None
+                }
+            }
+            BuiltinFunction::Rand => {
+                if !args.is_empty() {
+                    self.push_semantic_error(
+                        span,
+                        source,
+                        "Function 'rand' expects 0 arguments.".to_string(),
+                    );
+                    return None;
+                }
+
+                Some(SemanticType::Number)
+            }
+        }
+    }
+}

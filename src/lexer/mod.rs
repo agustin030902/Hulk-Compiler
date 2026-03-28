@@ -32,9 +32,13 @@ enum LogosTokenKind {
     Log,
     #[token("rand", priority = 3)]
     Rand,
+    #[token("in", priority = 3)]
+    In,
     #[regex(r"true|false")]
     Boolean,
-    #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
+    #[regex(r"[0-9]+[A-Za-z_][A-Za-z0-9_]*", priority = 2)]
+    InvalidNumberIdent,
+    #[regex(r"[a-zA-Z][a-zA-Z0-9_]*")]
     Identifier,
     #[regex(r"[0-9]+(?:\.[0-9]+)?")]
     Number,
@@ -82,6 +86,8 @@ enum LogosTokenKind {
     Comma,
     #[token(";")]
     Semicolon,
+    #[token(":=")]
+    DestructiveAssign,
     #[token("=")]
     Assign,
 }
@@ -106,6 +112,7 @@ impl LogosTokenKind {
             LogosTokenKind::Exp => (TokenKind::Exp, lexeme.to_string()),
             LogosTokenKind::Log => (TokenKind::Log, lexeme.to_string()),
             LogosTokenKind::Rand => (TokenKind::Rand, lexeme.to_string()),
+            LogosTokenKind::In => (TokenKind::In, lexeme.to_string()),
             LogosTokenKind::Boolean => {
                 let value = lexeme.to_string();
                 (TokenKind::Boolean(value.clone()), value)
@@ -141,6 +148,7 @@ impl LogosTokenKind {
             LogosTokenKind::And => (TokenKind::And, lexeme.to_string()),
             LogosTokenKind::Or => (TokenKind::Or, lexeme.to_string()),
             LogosTokenKind::Not => (TokenKind::Not, lexeme.to_string()),
+            LogosTokenKind::DestructiveAssign => (TokenKind::DestructiveAssign, lexeme.to_string()),
             LogosTokenKind::LeftParen => (TokenKind::LeftParen, lexeme.to_string()),
             LogosTokenKind::RightParen => (TokenKind::RightParen, lexeme.to_string()),
             LogosTokenKind::LeftBrace => (TokenKind::LeftBrace, lexeme.to_string()),
@@ -148,6 +156,9 @@ impl LogosTokenKind {
             LogosTokenKind::Comma => (TokenKind::Comma, lexeme.to_string()),
             LogosTokenKind::Semicolon => (TokenKind::Semicolon, lexeme.to_string()),
             LogosTokenKind::Assign => (TokenKind::Assign, lexeme.to_string()),
+            LogosTokenKind::InvalidNumberIdent => {
+                unreachable!("InvalidNumberIdent is handled before into_token")
+            }
         };
 
         Token {
@@ -191,6 +202,22 @@ impl Lexer {
             let token_column = column;
 
             match next {
+                Ok(LogosTokenKind::InvalidNumberIdent) => {
+                    self.errors.push(CompilerError::new(
+                        ErrorCategory::Lexical,
+                        format!("Identifier cannot start with a digit: {}", lexeme),
+                        token_line,
+                        token_column,
+                    ));
+                    tokens.push(Token {
+                        kind: TokenKind::Unknown,
+                        value: lexeme.to_string(),
+                        line: token_line,
+                        column: token_column,
+                        start: span.start,
+                        end: span.end,
+                    });
+                }
                 Ok(kind) => tokens.push(kind.into_token(
                     lexeme,
                     token_line,

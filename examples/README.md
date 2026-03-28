@@ -73,6 +73,27 @@ Bloques como expresiones con scope léxico.
 - El valor del bloque es la última expresión (sin `;` obligatorio)
 - Variables internas no se filtran afuera
 
+### `destructive_assign_ok.hulk`
+Asignación destructiva `:=` que sobrescribe variables declaradas.
+- Devuelve el valor asignado (es una expresión)
+- Mantiene el tipo declarado
+
+### `print_expr_ok.hulk`
+`print` como expresión que devuelve el valor impreso.
+- Puede usarse dentro de `let ... in ...`
+- El valor de retorno es el argumento de `print`
+
+### `let_in_ok.hulk`
+Ligaduras locales con `let ... in ...`.
+- Varias ligaduras separadas por coma
+- Scope limitado al cuerpo (`in ...`)
+- Devuelve el valor de la última expresión del cuerpo
+
+### `let_in_shadow.hulk`
+Shadowing dentro de `let-in`.
+- La ligadura más interna es la que se usa en el cuerpo
+- La variable externa mantiene su valor original
+
 ## Archivos de Prueba de Error
 
 ### `error_type_mismatch_add.hulk`
@@ -129,6 +150,26 @@ Bloques como expresiones con scope léxico.
 **Tipo de error:** Syntax
 - Llamada inválida `rand(1)`
 - Error esperado: `rand` solo admite 0 argumentos
+
+### `destructive_assign_type_error.hulk`
+**Tipo de error:** Semantic - Type Mismatch
+- Reasigna con `:=` cambiando el tipo de la variable
+- Error esperado: mensaje de tipo incompatible en `:=`
+
+### `identifier_invalid.hulk`
+**Tipo de error:** Lexical
+- Usa identificadores inválidos (`_x`, `8ball`)
+- Error esperado: reporte léxico de tokens desconocidos
+
+### `let_in_type_error.hulk`
+**Tipo de error:** Semantic - Type Mismatch
+- Usa `let a = true in a + 1`
+- Error esperado: `Operator '+' expects Number and Number`
+
+### `let_in_parser_error.hulk`
+**Tipo de error:** Syntax
+- Falta la palabra clave `in` en una expresión `let`
+- Error esperado: error de análisis sintáctico en `let`
 
 ### `error_scope_leak.hulk`
 **Tipo de error:** Semantic - Undefined Variable

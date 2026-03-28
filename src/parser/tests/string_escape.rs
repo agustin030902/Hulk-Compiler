@@ -1,7 +1,7 @@
 use crate::lexer::{Lexer, Token, TokenKind};
 use crate::parser::{
     Parser,
-    expression::{Expr, Literal, Program, Statement},
+    expression::{BuiltinFunction, Expr, Literal, Program, Statement},
 };
 
 fn parse_program(source: &str) -> Program {
@@ -36,6 +36,15 @@ fn parse_program_from_tokens(source: &str, tokens: Vec<Token>) -> Program {
     program.expect("parser did not produce a program")
 }
 
+fn unwrap_print_arg<'a>(expr: &'a Expr) -> &'a Expr {
+    if let Expr::BuiltinCall(call) = expr {
+        if matches!(call.function, BuiltinFunction::Print) {
+            return call.args.first().expect("print call should have arg");
+        }
+    }
+    expr
+}
+
 fn token(kind: TokenKind, start: usize, end: usize) -> Token {
     let value = match &kind {
         TokenKind::Identifier(v)
@@ -52,7 +61,9 @@ fn token(kind: TokenKind, start: usize, end: usize) -> Token {
         TokenKind::Exp => "exp".to_string(),
         TokenKind::Log => "log".to_string(),
         TokenKind::Rand => "rand".to_string(),
+        TokenKind::In => "in".to_string(),
         TokenKind::Assign => "=".to_string(),
+        TokenKind::DestructiveAssign => ":=".to_string(),
         TokenKind::Add => "+".to_string(),
         TokenKind::Power => "^".to_string(),
         TokenKind::Concat => "@".to_string(),
@@ -93,10 +104,13 @@ fn parses_escaped_double_quote_in_string_literal() {
     let program = parse_program(r#"print("The message is \"Hello World\"");"#);
 
     assert_eq!(program.statements.len(), 1);
-    let Statement::Print { value, .. } = &program.statements[0] else {
-        panic!("expected print statement");
+    let value = match &program.statements[0] {
+        Statement::Expr { value, .. } => value,
+        Statement::Print { value, .. } => value,
+        _ => panic!("expected print statement"),
     };
 
+    let value = unwrap_print_arg(value);
     assert!(matches!(
         value,
         Expr::Literal {
@@ -111,10 +125,13 @@ fn parses_newline_and_tab_escape_sequences_in_string_literal() {
     let program = parse_program(r#"print("Line1\nLine2\tDone");"#);
 
     assert_eq!(program.statements.len(), 1);
-    let Statement::Print { value, .. } = &program.statements[0] else {
-        panic!("expected print statement");
+    let value = match &program.statements[0] {
+        Statement::Expr { value, .. } => value,
+        Statement::Print { value, .. } => value,
+        _ => panic!("expected print statement"),
     };
 
+    let value = unwrap_print_arg(value);
     assert!(matches!(
         value,
         Expr::Literal {
@@ -137,9 +154,12 @@ fn parser_normalizes_escaped_sequences_from_string_tokens() {
     ];
     let program = parse_program_from_tokens(source, tokens);
 
-    let Statement::Print { value, .. } = &program.statements[0] else {
-        panic!("expected print statement");
+    let value = match &program.statements[0] {
+        Statement::Expr { value, .. } => value,
+        Statement::Print { value, .. } => value,
+        _ => panic!("expected print statement"),
     };
+    let value = unwrap_print_arg(value);
     assert!(matches!(
         value,
         Expr::Literal {
@@ -168,9 +188,12 @@ fn parser_normalizes_escaped_quotes_inside_concat_operands() {
     ];
     let program = parse_program_from_tokens(source, tokens);
 
-    let Statement::Print { value, .. } = &program.statements[0] else {
-        panic!("expected print statement");
+    let value = match &program.statements[0] {
+        Statement::Expr { value, .. } => value,
+        Statement::Print { value, .. } => value,
+        _ => panic!("expected print statement"),
     };
+    let value = unwrap_print_arg(value);
     let Expr::Binary(binary) = value else {
         panic!("expected binary expression");
     };

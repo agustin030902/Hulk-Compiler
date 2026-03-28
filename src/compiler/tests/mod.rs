@@ -1,3 +1,6 @@
+mod destructive_assign;
+mod let_in;
+mod print_expr;
 mod rand_expression;
 mod string_escape;
 

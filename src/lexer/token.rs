@@ -5,6 +5,7 @@ pub enum TokenKind {
     String(String),
     Boolean(String),
     Let,
+    While,
     Print,
     Pi,
     E,

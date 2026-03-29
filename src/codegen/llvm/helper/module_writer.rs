@@ -65,7 +65,11 @@ impl LlvmBackend {
         out.push("  call void @srand(i32 %t_seed_i32)".to_string());
 
         for line in &self.body_lines {
-            out.push(format!("  {line}"));
+            if line.ends_with(':') {
+                out.push(line.clone());
+            } else {
+                out.push(format!("  {line}"));
+            }
         }
 
         out.push("  ret i32 0".to_string());

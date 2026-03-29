@@ -3,6 +3,30 @@ use crate::parser::expression::{BuiltinFunction, Expr, Span};
 use super::super::{SemanticType, analyzer::SemanticAnalyzer};
 
 impl SemanticAnalyzer {
+    pub(in crate::semantic) fn check_print_argument(
+        &mut self,
+        arg: &Expr,
+        span: Span,
+        source: &str,
+    ) -> Option<SemanticType> {
+        let arg_type = self.check_expr(arg, source)?;
+
+        if arg_type == SemanticType::Unknown {
+            return Some(SemanticType::Unknown);
+        }
+
+        if arg_type == SemanticType::Unit {
+            self.push_type_error(
+                span,
+                source,
+                "Function 'print' expects a non-Unit argument, but got Unit.".to_string(),
+            );
+            return None;
+        }
+
+        Some(SemanticType::Unit)
+    }
+
     pub(super) fn check_builtin_call(
         &mut self,
         function: BuiltinFunction,
@@ -20,8 +44,7 @@ impl SemanticAnalyzer {
                     );
                     return None;
                 };
-                let ty = self.check_expr(arg, source)?;
-                Some(ty)
+                self.check_print_argument(arg, span, source)
             }
             BuiltinFunction::Sin
             | BuiltinFunction::Cos

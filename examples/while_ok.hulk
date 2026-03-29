@@ -1,0 +1,8 @@
+let i = 0;
+let loop_result = while (i < 3) {
+    print(i);
+    i = i + 1;
+};
+
+loop_result;
+print(i);

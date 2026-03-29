@@ -2,6 +2,7 @@ mod destructive_assign;
 mod let_in;
 mod print_expr;
 mod string_escape;
+mod while_expr;
 
 use crate::lexer::Lexer;
 

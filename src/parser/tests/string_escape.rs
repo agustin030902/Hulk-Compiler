@@ -52,6 +52,7 @@ fn token(kind: TokenKind, start: usize, end: usize) -> Token {
         | TokenKind::String(v)
         | TokenKind::Boolean(v) => v.clone(),
         TokenKind::Let => "let".to_string(),
+        TokenKind::While => "while".to_string(),
         TokenKind::Print => "print".to_string(),
         TokenKind::Pi => "PI".to_string(),
         TokenKind::E => "E".to_string(),

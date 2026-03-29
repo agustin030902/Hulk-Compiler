@@ -3,6 +3,7 @@ mod let_in;
 mod print_expr;
 mod rand_expression;
 mod string_escape;
+mod while_expr;
 
 use std::{
     fs,

@@ -22,10 +22,23 @@ fn analyze(source: &str) -> Vec<crate::error::CompilerError> {
 }
 
 #[test]
-fn print_expression_returns_value_type() {
+fn print_expression_returns_unit_type() {
     let source = r#"
-let x = print(5) in print(x);
+let side = print(5) in { side; 42 };
 "#;
     let errors = analyze(source);
     assert!(errors.is_empty(), "unexpected errors: {:?}", errors);
+}
+
+#[test]
+fn rejects_printing_unit_value() {
+    let source = r#"
+let side = print(5) in print(side);
+"#;
+    let errors = analyze(source);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(
+        errors[0].message,
+        "Function 'print' expects a non-Unit argument, but got Unit."
+    );
 }

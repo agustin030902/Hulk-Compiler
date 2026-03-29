@@ -34,3 +34,36 @@ fn generates_ir_for_block_expression_scope() {
         "expected printf call for print statement"
     );
 }
+
+#[test]
+fn generates_ir_for_while_expression_and_unit_storage() {
+    let source = r#"
+let i = 0;
+let loop_result = while (i < 2) {
+    i = i + 1;
+};
+print(i);
+"#;
+    let ir = compile_source(source).expect("codegen should succeed");
+
+    assert!(
+        ir.contains("while.cond."),
+        "expected condition label for while loop, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("while.body."),
+        "expected body label for while loop, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("while.end."),
+        "expected exit label for while loop, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("alloca i8"),
+        "expected Unit storage for loop_result, got:\n{}",
+        ir
+    );
+}

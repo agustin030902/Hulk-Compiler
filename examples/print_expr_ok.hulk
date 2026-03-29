@@ -1,1 +1,4 @@
-let x = print(5) in print(x);
+let side = print(5) in {
+    side;
+    print(7)
+};

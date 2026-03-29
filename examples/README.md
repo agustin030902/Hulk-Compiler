@@ -79,9 +79,15 @@ Asignación destructiva `:=` que sobrescribe variables declaradas.
 - Mantiene el tipo declarado
 
 ### `print_expr_ok.hulk`
-`print` como expresión que devuelve el valor impreso.
+`print` como expresión de efecto lateral que devuelve `Unit`.
 - Puede usarse dentro de `let ... in ...`
-- El valor de retorno es el argumento de `print`
+- El valor de retorno es `Unit` y puede ignorarse o almacenarse
+
+### `while_ok.hulk`
+Loop `while` como expresión.
+- La condición debe evaluar a `Boolean`
+- El cuerpo es un bloque `{ ... }`
+- El valor de retorno del `while` es `Unit`
 
 ### `let_in_ok.hulk`
 Ligaduras locales con `let ... in ...`.
@@ -175,6 +181,16 @@ Shadowing dentro de `let-in`.
 **Tipo de error:** Semantic - Undefined Variable
 - Usa una variable declarada dentro de un bloque fuera de su scope
 - Error esperado: variable no declarada
+
+### `while_condition_type_error.hulk`
+**Tipo de error:** Semantic - Type Mismatch
+- Usa un `while` con condición no booleana
+- Error esperado: `While condition expects Boolean, but got Number`
+
+### `unit_type_error.hulk`
+**Tipo de error:** Semantic - Type Mismatch
+- Usa un valor `Unit` en una operación aritmética
+- Error esperado: `Operator '+' expects Number and Number, but got Unit and Number`
 
 ## Cómo ejecutar los ejemplos
 

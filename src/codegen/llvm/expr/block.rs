@@ -1,6 +1,9 @@
 use crate::parser::expression::BlockExpr;
 
-use super::super::{backend::LlvmBackend, helper::state::ValueRef};
+use super::super::{
+    backend::LlvmBackend,
+    helper::state::{ValueRef, ValueType},
+};
 
 impl LlvmBackend {
     pub(super) fn emit_block_expr(&mut self, block: &BlockExpr) -> Option<ValueRef> {
@@ -15,11 +18,13 @@ impl LlvmBackend {
 
         self.pop_scope();
 
-        if let Some(value) = last_value {
-            Some(value)
+        if block.statements.is_empty() {
+            Some(ValueRef {
+                value_type: ValueType::Unit,
+                repr: "0".to_string(),
+            })
         } else {
-            self.semantic_error("Block expression must produce a value");
-            None
+            last_value
         }
     }
 }

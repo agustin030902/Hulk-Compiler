@@ -21,7 +21,7 @@ impl SemanticAnalyzer {
         self.pop_scope();
 
         if block.statements.is_empty() {
-            Some(SemanticType::Unknown)
+            Some(SemanticType::Unit)
         } else {
             last_type
         }

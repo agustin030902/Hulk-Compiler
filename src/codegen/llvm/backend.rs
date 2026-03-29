@@ -15,6 +15,7 @@ pub struct LlvmBackend {
     pub(super) errors: Vec<CompilerError>,
     pub(super) scopes: Vec<HashMap<String, VariableInfo>>,
     pub(super) temp_counter: usize,
+    pub(super) label_counter: usize,
     pub(super) string_counter: usize,
 }
 
@@ -29,6 +30,7 @@ impl LlvmBackend {
         self.errors.clear();
         self.scopes.clear();
         self.temp_counter = 0;
+        self.label_counter = 0;
         self.string_counter = 0;
         self.push_scope();
     }
@@ -45,6 +47,12 @@ impl LlvmBackend {
         let current = self.temp_counter;
         self.temp_counter += 1;
         format!("%t{}", current)
+    }
+
+    pub(super) fn next_label(&mut self, prefix: &str) -> String {
+        let current = self.label_counter;
+        self.label_counter += 1;
+        format!("{prefix}.{current}")
     }
 
     pub(super) fn next_string_name(&mut self) -> String {

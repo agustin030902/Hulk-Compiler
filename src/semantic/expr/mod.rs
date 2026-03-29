@@ -6,6 +6,7 @@ mod let_in;
 mod literal;
 mod unary;
 mod variable;
+mod while_expr;
 
 use crate::parser::expression::Expr;
 
@@ -20,6 +21,7 @@ impl SemanticAnalyzer {
             Expr::Unary(unary) => self.check_unary_expr(unary, source),
             Expr::Block(block) => self.check_block_expr(block, source),
             Expr::LetIn(let_in) => self.check_let_in_expr(let_in, source),
+            Expr::While(while_expr) => self.check_while_expr(while_expr, source),
             Expr::BuiltinCall(call) => {
                 self.check_builtin_call(call.function, &call.args, call.span, source)
             }

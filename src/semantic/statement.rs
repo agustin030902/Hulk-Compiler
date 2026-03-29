@@ -33,7 +33,7 @@ impl SemanticAnalyzer {
                 self.current_scope_mut().insert(name.clone(), value_type);
                 Some(value_type)
             }
-            Statement::Print { value, .. } => self.check_expr(value, source),
+            Statement::Print { value, span } => self.check_print_argument(value, *span, source),
             Statement::Expr { value, .. } => self.check_expr(value, source),
             Statement::Assign {
                 name,

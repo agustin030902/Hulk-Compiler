@@ -3,6 +3,7 @@ pub enum SemanticType {
     Number,
     Boolean,
     String,
+    Unit,
     Unknown,
 }
 
@@ -12,6 +13,7 @@ impl SemanticType {
             SemanticType::Number => "Number",
             SemanticType::Boolean => "Boolean",
             SemanticType::String => "String",
+            SemanticType::Unit => "Unit",
             SemanticType::Unknown => "Unknown",
         }
     }

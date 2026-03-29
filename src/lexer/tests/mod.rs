@@ -1,6 +1,7 @@
 mod identifier_rules;
 mod let_in;
 mod string_escape;
+mod while_expr;
 
 use super::{Lexer, TokenKind};
 

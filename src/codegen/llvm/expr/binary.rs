@@ -165,6 +165,10 @@ impl LlvmBackend {
                     repr: result,
                 })
             }
+            ValueType::Unit => {
+                self.semantic_error("Equality operators do not support Unit values");
+                None
+            }
         }
     }
 

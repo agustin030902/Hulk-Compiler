@@ -120,6 +120,7 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::String(v) => format!("string({})", v),
         TokenKind::Boolean(v) => format!("boolean({})", v),
         TokenKind::Let => "let".to_string(),
+        TokenKind::While => "while".to_string(),
         TokenKind::Print => "print".to_string(),
         TokenKind::Pi => "PI".to_string(),
         TokenKind::E => "E".to_string(),

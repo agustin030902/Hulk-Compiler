@@ -47,6 +47,7 @@ pub enum Expr {
     DestructiveAssign(DestructiveAssignExpr),
     LetIn(LetInExpr),
     Block(BlockExpr),
+    While(WhileExpr),
     Literal { value: Literal, span: Span },
     Variable { name: String, span: Span },
 }
@@ -60,6 +61,7 @@ impl Expr {
             Expr::DestructiveAssign(assign) => assign.span,
             Expr::LetIn(let_in) => let_in.span,
             Expr::Block(block) => block.span,
+            Expr::While(while_expr) => while_expr.span,
             Expr::Literal { span, .. } => *span,
             Expr::Variable { span, .. } => *span,
         }
@@ -114,6 +116,13 @@ pub struct BlockExpr {
 pub struct LetInExpr {
     pub bindings: Vec<LetBinding>,
     pub body: Box<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct WhileExpr {
+    pub condition: Box<Expr>,
+    pub body: BlockExpr,
     pub span: Span,
 }
 

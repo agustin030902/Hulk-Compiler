@@ -6,6 +6,13 @@ use super::super::{
 };
 
 impl LlvmBackend {
+    pub(in crate::codegen::llvm) fn unit_value(&self) -> ValueRef {
+        ValueRef {
+            value_type: ValueType::Unit,
+            repr: "0".to_string(),
+        }
+    }
+
     pub(super) fn emit_builtin_call(
         &mut self,
         function: BuiltinFunction,
@@ -18,8 +25,12 @@ impl LlvmBackend {
                     return None;
                 };
                 let value = self.emit_expr(arg_expr)?;
+                if value.value_type == ValueType::Unit {
+                    self.semantic_error("Function 'print' expects a non-Unit argument");
+                    return None;
+                }
                 self.emit_print_value(&value);
-                Some(value)
+                Some(self.unit_value())
             }
             BuiltinFunction::Sin
             | BuiltinFunction::Cos

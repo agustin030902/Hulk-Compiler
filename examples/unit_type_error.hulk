@@ -1,0 +1,2 @@
+let side = print(5);
+let invalid = side + 1;

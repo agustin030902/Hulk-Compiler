@@ -6,6 +6,7 @@ mod let_in;
 mod literal;
 mod unary;
 mod variable;
+mod while_expr;
 
 use crate::parser::expression::Expr;
 
@@ -20,6 +21,7 @@ impl LlvmBackend {
             Expr::Block(block) => self.emit_block_expr(block),
             Expr::DestructiveAssign(assign) => self.emit_destructive_assign(assign),
             Expr::LetIn(let_in) => self.emit_let_in_expr(let_in),
+            Expr::While(while_expr) => self.emit_while_expr(while_expr),
             Expr::BuiltinCall(call) => self.emit_builtin_call(call.function, &call.args),
             Expr::Binary(binary) => self.emit_binary_expr(binary),
         }

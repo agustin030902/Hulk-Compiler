@@ -1,7 +1,7 @@
 use crate::lexer::TokenKind;
 use crate::parser::expression::{
     BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction, DestructiveAssignExpr, Expr,
-    LetBinding, LetInExpr, Literal, Program, Span, Statement, UnaryExpr, UnaryOp,
+    LetBinding, LetInExpr, Literal, Program, Span, Statement, UnaryExpr, UnaryOp, WhileExpr,
 };
 
 grammar;
@@ -12,6 +12,7 @@ extern {
 
     enum TokenKind {
         "let" => TokenKind::Let,
+        "while" => TokenKind::While,
         "print" => TokenKind::Print,
         "PI" => TokenKind::Pi,
         "E" => TokenKind::E,
@@ -269,6 +270,7 @@ Power: Expr = {
 };
 
 Primary: Expr = {
+    WhileExpr,
     BlockExpr,
     <call:BuiltinCallExpr> => call,
     <literal:LiteralExpr> => literal,
@@ -330,6 +332,20 @@ BlockExpr: Expr = {
         statements,
         span: Span::new(l, r),
     }),
+};
+
+WhileExpr: Expr = {
+    <l:@L> "while" "(" <condition:Expr> ")" <body:BlockExpr> <r:@R> =>? {
+        let Expr::Block(body) = body else {
+            unreachable!("BlockExpr rule must produce Expr::Block");
+        };
+
+        Ok(Expr::While(WhileExpr {
+            condition: Box::new(condition),
+            body,
+            span: Span::new(l, r),
+        }))
+    },
 };
 
 LiteralExpr: Expr = {

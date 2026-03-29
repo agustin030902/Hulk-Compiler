@@ -14,6 +14,8 @@ pub use token::TokenKind;
 enum LogosTokenKind {
     #[token("let", priority = 3)]
     Let,
+    #[token("while", priority = 3)]
+    While,
     #[token("print", priority = 3)]
     Print,
     #[token("PI", priority = 3)]
@@ -103,6 +105,7 @@ impl LogosTokenKind {
     ) -> Token {
         let (kind, value) = match self {
             LogosTokenKind::Let => (TokenKind::Let, lexeme.to_string()),
+            LogosTokenKind::While => (TokenKind::While, lexeme.to_string()),
             LogosTokenKind::Print => (TokenKind::Print, lexeme.to_string()),
             LogosTokenKind::Pi => (TokenKind::Pi, lexeme.to_string()),
             LogosTokenKind::E => (TokenKind::E, lexeme.to_string()),

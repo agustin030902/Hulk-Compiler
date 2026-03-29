@@ -9,6 +9,7 @@ pub(in crate::codegen::llvm) enum ValueType {
     Double,
     Bool,
     StringPtr,
+    Unit,
 }
 
 impl ValueType {
@@ -17,6 +18,7 @@ impl ValueType {
             ValueType::Double => "double",
             ValueType::Bool => "i1",
             ValueType::StringPtr => "i8*",
+            ValueType::Unit => "i8",
         }
     }
 
@@ -25,6 +27,7 @@ impl ValueType {
             ValueType::Double => "Number",
             ValueType::Bool => "Boolean",
             ValueType::StringPtr => "String",
+            ValueType::Unit => "Unit",
         }
     }
 }

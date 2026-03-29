@@ -30,8 +30,12 @@ impl LlvmBackend {
             }
             Statement::Print { value, .. } => {
                 let value_ref = self.emit_expr(value)?;
+                if value_ref.value_type == ValueType::Unit {
+                    self.semantic_error("Function 'print' expects a non-Unit argument");
+                    return None;
+                }
                 self.emit_print_value(&value_ref);
-                Some(value_ref)
+                Some(self.unit_value())
             }
             Statement::Expr { value, .. } => self.emit_expr(value),
             Statement::Assign { name, value, .. } => {
@@ -80,6 +84,9 @@ impl LlvmBackend {
                 self.emit_body(format!(
                     "{call_tmp} = call i32 (i8*, ...) @printf(i8* {fmt}, i32 {bool_tmp})"
                 ));
+            }
+            ValueType::Unit => {
+                self.semantic_error("Function 'print' expects a non-Unit argument");
             }
         }
     }

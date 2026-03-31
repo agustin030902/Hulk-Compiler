@@ -1,0 +1,23 @@
+Proyecto de Compilación/LP
+
+Implementar un compilador de HULK, con las siguientes condiciones:
+- _Stack_: Debe ser desarrollado enteramente en C, C++, o Rust, sin excepciones.
+- _Frontend_: Puede utilizar generadores de parser y lexer o implementarlos manualmente.
+- _Backend_: Puede generar código de máquina directamente, o utilizar LLVM como backend. Puede adicionalmente implementar un backend (tipo máquina virtual) en C, C++, o Rust y generar código intermedio propio para ejecutar en ese backend.
+
+Features: 
+- Debe implementar TODOS los features de HULK hasta verificación de tipos (documentación, sección 16.8, incluido).
+- Debe implementar al menos un feature adicional que involucre modificaciones a la sintaxis y semántica. Puede ser uno de los features definidos en la documentación (secciones 16.9 en adelante) o inventado por usted.
+- Dos equipos diferentes no pueden implementar el mismo feature de la misma manera (por lo que se les sugiere que aunque escojan un feature de los documentados, le hagan algunas extensiones propias).
+
+Entregables:
+- Repositorio en Github / Gitlab (MatCom) con CI/CD pasando todos los tests estandar de HULK (se los daremos en su momento).
+- Reporte en LaTeX sobre el proyecto, incluyendo la definición y análisis de su(s) extension(es) a HULK.
+
+El reporte formará parte de la evaluación formal. Es crucial que para la evaluación de la asignatura LP, dicho reporte contenga un análisis detallado de las extensiones propuestas a HULK y comparativas con otros lenguajes, que justifiquen sus decisiones de diseño. Mínimo 20 páginas en total.
+
+Equipos: Tres personas (salvo casos excepcionales consultados con el profesor) y a lo sumo dos animales afectivos (perros, gatos, hamsters, etc, los reptiles no cuentan).
+
+Fecha de entrega: Por definir, tentativamente 3 semanas antes de terminar el curso, si algún día termina.
+
+Documentación de HULK: https://matcom.github.io/hulk/appendix-hulk-syntax.html

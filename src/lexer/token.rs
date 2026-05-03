@@ -41,6 +41,9 @@ pub enum TokenKind {
     RightParen,
     Unknown,
     EOF,
+    If,
+    Else,
+    Elif,
 }
 
 #[derive(Clone, Debug)]

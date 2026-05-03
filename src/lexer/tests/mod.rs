@@ -1,3 +1,4 @@
+mod conditionals;
 mod identifier_rules;
 mod let_in;
 mod string_escape;

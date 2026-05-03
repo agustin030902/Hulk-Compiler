@@ -1,9 +1,9 @@
-let a = 42, let mod = a % 3 in
+let a = 3 in
   print(
-    if (mod == 0) 
-      "Magic"
-    elif (mod == 1) 
-      "Woke"
+    if (a == 0) 
+      "Zero"
+    elif (a == 1) 
+      "One"
     else 
-      "Dumb"
+      "Other"
   );

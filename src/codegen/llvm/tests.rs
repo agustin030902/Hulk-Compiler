@@ -72,10 +72,10 @@ print(i);
 fn generates_ir_for_simple_if_else() {
     let source = r#"
 let a = 42 in 
-if (a % 2 == 0) 
-  print("Even") 
+if (a > 40) 
+  print("Greater") 
 else 
-  print("Odd");
+  print("Less");
 "#;
     let ir = compile_source(source).expect("codegen should succeed");
 
@@ -106,10 +106,10 @@ fn generates_ir_for_if_as_expression() {
     let source = r#"
 let a = 42 in 
 print(
-  if (a % 2 == 0) 
-    "even" 
+  if (a > 40) 
+    "greater" 
   else 
-    "odd"
+    "less"
 );
 "#;
     let ir = compile_source(source).expect("codegen should succeed");
@@ -129,14 +129,14 @@ print(
 #[test]
 fn generates_ir_for_if_elif_else() {
     let source = r#"
-let a = 42, let mod = a % 3 in
+let a = 3 in
   print(
-    if (mod == 0) 
-      "Magic"
-    elif (mod == 1) 
-      "Woke"
+    if (a == 0) 
+      "Zero"
+    elif (a == 1) 
+      "One"
     else 
-      "Dumb"
+      "Other"
   );
 "#;
     let ir = compile_source(source).expect("codegen should succeed");

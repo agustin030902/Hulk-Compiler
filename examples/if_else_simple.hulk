@@ -1,5 +1,5 @@
 let a = 42 in 
-if (a % 2 == 0) 
-  print("Even") 
+if (a > 40) 
+  print("Greater") 
 else 
-  print("Odd");
+  print("Less");

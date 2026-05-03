@@ -1,6 +1,6 @@
 let a = 42 in
-  if (a % 2 == 0) {
+  if (a > 40) {
     print(a);
-    print("Even");
+    print("Greater");
   }
-  else print("Odd");
+  else print("Less");

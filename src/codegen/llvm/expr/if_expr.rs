@@ -32,10 +32,13 @@ impl LlvmBackend {
         self.emit_body(format!("{then_label}:"));
         let then_value = self.emit_expr(&if_expr.then_branch)?;
         let result_type = then_value.value_type;
+        let then_result_repr = then_value.repr.clone();
         self.emit_body(format!("br label %{end_label}"));
 
         // Emit elif branches
         let mut current_next_label = next_label;
+        let mut branch_results = vec![(then_result_repr, then_label)];
+        
         for (idx, elif_branch) in if_expr.elif_branches.iter().enumerate() {
             self.emit_body(format!("{current_next_label}:"));
 
@@ -67,6 +70,8 @@ impl LlvmBackend {
                 ));
                 return None;
             }
+            let elif_result_repr = elif_value.repr.clone();
+            branch_results.push((elif_result_repr, elif_then_label));
             self.emit_body(format!("br label %{end_label}"));
             current_next_label = elif_next_label;
         }
@@ -82,11 +87,36 @@ impl LlvmBackend {
             ));
             return None;
         }
+        let else_result_repr = else_value.repr.clone();
+        let else_label_repr = current_next_label.clone();
+        branch_results.push((else_result_repr, else_label_repr));
         self.emit_body(format!("br label %{end_label}"));
 
-        // End label
+        // End label with phi node if needed
         self.emit_body(format!("{end_label}:"));
-
-        Some(then_value)
+        
+        if result_type != ValueType::Unit {
+            // Generate phi node for merging values from all branches
+            let result = self.next_temp();
+            let llvm_type = result_type.llvm_type();
+            
+            let phi_args = branch_results
+                .iter()
+                .map(|(val_repr, label_repr)| format!("[ {}, %{} ]", val_repr, label_repr))
+                .collect::<Vec<_>>()
+                .join(", ");
+            
+            self.emit_body(format!(
+                "{} = phi {} {}",
+                result, llvm_type, phi_args
+            ));
+            
+            Some(ValueRef {
+                value_type: result_type,
+                repr: result,
+            })
+        } else {
+            Some(then_value)
+        }
     }
 }

@@ -1,7 +1,7 @@
 let a = 42 in 
 print(
-  if (a % 2 == 0) 
-    "even" 
+  if (a > 40) 
+    "greater" 
   else 
-    "odd"
+    "less"
 );

@@ -148,7 +148,8 @@ impl HulkGui {
 }
 
 impl eframe::App for HulkGui {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) 
+    {
         egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
             ui.spacing_mut().item_spacing.x = 8.0;
             ui.horizontal_wrapped(|ui| {

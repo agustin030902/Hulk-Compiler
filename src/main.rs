@@ -241,19 +241,11 @@ fn run_all(config: RunAllConfig) {
                     ) {
                         Ok(exe) => {
                             exe_ok += 1;
-                            println!(
-                                "EXE   [{}] -> {}",
-                                file_path.display(),
-                                exe.display()
-                            );
+                            println!("EXE   [{}] -> {}", file_path.display(), exe.display());
                         }
                         Err(err) => {
                             exe_fail += 1;
-                            eprintln!(
-                                "EXE FAIL [{}]: {}",
-                                file_path.display(),
-                                err
-                            );
+                            eprintln!("EXE FAIL [{}]: {}", file_path.display(), err);
                         }
                     }
                 } else {

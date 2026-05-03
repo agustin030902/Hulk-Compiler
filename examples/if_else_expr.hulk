@@ -1,0 +1,7 @@
+let a = 42 in 
+print(
+  if (a % 2 == 0) 
+    "even" 
+  else 
+    "odd"
+);

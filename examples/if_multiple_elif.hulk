@@ -1,0 +1,11 @@
+let a = 5 in
+  print(
+    if (a < 0)
+      "Negative"
+    elif (a == 0)
+      "Zero"
+    elif (a < 10)
+      "Single digit"
+    else
+      "Greater than 10"
+  );

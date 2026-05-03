@@ -2,6 +2,7 @@ mod binary;
 mod block;
 mod builtin_call;
 mod destructive_assign;
+mod if_expr;
 mod let_in;
 mod literal;
 mod unary;
@@ -22,6 +23,7 @@ impl SemanticAnalyzer {
             Expr::Block(block) => self.check_block_expr(block, source),
             Expr::LetIn(let_in) => self.check_let_in_expr(let_in, source),
             Expr::While(while_expr) => self.check_while_expr(while_expr, source),
+            Expr::If(if_expr) => self.check_if_expr(if_expr, source),
             Expr::BuiltinCall(call) => {
                 self.check_builtin_call(call.function, &call.args, call.span, source)
             }

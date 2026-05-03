@@ -87,8 +87,10 @@ impl HulkGui {
             match report.output_kind {
                 Some(OutputKind::LlvmIr) => {
                     // Ejecutar automáticamente con lli si se generó IR
+                    //self.exec_output =
+                        //run_lli(&self.lli_path, &self.output_path).unwrap_or_else(|e| e);
                     self.exec_output =
-                        run_lli(&self.lli_path, &self.output_path).unwrap_or_else(|e| e);
+                        run_program(&self.lli_path, &self.output_path).unwrap_or_else(|e| e);
                     format!("OK: LLVM IR generado en {}", self.output_path.display())
                 }
                 Some(OutputKind::Diagnostics) => {
@@ -275,7 +277,7 @@ impl eframe::App for HulkGui {
                 }
             });
 
-            ui.collapsing("Salida lli", |ui| {
+            ui.collapsing("Salida del programa", |ui| {
                 if self.exec_output.is_empty() {
                     ui.label("Compila para ejecutar con lli y ver la salida.");
                 } else {
@@ -291,10 +293,14 @@ impl eframe::App for HulkGui {
                             );
                         });
                 }
-                if ui.button("Re-ejecutar lli").clicked() {
+                if ui.button("Re-ejecutar").clicked() {
                     self.exec_output =
-                        run_lli(&self.lli_path, &self.output_path).unwrap_or_else(|e| e);
+                        run_program(&self.lli_path, &self.output_path).unwrap_or_else(|e| e);
                 }
+                //if ui.button("Re-ejecutar lli").clicked() {
+                    //self.exec_output =
+                        //run_lli(&self.lli_path, &self.output_path).unwrap_or_else(|e| e);
+                //}
             });
         });
 
@@ -366,7 +372,8 @@ fn list_example_files() -> Vec<String> {
     files
 }
 
-fn run_lli(lli_path: &str, ll_path: &PathBuf) -> Result<String, String> {
+//fn run_lli(lli_path: &str, ll_path: &PathBuf) -> Result<String, String>
+fn run_with_lli(lli_path: &str, ll_path: &PathBuf) -> Result<String, String>{
     if !ll_path.exists() {
         return Err(format!(
             "No se encontró el archivo LLVM IR en {}",
@@ -390,4 +397,57 @@ fn run_lli(lli_path: &str, ll_path: &PathBuf) -> Result<String, String> {
         result.push_str(&String::from_utf8_lossy(&output.stderr));
     }
     Ok(result)
+}
+
+fn run_with_clang(ll_path: &PathBuf) -> Result<String, String> {
+    use runner::platform::Platform;
+
+    let exe_base = PathBuf::from("artifacts/gui_output");
+    let exe_path = Platform::as_executable_path(&exe_base);
+
+    // Compilar con clang
+    let compile = Command::new(Platform::clang_command())
+        .arg(ll_path)
+        .arg("-o")
+        .arg(&exe_path)
+        .output()
+        .map_err(|e| format!("Error ejecutando clang: {e}"))?;
+
+    if !compile.status.success() {
+        return Err(format!(
+            "Error compilando:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    // Ejecutar el .exe
+    let run = Command::new(&exe_path)
+        .output()
+        .map_err(|e| format!("Error ejecutando exe: {e}"))?;
+
+    let mut result = String::new();
+
+    result.push_str("Modo: clang → exe\n");
+    result.push_str(&format!("Ejecutable: {}\n", exe_path.display()));
+    result.push_str(&format!("Exit code: {:?}\n", run.status.code()));
+
+    if !run.stdout.is_empty() {
+        result.push_str("\n--- stdout ---\n");
+        result.push_str(&String::from_utf8_lossy(&run.stdout));
+    }
+
+    if !run.stderr.is_empty() {
+        result.push_str("\n--- stderr ---\n");
+        result.push_str(&String::from_utf8_lossy(&run.stderr));
+    }
+
+    Ok(result)
+}
+
+fn run_program(lli_path: &str, ll_path: &PathBuf) -> Result<String, String> {
+    if cfg!(target_os = "windows") {
+        run_with_clang(ll_path)
+    } else {
+        run_with_lli(lli_path, ll_path)
+    }
 }

@@ -48,6 +48,7 @@ pub enum Expr {
     LetIn(LetInExpr),
     Block(BlockExpr),
     While(WhileExpr),
+    If(IfExpr),
     Literal { value: Literal, span: Span },
     Variable { name: String, span: Span },
 }
@@ -62,6 +63,7 @@ impl Expr {
             Expr::LetIn(let_in) => let_in.span,
             Expr::Block(block) => block.span,
             Expr::While(while_expr) => while_expr.span,
+            Expr::If(if_expr) => if_expr.span,
             Expr::Literal { span, .. } => *span,
             Expr::Variable { span, .. } => *span,
         }
@@ -123,6 +125,22 @@ pub struct LetInExpr {
 pub struct WhileExpr {
     pub condition: Box<Expr>,
     pub body: BlockExpr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct IfExpr {
+    pub condition: Box<Expr>,
+    pub then_branch: Box<Expr>,
+    pub elif_branches: Vec<ElifBranch>,
+    pub else_branch: Box<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ElifBranch {
+    pub condition: Expr,
+    pub body: Expr,
     pub span: Span,
 }
 

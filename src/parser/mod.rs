@@ -155,6 +155,9 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::LeftParen => "(".to_string(),
         TokenKind::RightParen => ")".to_string(),
         TokenKind::Unknown => "unknown".to_string(),
+        TokenKind::If => "if".to_string(),
+        TokenKind::Else => "else".to_string(),
+        TokenKind::Elif => "elif".to_string(),
         TokenKind::EOF => "EOF".to_string(),
     }
 }

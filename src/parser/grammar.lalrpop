@@ -1,7 +1,8 @@
 use crate::lexer::TokenKind;
 use crate::parser::expression::{
     BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction, DestructiveAssignExpr, Expr,
-    LetBinding, LetInExpr, Literal, Program, Span, Statement, UnaryExpr, UnaryOp, WhileExpr,
+    ElifBranch, IfExpr, LetBinding, LetInExpr, Literal, Program, Span, Statement, UnaryExpr,
+    UnaryOp, WhileExpr,
 };
 
 grammar;
@@ -13,6 +14,9 @@ extern {
     enum TokenKind {
         "let" => TokenKind::Let,
         "while" => TokenKind::While,
+        "if" => TokenKind::If,
+        "elif" => TokenKind::Elif,
+        "else" => TokenKind::Else,
         "print" => TokenKind::Print,
         "PI" => TokenKind::Pi,
         "E" => TokenKind::E,
@@ -102,6 +106,11 @@ Statement: Statement = {
 };
 
 Expr: Expr = {
+    Conditional,
+};
+
+Conditional: Expr = {
+    IfExpr,
     LetIn,
 };
 
@@ -276,6 +285,43 @@ Primary: Expr = {
     <literal:LiteralExpr> => literal,
     <variable:VariableExpr> => variable,
     "(" <expr:Expr> ")" => expr,
+};
+
+IfExpr: Expr = {
+    <l:@L> "if" "(" <condition:Expr> ")" <then_branch:Expr> "else" <else_branch:Expr> <r:@R> => {
+        Expr::If(IfExpr {
+            condition: Box::new(condition),
+            then_branch: Box::new(then_branch),
+            elif_branches: Vec::new(),
+            else_branch: Box::new(else_branch),
+            span: Span::new(l, r),
+        })
+    },
+    <l:@L> "if" "(" <condition:Expr> ")" <then_branch:Expr> <elif_branches:ElifBranches> "else" <else_branch:Expr> <r:@R> => {
+        Expr::If(IfExpr {
+            condition: Box::new(condition),
+            then_branch: Box::new(then_branch),
+            elif_branches,
+            else_branch: Box::new(else_branch),
+            span: Span::new(l, r),
+        })
+    },
+};
+
+ElifBranches: Vec<ElifBranch> = {
+    <first:ElifBranch> <rest:ElifBranch*> => {
+        let mut branches = vec![first];
+        branches.extend(rest);
+        branches
+    },
+};
+
+ElifBranch: ElifBranch = {
+    <l:@L> "elif" "(" <condition:Expr> ")" <body:Expr> <r:@R> => ElifBranch {
+        condition,
+        body,
+        span: Span::new(l, r),
+    },
 };
 
 BuiltinCallExpr: Expr = {

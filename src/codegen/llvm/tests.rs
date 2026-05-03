@@ -67,3 +67,120 @@ print(i);
         ir
     );
 }
+
+#[test]
+fn generates_ir_for_simple_if_else() {
+    let source = r#"
+let a = 42 in 
+if (a % 2 == 0) 
+  print("Even") 
+else 
+  print("Odd");
+"#;
+    let ir = compile_source(source).expect("codegen should succeed");
+
+    assert!(
+        ir.contains("br i1"),
+        "expected conditional branch (br i1) for if expression, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("if.then."),
+        "expected then label for if expression, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("if.else."),
+        "expected else label for if expression, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("if.end."),
+        "expected end label for if expression, got:\n{}",
+        ir
+    );
+}
+
+#[test]
+fn generates_ir_for_if_as_expression() {
+    let source = r#"
+let a = 42 in 
+print(
+  if (a % 2 == 0) 
+    "even" 
+  else 
+    "odd"
+);
+"#;
+    let ir = compile_source(source).expect("codegen should succeed");
+
+    assert!(
+        ir.contains("@printf"),
+        "expected printf call for print statement, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("if.then."),
+        "expected if.then label, got:\n{}",
+        ir
+    );
+}
+
+#[test]
+fn generates_ir_for_if_elif_else() {
+    let source = r#"
+let a = 42, let mod = a % 3 in
+  print(
+    if (mod == 0) 
+      "Magic"
+    elif (mod == 1) 
+      "Woke"
+    else 
+      "Dumb"
+  );
+"#;
+    let ir = compile_source(source).expect("codegen should succeed");
+
+    assert!(
+        ir.contains("if.elif."),
+        "expected elif label for if expression with elif, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("if.elif.then."),
+        "expected elif.then label for elif branch, got:\n{}",
+        ir
+    );
+}
+
+#[test]
+fn generates_ir_for_if_multiple_elif() {
+    let source = r#"
+let a = 5 in
+  print(
+    if (a < 0)
+      "Negative"
+    elif (a == 0)
+      "Zero"
+    elif (a < 10)
+      "Single digit"
+    else
+      "Greater than 10"
+  );
+"#;
+    let ir = compile_source(source).expect("codegen should succeed");
+
+    // Count the number of elif branches
+    let elif_count = ir.matches("if.elif.").count();
+    assert!(
+        elif_count >= 2,
+        "expected at least 2 elif labels for multiple elif branches, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("if.else."),
+        "expected else label for multiple elif, got:\n{}",
+        ir
+    );
+}
+

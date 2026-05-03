@@ -2,6 +2,7 @@ mod binary;
 mod block;
 mod builtin_call;
 mod destructive_assign;
+mod if_expr;
 mod let_in;
 mod literal;
 mod unary;
@@ -22,6 +23,7 @@ impl LlvmBackend {
             Expr::DestructiveAssign(assign) => self.emit_destructive_assign(assign),
             Expr::LetIn(let_in) => self.emit_let_in_expr(let_in),
             Expr::While(while_expr) => self.emit_while_expr(while_expr),
+            Expr::If(if_expr) => self.emit_if_expr(if_expr),
             Expr::BuiltinCall(call) => self.emit_builtin_call(call.function, &call.args),
             Expr::Binary(binary) => self.emit_binary_expr(binary),
         }

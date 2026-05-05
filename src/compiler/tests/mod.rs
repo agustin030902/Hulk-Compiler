@@ -23,6 +23,43 @@ fn unique_output_path(test_name: &str) -> PathBuf {
 }
 
 #[test]
+fn writes_llvm_ir_for_recursive_function_program() {
+    let source = r#"
+function fact(n) => if (n == 0) 1 else n * fact(n - 1);
+print(fact(5));
+"#;
+    let output_path = unique_output_path("recursive_function_ir");
+
+    let mut compiler = Compiler::new();
+    let report = compiler.compile(
+        source,
+        &CompileOptions {
+            output_path: output_path.clone(),
+        },
+    );
+
+    assert!(
+        report.errors.is_empty(),
+        "expected successful compilation, got errors: {:?}",
+        report.errors
+    );
+    assert_eq!(report.output_kind, Some(OutputKind::LlvmIr));
+
+    let llvm_ir = fs::read_to_string(&output_path)
+        .expect("compiler should write llvm output file on success");
+    assert!(
+        llvm_ir.contains("define double @hulk_fact(double %n)"),
+        "output file should contain user function definition, got:\n{}",
+        llvm_ir
+    );
+    assert!(
+        llvm_ir.contains("call double @hulk_fact(double"),
+        "output file should contain user function call, got:\n{}",
+        llvm_ir
+    );
+}
+
+#[test]
 fn writes_diagnostics_txt_for_invalid_concat() {
     let source = r#"print(true @ false);"#;
     let output_path = unique_output_path("invalid_concat_diagnostics");

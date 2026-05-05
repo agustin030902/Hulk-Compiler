@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     error::{CompilerError, ErrorCategory, offset_to_line_column},
-    parser::expression::{Program, Span},
+    parser::expression::{FunctionDecl, Program, Span},
 };
 
 use super::helper::SemanticType;
@@ -10,6 +10,7 @@ use super::helper::SemanticType;
 #[derive(Debug, Default)]
 pub struct SemanticAnalyzer {
     pub(super) scopes: Vec<HashMap<String, SemanticType>>,
+    pub(super) functions: HashMap<String, usize>,
     pub(super) errors: Vec<CompilerError>,
 }
 
@@ -20,8 +21,14 @@ impl SemanticAnalyzer {
 
     pub fn analyze(&mut self, program: &Program, source: &str) -> Vec<CompilerError> {
         self.scopes.clear();
+        self.functions.clear();
         self.errors.clear();
         self.push_scope();
+
+        self.collect_functions(&program.functions, source);
+        for function in &program.functions {
+            self.check_function_decl(function, source);
+        }
 
         for statement in &program.statements {
             let _ = self.check_statement(statement, source);
@@ -93,5 +100,46 @@ impl SemanticAnalyzer {
             .last()
             .map(|scope| scope.contains_key(name))
             .unwrap_or(false)
+    }
+
+    fn collect_functions(&mut self, functions: &[FunctionDecl], source: &str) {
+        for function in functions {
+            if self.functions.contains_key(&function.name) {
+                self.push_semantic_error(
+                    function.name_span,
+                    source,
+                    format!("Function '{}' redeclared.", function.name),
+                );
+                continue;
+            }
+
+            self.functions
+                .insert(function.name.clone(), function.params.len());
+        }
+    }
+
+    fn check_function_decl(&mut self, function: &FunctionDecl, source: &str) {
+        let mut param_names = HashSet::new();
+        self.push_scope();
+
+        for param in &function.params {
+            if !param_names.insert(param.name.clone()) {
+                self.push_semantic_error(
+                    param.span,
+                    source,
+                    format!(
+                        "Parameter '{}' redeclared in function '{}'.",
+                        param.name, function.name
+                    ),
+                );
+                continue;
+            }
+
+            self.current_scope_mut()
+                .insert(param.name.clone(), SemanticType::Unknown);
+        }
+
+        let _ = self.check_expr(&function.body, source);
+        self.pop_scope();
     }
 }

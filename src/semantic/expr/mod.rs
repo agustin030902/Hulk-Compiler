@@ -2,6 +2,7 @@ mod binary;
 mod block;
 mod builtin_call;
 mod destructive_assign;
+mod function_call;
 mod if_expr;
 mod let_in;
 mod literal;
@@ -27,6 +28,7 @@ impl SemanticAnalyzer {
             Expr::BuiltinCall(call) => {
                 self.check_builtin_call(call.function, &call.args, call.span, source)
             }
+            Expr::FunctionCall(call) => self.check_function_call(call, source),
             Expr::Binary(binary) => self.check_binary_expr(binary, source),
         }
     }

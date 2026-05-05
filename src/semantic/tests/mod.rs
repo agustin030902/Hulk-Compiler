@@ -34,6 +34,37 @@ fn analyze_source(source: &str) -> Vec<crate::error::CompilerError> {
 }
 
 #[test]
+fn allows_declared_recursive_function_calls_by_arity() {
+    let source = r#"
+function fact(n) => if (n == 0) 1 else n * fact(n - 1);
+print(fact(5));
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_user_function_call_with_wrong_arity() {
+    let source = r#"
+function add_one(x) => x + 1;
+print(add_one(1, 2));
+"#;
+
+    let errors = analyze_source(source);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].category, ErrorCategory::Semantic);
+    assert_eq!(
+        errors[0].message,
+        "Function 'add_one' expects 1 argument(s), but got 2."
+    );
+}
+
+#[test]
 fn allows_concat_between_string_and_number_and_string() {
     let source = r#"
 let a = "hello " @ 1;

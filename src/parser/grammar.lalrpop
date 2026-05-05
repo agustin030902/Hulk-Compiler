@@ -1,8 +1,8 @@
 use crate::lexer::TokenKind;
 use crate::parser::expression::{
     BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction, DestructiveAssignExpr, Expr,
-    ElifBranch, IfExpr, LetBinding, LetInExpr, Literal, Program, Span, Statement, UnaryExpr,
-    UnaryOp, WhileExpr,
+    ElifBranch, FunctionCallExpr, FunctionDecl, FunctionParam, IfExpr, LetBinding, LetInExpr,
+    Literal, Program, Span, Statement, UnaryExpr, UnaryOp, WhileExpr,
 };
 
 grammar;
@@ -13,6 +13,7 @@ extern {
 
     enum TokenKind {
         "let" => TokenKind::Let,
+        "function" => TokenKind::Function,
         "while" => TokenKind::While,
         "if" => TokenKind::If,
         "elif" => TokenKind::Elif,
@@ -28,6 +29,7 @@ extern {
         "rand" => TokenKind::Rand,
         "in" => TokenKind::In,
         ":=" => TokenKind::DestructiveAssign,
+        "=>" => TokenKind::Arrow,
         "=" => TokenKind::Assign,
         "+" => TokenKind::Add,
         "^" => TokenKind::Power,
@@ -60,7 +62,57 @@ extern {
 }
 
 pub Program: Program = {
-    <statements:Statements> "eof" => Program { statements },
+    <functions:FunctionDecls> <statements:Statements> "eof" => Program { functions, statements },
+};
+
+FunctionDecls: Vec<FunctionDecl> = {
+    => vec![],
+    <first:FunctionDecl> <rest:FunctionDecls> => {
+        let mut functions = vec![first];
+        functions.extend(rest);
+        functions
+    },
+};
+
+FunctionDecl: FunctionDecl = {
+    <l:@L> "function" <id:IdentifierWithSpan> "(" <params:FunctionParams> ")" "=>" <body:Expr> ";" <r:@R> => FunctionDecl {
+        name: id.0,
+        name_span: id.1,
+        params,
+        body,
+        span: Span::new(l, r),
+    },
+    <l:@L> "function" <id:IdentifierWithSpan> "(" <params:FunctionParams> ")" <body:BlockExpr> <r:@R> =>? {
+        let Expr::Block(body) = body else {
+            unreachable!("BlockExpr rule must produce Expr::Block");
+        };
+
+        Ok(FunctionDecl {
+            name: id.0,
+            name_span: id.1,
+            params,
+            body: Expr::Block(body),
+            span: Span::new(l, r),
+        })
+    },
+};
+
+FunctionParams: Vec<FunctionParam> = {
+    => vec![],
+    <first:FunctionParam> <rest:("," <FunctionParam>)*> => {
+        let mut params = vec![first];
+        for param in rest {
+            params.push(param);
+        }
+        params
+    },
+};
+
+FunctionParam: FunctionParam = {
+    <l:@L> <name:"identifier"> <r:@R> => FunctionParam {
+        name,
+        span: Span::new(l, r),
+    },
 };
 
 Statements: Vec<Statement> = {
@@ -282,9 +334,30 @@ Primary: Expr = {
     WhileExpr,
     BlockExpr,
     <call:BuiltinCallExpr> => call,
+    <call:FunctionCallExpr> => call,
     <literal:LiteralExpr> => literal,
     <variable:VariableExpr> => variable,
     "(" <expr:Expr> ")" => expr,
+};
+
+FunctionCallExpr: Expr = {
+    <l:@L> <id:IdentifierWithSpan> "(" <args:CallArgs> ")" <r:@R> => Expr::FunctionCall(FunctionCallExpr {
+        name: id.0,
+        name_span: id.1,
+        args,
+        span: Span::new(l, r),
+    }),
+};
+
+CallArgs: Vec<Expr> = {
+    => vec![],
+    <first:Expr> <rest:("," <Expr>)*> => {
+        let mut args = vec![first];
+        for arg in rest {
+            args.push(arg);
+        }
+        args
+    },
 };
 
 IfExpr: Expr = {

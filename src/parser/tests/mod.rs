@@ -42,6 +42,40 @@ fn unwrap_print_arg<'a>(expr: &'a Expr) -> &'a Expr {
 }
 
 #[test]
+fn parses_function_declaration_and_recursive_call() {
+    let program =
+        parse_program("function fact(n) => if (n == 0) 1 else n * fact(n - 1); print(fact(5));");
+
+    assert_eq!(program.functions.len(), 1);
+    assert_eq!(program.functions[0].name, "fact");
+    assert_eq!(program.functions[0].params.len(), 1);
+    assert_eq!(program.functions[0].params[0].name, "n");
+
+    let Expr::If(if_expr) = &program.functions[0].body else {
+        panic!("expected function body to be an if expression");
+    };
+    let Expr::Binary(binary) = if_expr.else_branch.as_ref() else {
+        panic!("expected recursive multiplication in else branch");
+    };
+    assert!(matches!(binary.op, BinaryOp::Mul));
+    assert!(matches!(
+        binary.right.as_ref(),
+        Expr::FunctionCall(call) if call.name == "fact" && call.args.len() == 1
+    ));
+
+    let Statement::Expr { value, .. } = &program.statements[0] else {
+        panic!("expected print expression statement");
+    };
+    let Expr::BuiltinCall(print_call) = value else {
+        panic!("expected print call");
+    };
+    assert!(matches!(
+        print_call.args.first(),
+        Some(Expr::FunctionCall(call)) if call.name == "fact" && call.args.len() == 1
+    ));
+}
+
+#[test]
 fn parses_string_concat_with_number() {
     let program = parse_program(r#"print("The meaning of life is " @ 42);"#);
 

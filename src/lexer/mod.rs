@@ -14,6 +14,8 @@ pub use token::TokenKind;
 enum LogosTokenKind {
     #[token("let", priority = 3)]
     Let,
+    #[token("function", priority = 3)]
+    Function,
     #[token("while", priority = 3)]
     While,
     #[token("if", priority = 3)]
@@ -96,6 +98,8 @@ enum LogosTokenKind {
     Semicolon,
     #[token(":=")]
     DestructiveAssign,
+    #[token("=>")]
+    Arrow,
     #[token("=")]
     Assign,
 }
@@ -111,6 +115,7 @@ impl LogosTokenKind {
     ) -> Token {
         let (kind, value) = match self {
             LogosTokenKind::Let => (TokenKind::Let, lexeme.to_string()),
+            LogosTokenKind::Function => (TokenKind::Function, lexeme.to_string()),
             LogosTokenKind::While => (TokenKind::While, lexeme.to_string()),
             LogosTokenKind::If => (TokenKind::If, lexeme.to_string()),
             LogosTokenKind::Elif => (TokenKind::Elif, lexeme.to_string()),
@@ -161,6 +166,7 @@ impl LogosTokenKind {
             LogosTokenKind::Or => (TokenKind::Or, lexeme.to_string()),
             LogosTokenKind::Not => (TokenKind::Not, lexeme.to_string()),
             LogosTokenKind::DestructiveAssign => (TokenKind::DestructiveAssign, lexeme.to_string()),
+            LogosTokenKind::Arrow => (TokenKind::Arrow, lexeme.to_string()),
             LogosTokenKind::LeftParen => (TokenKind::LeftParen, lexeme.to_string()),
             LogosTokenKind::RightParen => (TokenKind::RightParen, lexeme.to_string()),
             LogosTokenKind::LeftBrace => (TokenKind::LeftBrace, lexeme.to_string()),

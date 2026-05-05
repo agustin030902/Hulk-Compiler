@@ -57,6 +57,7 @@ impl LlvmBackend {
         ];
 
         out.extend(self.global_lines.clone());
+        out.extend(self.function_lines.clone());
         out.push(String::new());
         out.push("define i32 @main() {".to_string());
         out.push("entry:".to_string());

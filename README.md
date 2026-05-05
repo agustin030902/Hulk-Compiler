@@ -83,6 +83,7 @@ Responsabilidades:
 ### Keywords reservadas
 
 - `let`
+- `function`
 - `print`
 - `PI`
 - `E`
@@ -107,6 +108,7 @@ Responsabilidades:
 - Aritmeticos: `+`, `-`, `*`, `/`, `^`
 - Concatenacion: `@`
 - Asignacion: `=`
+- Flecha de funcion inline: `=>`
 - Asignacion destructiva: `:=` (expresion que sobrescribe y devuelve el valor)
 - Comparacion: `==`, `!=`, `<`, `>`, `<=`, `>=`
 - Logicos: `&&`, `||`, `!`
@@ -124,7 +126,12 @@ Responsabilidades:
 ## 4. Gramatica completa (resumen EBNF)
 
 ```ebnf
-Program        := Statements? EOF
+Program        := FunctionDecl* Statements? EOF
+
+FunctionDecl   := "function" Identifier "(" FunctionParams? ")" "=>" Expr ";"
+                | "function" Identifier "(" FunctionParams? ")" Block
+
+FunctionParams := Identifier ("," Identifier)*
 
 Statements     := Statement (";" Statement)* ";"?
 
@@ -179,12 +186,15 @@ Power          := Primary "^" Unary
 Primary        := Block
                 | While
                 | BuiltinCall
+                | FunctionCall
                 | Literal
                 | Identifier
                 | "(" Expr ")"
 
 Block          := "{" Statements? "}"
 While          := "while" "(" Expr ")" Block
+FunctionCall   := Identifier "(" CallArgs? ")"
+CallArgs       := Expr ("," Expr)*
 
 BuiltinCall    := "sin"  "(" Expr ")"
                 | "cos"  "(" Expr ")"
@@ -206,6 +216,7 @@ Apuntes gramaticales:
 - Se permiten varias ligaduras en `let ... in ...`: `let a = 1, b = 2 in a + b`.
 - Un bloque `{ ... }` es una expresión y su valor es la **última sentencia/expresión** que contiene.
 - Un `while` es una expresión cuyo cuerpo debe ser un bloque y cuyo resultado es `Unit`.
+- Las funciones globales se declaran antes del programa principal. Se soportan llamadas de usuario y recursividad.
 
 ## 5. Precedencia y asociatividad
 
@@ -241,6 +252,28 @@ Notas:
 - Un bloque es una **expresión**: su valor es el de la última sentencia/expresión evaluada dentro del bloque.
 - `let ... in ...` también crea un scope: las ligaduras solo viven dentro del cuerpo y se evalúan en orden. Es asociativo a la derecha.
 - Asignación destructiva `:=` (expresión): sobreescribe una variable ya declarada y devuelve el valor asignado. Requiere que el tipo coincida con el declarado en ese scope.
+
+### Funciones de usuario
+
+- Forma inline: `function f(x, y) => x + y;`
+- Forma con bloque: `function f(x, y) { print(x); x + y }`
+- Todas las funciones se declaran al inicio del programa, antes de las sentencias principales.
+- Los nombres de funciones viven en un namespace global unico: no se permite declarar dos funciones con el mismo nombre.
+- Las llamadas `f(a, b)` validan que `f` exista y que la cantidad de argumentos coincida con la declaracion.
+- Se permite recursividad: el analizador registra primero todas las firmas globales y despues revisa los cuerpos.
+- Cada llamada es una expresion y puede usarse dentro de `print`, operadores, `if`, `let ... in ...`, bloques, etc.
+- Los parametros de una funcion crean un scope local propio para el cuerpo de esa funcion. No contaminan el scope global ni el cuerpo de otras funciones.
+- En codegen LLVM actual, los parametros de funciones de usuario se emiten como `double`; por eso las funciones compilables a IR deben usarse con argumentos numericos por ahora. Esto no introduce reglas de tipos nuevas en semantica.
+
+Ejemplo:
+
+```hulk
+function fact(n) => if (n == 0) 1 else n * fact(n - 1);
+function square(x) => x * x;
+
+print(fact(5));
+print(square(4));
+```
 
 ### Reglas de nombres (identificadores)
 
@@ -303,6 +336,17 @@ Incluye declaraciones para:
 
 - `printf`, `asprintf`, `strcmp`, `rand`, `time`, `srand`
 - `@llvm.sin.f64`, `@llvm.cos.f64`, `@llvm.sqrt.f64`, `@llvm.exp.f64`, `@llvm.log.f64`, `@llvm.pow.f64`
+
+Las funciones de usuario se emiten antes de `main` como funciones LLVM con prefijo `@hulk_`.
+Por ejemplo, `function fact(n) => ...;` genera una definicion similar a:
+
+```llvm
+define double @hulk_fact(double %n) {
+  ...
+}
+```
+
+Las llamadas HULK `fact(5)` se emiten como `call double @hulk_fact(...)`.
 
 Si hay errores, el `.txt` contiene diagnosticos y no IR.
 

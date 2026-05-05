@@ -1,0 +1,4 @@
+function square(x) => x * x;
+function sum_of_squares(a, b) => square(a) + square(b);
+
+print(sum_of_squares(3, 4));

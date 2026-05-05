@@ -7,6 +7,55 @@ mod while_expr;
 use super::{Lexer, TokenKind};
 
 #[test]
+fn lexes_function_declaration_and_user_call_tokens() {
+    let source =
+        r#"function fact(n) => if (n == 0) 1 else n * fact(n - 1); print(fact(5));"#.to_string();
+    let mut lexer = Lexer::new(source);
+
+    let tokens = lexer.lex();
+    let kinds: Vec<TokenKind> = tokens.into_iter().map(|token| token.kind).collect();
+
+    assert!(!lexer.has_errors());
+    assert_eq!(
+        kinds,
+        vec![
+            TokenKind::Function,
+            TokenKind::Identifier("fact".to_string()),
+            TokenKind::LeftParen,
+            TokenKind::Identifier("n".to_string()),
+            TokenKind::RightParen,
+            TokenKind::Arrow,
+            TokenKind::If,
+            TokenKind::LeftParen,
+            TokenKind::Identifier("n".to_string()),
+            TokenKind::EqualEqual,
+            TokenKind::Number("0".to_string()),
+            TokenKind::RightParen,
+            TokenKind::Number("1".to_string()),
+            TokenKind::Else,
+            TokenKind::Identifier("n".to_string()),
+            TokenKind::Multiply,
+            TokenKind::Identifier("fact".to_string()),
+            TokenKind::LeftParen,
+            TokenKind::Identifier("n".to_string()),
+            TokenKind::Minus,
+            TokenKind::Number("1".to_string()),
+            TokenKind::RightParen,
+            TokenKind::Semicolon,
+            TokenKind::Print,
+            TokenKind::LeftParen,
+            TokenKind::Identifier("fact".to_string()),
+            TokenKind::LeftParen,
+            TokenKind::Number("5".to_string()),
+            TokenKind::RightParen,
+            TokenKind::RightParen,
+            TokenKind::Semicolon,
+            TokenKind::EOF,
+        ]
+    );
+}
+
+#[test]
 fn lexes_concat_operator_between_string_and_number() {
     let source = r#"print("The meaning of life is " @ 42);"#.to_string();
     let mut lexer = Lexer::new(source);

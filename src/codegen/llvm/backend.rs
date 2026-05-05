@@ -6,14 +6,22 @@ use crate::{
     parser::expression::Program,
 };
 
-use super::helper::state::{ValueRef, VariableInfo};
+use super::helper::state::{ValueRef, ValueType, VariableInfo};
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct FunctionInfo {
+    pub(super) arity: usize,
+    pub(super) return_type: ValueType,
+}
 
 #[derive(Debug, Default)]
 pub struct LlvmBackend {
     pub(super) body_lines: Vec<String>,
+    pub(super) function_lines: Vec<String>,
     pub(super) global_lines: Vec<String>,
     pub(super) errors: Vec<CompilerError>,
     pub(super) scopes: Vec<HashMap<String, VariableInfo>>,
+    pub(super) functions: HashMap<String, FunctionInfo>,
     pub(super) temp_counter: usize,
     pub(super) label_counter: usize,
     pub(super) string_counter: usize,
@@ -26,9 +34,11 @@ impl LlvmBackend {
 
     pub(super) fn reset(&mut self) {
         self.body_lines.clear();
+        self.function_lines.clear();
         self.global_lines.clear();
         self.errors.clear();
         self.scopes.clear();
+        self.functions.clear();
         self.temp_counter = 0;
         self.label_counter = 0;
         self.string_counter = 0;
@@ -37,6 +47,10 @@ impl LlvmBackend {
 
     pub(super) fn emit_body(&mut self, line: impl Into<String>) {
         self.body_lines.push(line.into());
+    }
+
+    pub(super) fn emit_function_line(&mut self, line: impl Into<String>) {
+        self.function_lines.push(line.into());
     }
 
     pub(super) fn emit_global(&mut self, line: impl Into<String>) {

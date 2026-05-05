@@ -21,6 +21,31 @@ fn compile_source(source: &str) -> Result<String, Vec<CompilerError>> {
 }
 
 #[test]
+fn generates_ir_for_recursive_function_declaration_and_call() {
+    let source = r#"
+function fact(n) => if (n == 0) 1 else n * fact(n - 1);
+print(fact(5));
+"#;
+    let ir = compile_source(source).expect("codegen should succeed");
+
+    assert!(
+        ir.contains("define double @hulk_fact(double %n)"),
+        "expected function definition, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("call double @hulk_fact(double"),
+        "expected recursive/user function call, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("define i32 @main()"),
+        "expected main after function definitions, got:\n{}",
+        ir
+    );
+}
+
+#[test]
 fn generates_ir_for_block_expression_scope() {
     let source = "let y = 1; let x = { let x = 9; let z = 1; x + y }; print(x)";
     let ir = compile_source(source).expect("codegen should succeed");
@@ -183,4 +208,3 @@ let a = 5 in
         ir
     );
 }
-

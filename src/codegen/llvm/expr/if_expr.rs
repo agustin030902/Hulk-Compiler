@@ -38,7 +38,7 @@ impl LlvmBackend {
         // Emit elif branches
         let mut current_next_label = next_label;
         let mut branch_results = vec![(then_result_repr, then_label)];
-        
+
         for (idx, elif_branch) in if_expr.elif_branches.iter().enumerate() {
             self.emit_body(format!("{current_next_label}:"));
 
@@ -94,23 +94,20 @@ impl LlvmBackend {
 
         // End label with phi node if needed
         self.emit_body(format!("{end_label}:"));
-        
+
         if result_type != ValueType::Unit {
             // Generate phi node for merging values from all branches
             let result = self.next_temp();
             let llvm_type = result_type.llvm_type();
-            
+
             let phi_args = branch_results
                 .iter()
                 .map(|(val_repr, label_repr)| format!("[ {}, %{} ]", val_repr, label_repr))
                 .collect::<Vec<_>>()
                 .join(", ");
-            
-            self.emit_body(format!(
-                "{} = phi {} {}",
-                result, llvm_type, phi_args
-            ));
-            
+
+            self.emit_body(format!("{} = phi {} {}", result, llvm_type, phi_args));
+
             Some(ValueRef {
                 value_type: result_type,
                 repr: result,

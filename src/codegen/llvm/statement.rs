@@ -1,18 +1,87 @@
-use crate::parser::expression::{Program, Statement};
+use crate::parser::expression::{FunctionDecl, Program, Statement};
 
 use super::{
     backend::LlvmBackend,
     helper::{
         module_writer::format_ptr_global,
-        state::{ValueRef, ValueType},
+        state::{ValueRef, ValueType, VariableInfo},
     },
 };
 
 impl LlvmBackend {
     pub(super) fn emit_program(&mut self, program: &Program) {
+        for function in &program.functions {
+            self.functions.insert(
+                function.name.clone(),
+                super::backend::FunctionInfo {
+                    arity: function.params.len(),
+                    return_type: ValueType::Double,
+                },
+            );
+        }
+
+        for function in &program.functions {
+            self.emit_function_decl(function);
+        }
+
         for statement in &program.statements {
             let _ = self.emit_statement(statement);
         }
+    }
+
+    fn emit_function_decl(&mut self, function: &FunctionDecl) {
+        let saved_body = std::mem::take(&mut self.body_lines);
+        let saved_scopes = std::mem::take(&mut self.scopes);
+        self.push_scope();
+
+        let params = function
+            .params
+            .iter()
+            .map(|param| format!("double %{}", param.name))
+            .collect::<Vec<_>>();
+
+        for param in &function.params {
+            let ptr_name = self.next_temp();
+            self.emit_body(format!("{ptr_name} = alloca double"));
+            self.emit_body(format!("store double %{}, double* {ptr_name}", param.name));
+            self.bind_current_scope(
+                param.name.clone(),
+                VariableInfo {
+                    ptr_name,
+                    value_type: ValueType::Double,
+                },
+            );
+        }
+
+        let result = self.emit_expr(&function.body).unwrap_or_else(|| ValueRef {
+            value_type: ValueType::Unit,
+            repr: "0".to_string(),
+        });
+        let function_body = std::mem::take(&mut self.body_lines);
+        self.scopes = saved_scopes;
+        self.body_lines = saved_body;
+
+        if let Some(info) = self.functions.get_mut(&function.name) {
+            info.return_type = result.value_type;
+        }
+
+        let return_type = result.value_type.llvm_type();
+        self.emit_function_line(String::new());
+        self.emit_function_line(format!(
+            "define {return_type} @hulk_{}({}) {{",
+            function.name,
+            params.join(", ")
+        ));
+        self.emit_function_line("entry:");
+        for line in function_body {
+            if line.ends_with(':') {
+                self.emit_function_line(line);
+            } else {
+                self.emit_function_line(format!("  {line}"));
+            }
+        }
+        self.emit_function_line(format!("  ret {return_type} {}", result.repr));
+        self.emit_function_line("}");
     }
 
     pub(super) fn emit_statement(&mut self, statement: &Statement) -> Option<ValueRef> {

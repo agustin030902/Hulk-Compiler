@@ -12,7 +12,23 @@ impl Span {
 
 #[derive(Debug)]
 pub struct Program {
+    pub functions: Vec<FunctionDecl>,
     pub statements: Vec<Statement>,
+}
+
+#[derive(Debug, Clone)]
+pub struct FunctionDecl {
+    pub name: String,
+    pub name_span: Span,
+    pub params: Vec<FunctionParam>,
+    pub body: Expr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct FunctionParam {
+    pub name: String,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -44,6 +60,7 @@ pub enum Expr {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
     BuiltinCall(BuiltinCallExpr),
+    FunctionCall(FunctionCallExpr),
     DestructiveAssign(DestructiveAssignExpr),
     LetIn(LetInExpr),
     Block(BlockExpr),
@@ -59,6 +76,7 @@ impl Expr {
             Expr::Binary(binary) => binary.span,
             Expr::Unary(unary) => unary.span,
             Expr::BuiltinCall(call) => call.span,
+            Expr::FunctionCall(call) => call.span,
             Expr::DestructiveAssign(assign) => assign.span,
             Expr::LetIn(let_in) => let_in.span,
             Expr::Block(block) => block.span,
@@ -104,6 +122,14 @@ pub struct DestructiveAssignExpr {
 #[derive(Debug, Clone)]
 pub struct BuiltinCallExpr {
     pub function: BuiltinFunction,
+    pub args: Vec<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct FunctionCallExpr {
+    pub name: String,
+    pub name_span: Span,
     pub args: Vec<Expr>,
     pub span: Span,
 }

@@ -52,6 +52,7 @@ fn token(kind: TokenKind, start: usize, end: usize) -> Token {
         | TokenKind::String(v)
         | TokenKind::Boolean(v) => v.clone(),
         TokenKind::Let => "let".to_string(),
+        TokenKind::Function => "function".to_string(),
         TokenKind::While => "while".to_string(),
         TokenKind::If => "if".to_string(),
         TokenKind::Elif => "elif".to_string(),
@@ -67,6 +68,7 @@ fn token(kind: TokenKind, start: usize, end: usize) -> Token {
         TokenKind::Rand => "rand".to_string(),
         TokenKind::In => "in".to_string(),
         TokenKind::Assign => "=".to_string(),
+        TokenKind::Arrow => "=>".to_string(),
         TokenKind::DestructiveAssign => ":=".to_string(),
         TokenKind::Add => "+".to_string(),
         TokenKind::Power => "^".to_string(),

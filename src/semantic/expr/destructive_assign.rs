@@ -8,7 +8,7 @@ impl SemanticAnalyzer {
         assign: &DestructiveAssignExpr,
         source: &str,
     ) -> Option<SemanticType> {
-        let Some(scope_index) = self.find_scope_index(&assign.name) else {
+        let Some((scope_index, existing)) = self.lookup_with_scope_index(&assign.name) else {
             self.push_semantic_error(
                 assign.name_span,
                 source,
@@ -21,10 +21,6 @@ impl SemanticAnalyzer {
         };
 
         let value_type = self.check_expr(&assign.value, source)?;
-        let existing = self.scopes[scope_index]
-            .get(&assign.name)
-            .copied()
-            .unwrap_or(SemanticType::Unknown);
 
         if existing != SemanticType::Unknown && existing != value_type {
             self.push_type_error(

@@ -4,6 +4,28 @@ Esta carpeta contiene archivos de prueba (`.hulk`) para validar el compilador Hu
 
 ## Archivos de Ejemplo Válidos (OK)
 
+### `recursive_number_fibonacci.hulk`
+Recursión numérica con `if/elif/else`.
+- `fib(n)` clásico
+- Llamadas recursivas múltiples
+- Concatenación de `String @ Number` para mostrar resultados
+
+### `recursive_string_countdown.hulk`
+Recursión que retorna `String`.
+- Construye una cadena `"0 -> 1 -> ... -> n"`
+- Mezcla de recursión + concatenación
+- Retorno de función no numérico
+
+### `mochila_funcionalidades.hulk`
+Ejemplo “mochila” con varias funcionalidades actuales del compilador.
+- Recursión numérica y recursión `String`
+- `while` como expresión (`Unit`)
+- Asignación destructiva `:=`
+- Bloques con scope léxico
+- `let ... in ...`
+- Builtins (`sin`, `cos`, `sqrt`, `exp`, `log`, `rand`)
+- `print(...)` como expresión
+
 ### `calculator_ok.hulk`
 Ejemplo básico con operaciones aritméticas simples.
 - Declara variables con valores numéricos

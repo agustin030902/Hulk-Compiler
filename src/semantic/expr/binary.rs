@@ -11,12 +11,21 @@ impl SemanticAnalyzer {
         let left_type = self.check_expr(&binary.left, source);
         let right_type = self.check_expr(&binary.right, source);
 
-        let (Some(left_type), Some(right_type)) = (left_type, right_type) else {
+        let (Some(mut left_type), Some(mut right_type)) = (left_type, right_type) else {
             return None;
         };
 
         match binary.op {
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Pow => {
+                if left_type == SemanticType::Unknown {
+                    left_type =
+                        self.constrain_expr_type(&binary.left, SemanticType::Number, source);
+                }
+                if right_type == SemanticType::Unknown {
+                    right_type =
+                        self.constrain_expr_type(&binary.right, SemanticType::Number, source);
+                }
+
                 if left_type == SemanticType::Unknown || right_type == SemanticType::Unknown {
                     return Some(SemanticType::Unknown);
                 }
@@ -39,6 +48,19 @@ impl SemanticAnalyzer {
                 }
             }
             BinaryOp::Concat => {
+                if left_type == SemanticType::Unknown
+                    && (right_type == SemanticType::Number || right_type == SemanticType::String)
+                {
+                    left_type =
+                        self.constrain_expr_type(&binary.left, SemanticType::String, source);
+                }
+                if right_type == SemanticType::Unknown
+                    && (left_type == SemanticType::Number || left_type == SemanticType::String)
+                {
+                    right_type =
+                        self.constrain_expr_type(&binary.right, SemanticType::String, source);
+                }
+
                 if left_type == SemanticType::Unknown || right_type == SemanticType::Unknown {
                     return Some(SemanticType::Unknown);
                 }
@@ -59,6 +81,15 @@ impl SemanticAnalyzer {
                 }
             }
             BinaryOp::Less | BinaryOp::Greater | BinaryOp::LessEqual | BinaryOp::GreaterEqual => {
+                if left_type == SemanticType::Unknown {
+                    left_type =
+                        self.constrain_expr_type(&binary.left, SemanticType::Number, source);
+                }
+                if right_type == SemanticType::Unknown {
+                    right_type =
+                        self.constrain_expr_type(&binary.right, SemanticType::Number, source);
+                }
+
                 if left_type == SemanticType::Unknown || right_type == SemanticType::Unknown {
                     return Some(SemanticType::Unknown);
                 }
@@ -80,6 +111,13 @@ impl SemanticAnalyzer {
                 }
             }
             BinaryOp::Equal | BinaryOp::NotEqual => {
+                if left_type == SemanticType::Unknown && right_type != SemanticType::Unknown {
+                    left_type = self.constrain_expr_type(&binary.left, right_type, source);
+                } else if right_type == SemanticType::Unknown && left_type != SemanticType::Unknown
+                {
+                    right_type = self.constrain_expr_type(&binary.right, left_type, source);
+                }
+
                 if left_type == SemanticType::Unknown || right_type == SemanticType::Unknown {
                     return Some(SemanticType::Unknown);
                 }
@@ -113,6 +151,15 @@ impl SemanticAnalyzer {
                 }
             }
             BinaryOp::And | BinaryOp::Or => {
+                if left_type == SemanticType::Unknown {
+                    left_type =
+                        self.constrain_expr_type(&binary.left, SemanticType::Boolean, source);
+                }
+                if right_type == SemanticType::Unknown {
+                    right_type =
+                        self.constrain_expr_type(&binary.right, SemanticType::Boolean, source);
+                }
+
                 if left_type == SemanticType::Unknown || right_type == SemanticType::Unknown {
                     return Some(SemanticType::Unknown);
                 }

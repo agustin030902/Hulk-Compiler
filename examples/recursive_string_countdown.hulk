@@ -1,0 +1,3 @@
+function countdown(n) => if (n == 0) "0" else countdown(n - 1) @ " -> " @ n;
+
+print(countdown(8));

@@ -30,7 +30,7 @@ impl SemanticAnalyzer {
                 let value_type = self
                     .check_expr(value, source)
                     .unwrap_or(SemanticType::Unknown);
-                self.current_scope_mut().insert(name.clone(), value_type);
+                self.bind_current_scope(name.clone(), value_type);
                 Some(value_type)
             }
             Statement::Print { value, span } => self.check_print_argument(value, *span, source),

@@ -1,0 +1,4 @@
+function fib(n) => if (n == 0) 0 elif (n == 1) 1 else fib(n - 1) + fib(n - 2);
+
+print("fib(10) = " @ fib(10));
+print("fib(15) = " @ fib(15));

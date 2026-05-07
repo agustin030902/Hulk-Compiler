@@ -7,41 +7,57 @@ use super::super::{
 
 impl LlvmBackend {
     pub(super) fn emit_function_call(&mut self, call: &FunctionCallExpr) -> Option<ValueRef> {
-        let Some(info) = self.functions.get(&call.name).copied() else {
+        let Some(info) = self.functions.get(&call.name).cloned() else {
             self.semantic_error(format!("Function '{}' is not declared", call.name));
             return None;
         };
 
-        if info.arity != call.args.len() {
+        if info.param_types.len() != call.args.len() {
             self.semantic_error(format!(
                 "Function '{}' expects {} argument(s), but got {}.",
                 call.name,
-                info.arity,
+                info.param_types.len(),
                 call.args.len()
             ));
             return None;
         }
 
         let mut arg_values = Vec::with_capacity(call.args.len());
-        for arg in &call.args {
+        for (index, arg) in call.args.iter().enumerate() {
             let value = self.emit_expr(arg)?;
-            if value.value_type != ValueType::Double {
+            let expected = info.param_types[index];
+
+            if value.value_type != expected {
                 self.semantic_error(format!(
-                    "Function '{}' currently expects numeric arguments in code generation",
-                    call.name
+                    "Function '{}' argument #{} expects {}, but got {}.",
+                    call.name,
+                    index + 1,
+                    expected.display_name(),
+                    value.value_type.display_name()
                 ));
                 return None;
             }
-            arg_values.push(format!("double {}", value.repr));
+
+            arg_values.push(format!("{} {}", expected.llvm_type(), value.repr));
         }
 
-        let result = self.next_temp();
         let return_type = info.return_type.llvm_type();
-        self.emit_body(format!(
-            "{result} = call {return_type} @hulk_{}({})",
-            call.name,
-            arg_values.join(", ")
-        ));
+        let result = if info.return_type == ValueType::Unit {
+            self.emit_body(format!(
+                "call {return_type} @hulk_{}({})",
+                call.name,
+                arg_values.join(", ")
+            ));
+            "0".to_string()
+        } else {
+            let temp = self.next_temp();
+            self.emit_body(format!(
+                "{temp} = call {return_type} @hulk_{}({})",
+                call.name,
+                arg_values.join(", ")
+            ));
+            temp
+        };
 
         Some(ValueRef {
             value_type: info.return_type,

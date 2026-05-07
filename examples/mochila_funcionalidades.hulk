@@ -1,0 +1,33 @@
+function fib(n) => if (n == 0) 0 elif (n == 1) 1 else fib(n - 1) + fib(n - 2);
+function stars(n) => if (n == 0) "" else stars(n - 1) @ "*";
+
+let i = 0;
+let acumulado = 0;
+let loop_result = while (i < 6) {
+    acumulado := acumulado + i;
+    i = i + 1;
+};
+
+let bloque = {
+    let base = fib(6);
+    let decoracion = stars(3);
+    print("decoracion: " @ decoracion);
+    base + acumulado
+};
+
+let resumen = let prefijo = "resultado bloque = ", valor = bloque in prefijo @ valor;
+print(resumen);
+
+let trig = sin(PI / 2) + cos(0);
+let raiz = sqrt(81);
+let crecimiento = exp(1);
+let escala = log(10, 1000);
+let ruido = rand();
+
+print("trig: " @ trig);
+print("sqrt(81): " @ raiz);
+print("exp(1): " @ crecimiento);
+print("log(10, 1000): " @ escala);
+print("rand(): " @ ruido);
+print("fib(10): " @ fib(10));
+print("stars(7): " @ stars(7));

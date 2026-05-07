@@ -1,31 +1,37 @@
-# Hulk GUI (bin/gui.rs)
+# Binaries (`src/bin`)
 
-Guía rápida de la interfaz para probar el compilador Hulk con eframe/egui.
+Este directorio contiene binarios auxiliares del proyecto.
 
-## Barra superior
-- **Ejemplos** (ComboBox): lista todos los `.hulk`/`.hk` en `examples/`. Al seleccionar, se llena la ruta en el campo adyacente.
-- **Ruta** (input de texto): puedes editar manualmente cualquier archivo fuente.
-- **Refrescar ejemplos**: vuelve a escanear `examples/` por si agregaste/quitas archivos.
-- **Cargar**: lee el archivo indicado en la ruta y lo copia al editor de la izquierda.
-- **Demo rápida**: coloca un snippet de prueba mínimo.
-- **Compilar**: ejecuta el pipeline completo (lexer → parser → semantic → LLVM IR). Si genera IR, automáticamente lo corre con `lli` usando la ruta configurada.
-- **lli** (input de texto): ruta/comando a `lli` (por defecto `lli`). Edita aquí si está fuera de tu PATH.
+## 1) GUI (`src/bin/gui.rs`)
 
-## Panel izquierdo
-- **Editor Hulk**: zona de texto con scroll donde escribes o pegas el código a compilar.
+Interfaz de prueba rápida con `eframe/egui`.
 
-## Panel central (colapsables)
-- **Errores**: muestra errores lex/sintácticos/semánticos; se vacía si no hay errores.
-- **Tokens**: lista todos los tokens detectados por el lexer.
-- **AST**: AST formateado (`{:#?}`); solo aparece si no hubo errores previos.
-- **LLVM IR**: IR generado; indica también la ruta del archivo `.ll`.
-- **Salida lli**: stdout/stderr y exit code al ejecutar el IR con `lli`. Incluye un botón **Re-ejecutar lli** para correr de nuevo sin recompilar.
+### Qué permite
+- Cargar ejemplos `.hulk` desde `examples/`
+- Editar código fuente
+- Compilar (lexer -> parser -> semantic -> LLVM IR)
+- Ver errores, tokens, AST e IR
+- Ejecutar el IR con `lli` y ver salida
 
-## Flujo típico
-1) Elige un ejemplo en el ComboBox o escribe la ruta; pulsa **Cargar**.
-2) Opcional: ajusta la ruta de `lli`.
-3) Pulsa **Compilar**.
-4) Revisa errores/tokens/AST/IR y la **Salida lli**. Si cambiaste solo `lli`, usa **Re-ejecutar lli**.
+### Ejecutar
 
-## Nota
-La GUI interpreta IR con `lli`; para generar/ejecutar binarios nativos usa la CLI `cargo run -- run ...` con `clang` (ver README principal).
+```bash
+cargo run --bin gui
+```
+
+## 2) CLI principal (`src/main.rs`)
+
+Aunque vive fuera de `src/bin`, es el binario principal del compilador.
+
+Comandos típicos:
+
+```bash
+cargo run -- --input examples/calculator_ok.hulk --emit-ir artifacts/output.txt
+cargo run -- --run-all examples --emit-dir artifacts/batch
+cargo run -- run examples/calculator_ok.hulk
+```
+
+## Notas
+- La GUI usa `lli` para interpretar IR.
+- Para binario nativo (`run`), se usa `clang` (ver `README.md` raíz).
+- Las funciones de usuario ya se emiten con firmas tipadas inferidas (no solo numéricas).

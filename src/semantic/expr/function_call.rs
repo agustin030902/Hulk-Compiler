@@ -8,7 +8,7 @@ impl SemanticAnalyzer {
         call: &FunctionCallExpr,
         source: &str,
     ) -> Option<SemanticType> {
-        let Some(expected_arity) = self.functions.get(&call.name).copied() else {
+        let Some(signature) = self.functions.get(&call.name).cloned() else {
             self.push_semantic_error(
                 call.name_span,
                 source,
@@ -17,24 +17,74 @@ impl SemanticAnalyzer {
             return None;
         };
 
-        if expected_arity != call.args.len() {
+        if signature.arity() != call.args.len() {
             self.push_semantic_error(
                 call.span,
                 source,
                 format!(
                     "Function '{}' expects {} argument(s), but got {}.",
                     call.name,
-                    expected_arity,
+                    signature.arity(),
                     call.args.len()
                 ),
             );
             return None;
         }
 
-        for arg in &call.args {
-            let _ = self.check_expr(arg, source);
+        let mut valid_call = true;
+
+        for (index, arg) in call.args.iter().enumerate() {
+            let arg_type = self
+                .check_expr(arg, source)
+                .unwrap_or(SemanticType::Unknown);
+            let expected_type = self
+                .functions
+                .get(&call.name)
+                .and_then(|entry| entry.param_types.get(index).copied())
+                .unwrap_or(SemanticType::Unknown);
+
+            if arg_type == SemanticType::Unknown && expected_type != SemanticType::Unknown {
+                let _ = self.constrain_expr_type(arg, expected_type, source);
+                continue;
+            }
+
+            if expected_type == SemanticType::Unknown && arg_type != SemanticType::Unknown {
+                let _ = self.constrain_function_param_type(
+                    &call.name,
+                    index,
+                    arg_type,
+                    arg.span(),
+                    source,
+                );
+                continue;
+            }
+
+            if expected_type != SemanticType::Unknown
+                && arg_type != SemanticType::Unknown
+                && expected_type != arg_type
+            {
+                self.push_type_error(
+                    arg.span(),
+                    source,
+                    format!(
+                        "Function '{}' argument #{} expects {}, but got {}.",
+                        call.name,
+                        index + 1,
+                        expected_type.display_name(),
+                        arg_type.display_name()
+                    ),
+                );
+                valid_call = false;
+            }
         }
 
-        Some(SemanticType::Unknown)
+        if !valid_call {
+            return None;
+        }
+
+        self.functions
+            .get(&call.name)
+            .map(|entry| entry.return_type)
+            .or(Some(SemanticType::Unknown))
     }
 }

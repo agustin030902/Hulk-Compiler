@@ -88,7 +88,7 @@ impl HulkGui {
                 Some(OutputKind::LlvmIr) => {
                     // Ejecutar automáticamente con lli si se generó IR
                     //self.exec_output =
-                        //run_lli(&self.lli_path, &self.output_path).unwrap_or_else(|e| e);
+                    //run_lli(&self.lli_path, &self.output_path).unwrap_or_else(|e| e);
                     self.exec_output =
                         run_program(&self.lli_path, &self.output_path).unwrap_or_else(|e| e);
                     format!("OK: LLVM IR generado en {}", self.output_path.display())
@@ -148,8 +148,7 @@ impl HulkGui {
 }
 
 impl eframe::App for HulkGui {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) 
-    {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
             ui.spacing_mut().item_spacing.x = 8.0;
             ui.horizontal_wrapped(|ui| {
@@ -299,8 +298,8 @@ impl eframe::App for HulkGui {
                         run_program(&self.lli_path, &self.output_path).unwrap_or_else(|e| e);
                 }
                 //if ui.button("Re-ejecutar lli").clicked() {
-                    //self.exec_output =
-                        //run_lli(&self.lli_path, &self.output_path).unwrap_or_else(|e| e);
+                //self.exec_output =
+                //run_lli(&self.lli_path, &self.output_path).unwrap_or_else(|e| e);
                 //}
             });
         });
@@ -374,7 +373,7 @@ fn list_example_files() -> Vec<String> {
 }
 
 //fn run_lli(lli_path: &str, ll_path: &PathBuf) -> Result<String, String>
-fn run_with_lli(lli_path: &str, ll_path: &PathBuf) -> Result<String, String>{
+fn run_with_lli(lli_path: &str, ll_path: &PathBuf) -> Result<String, String> {
     if !ll_path.exists() {
         return Err(format!(
             "No se encontró el archivo LLVM IR en {}",

@@ -4,6 +4,8 @@ pub enum SemanticType {
     Boolean,
     String,
     Unit,
+    Function(u32),
+    Struct(u32),
     Unknown,
 }
 
@@ -14,6 +16,8 @@ impl SemanticType {
             SemanticType::Boolean => "Boolean",
             SemanticType::String => "String",
             SemanticType::Unit => "Unit",
+            SemanticType::Function(_) => "Function",
+            SemanticType::Struct(_) => "Struct",
             SemanticType::Unknown => "Unknown",
         }
     }

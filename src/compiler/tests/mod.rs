@@ -60,6 +60,108 @@ print(fact(5));
 }
 
 #[test]
+fn writes_llvm_ir_for_string_function_program() {
+    let source = r#"
+function greet(name) => "hi " @ name;
+print(greet("ana"));
+"#;
+    let output_path = unique_output_path("string_function_ir");
+
+    let mut compiler = Compiler::new();
+    let report = compiler.compile(
+        source,
+        &CompileOptions {
+            output_path: output_path.clone(),
+        },
+    );
+
+    assert!(
+        report.errors.is_empty(),
+        "expected successful compilation, got errors: {:?}",
+        report.errors
+    );
+    assert_eq!(report.output_kind, Some(OutputKind::LlvmIr));
+
+    let llvm_ir = fs::read_to_string(&output_path)
+        .expect("compiler should write llvm output file on success");
+    assert!(
+        llvm_ir.contains("define i8* @hulk_greet(i8* %name)"),
+        "output file should contain string function definition, got:\n{}",
+        llvm_ir
+    );
+    assert!(
+        llvm_ir.contains("call i8* @hulk_greet(i8*"),
+        "output file should contain typed string function call, got:\n{}",
+        llvm_ir
+    );
+}
+
+#[test]
+fn writes_llvm_ir_for_identity_function_inferred_by_context() {
+    let source = r#"
+function id(x) => x;
+function plus_one(y) => id(y) + 1;
+print(plus_one(41));
+"#;
+    let output_path = unique_output_path("identity_inferred_ir");
+
+    let mut compiler = Compiler::new();
+    let report = compiler.compile(
+        source,
+        &CompileOptions {
+            output_path: output_path.clone(),
+        },
+    );
+
+    assert!(
+        report.errors.is_empty(),
+        "expected successful compilation, got errors: {:?}",
+        report.errors
+    );
+    assert_eq!(report.output_kind, Some(OutputKind::LlvmIr));
+
+    let llvm_ir = fs::read_to_string(&output_path)
+        .expect("compiler should write llvm output file on success");
+    assert!(
+        llvm_ir.contains("define double @hulk_id(double %x)"),
+        "output file should contain inferred id signature, got:\n{}",
+        llvm_ir
+    );
+}
+
+#[test]
+fn writes_llvm_ir_for_recursive_string_function_program() {
+    let source = r#"
+function stars(n) => if (n == 0) "" else stars(n - 1) @ "*";
+print(stars(5));
+"#;
+    let output_path = unique_output_path("recursive_string_function_ir");
+
+    let mut compiler = Compiler::new();
+    let report = compiler.compile(
+        source,
+        &CompileOptions {
+            output_path: output_path.clone(),
+        },
+    );
+
+    assert!(
+        report.errors.is_empty(),
+        "expected successful compilation, got errors: {:?}",
+        report.errors
+    );
+    assert_eq!(report.output_kind, Some(OutputKind::LlvmIr));
+
+    let llvm_ir = fs::read_to_string(&output_path)
+        .expect("compiler should write llvm output file on success");
+    assert!(
+        llvm_ir.contains("define i8* @hulk_stars(double %n)"),
+        "output file should contain recursive string function definition, got:\n{}",
+        llvm_ir
+    );
+}
+
+#[test]
 fn writes_diagnostics_txt_for_invalid_concat() {
     let source = r#"print(true @ false);"#;
     let output_path = unique_output_path("invalid_concat_diagnostics");

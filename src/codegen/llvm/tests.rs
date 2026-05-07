@@ -46,6 +46,67 @@ print(fact(5));
 }
 
 #[test]
+fn generates_ir_for_string_function_signature_and_call() {
+    let source = r#"
+function greet(name) => "hi " @ name;
+print(greet("ana"));
+"#;
+    let ir = compile_source(source).expect("codegen should succeed");
+
+    assert!(
+        ir.contains("define i8* @hulk_greet(i8* %name)"),
+        "expected string function definition, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("call i8* @hulk_greet(i8*"),
+        "expected string function call, got:\n{}",
+        ir
+    );
+}
+
+#[test]
+fn infers_identity_signature_from_return_context() {
+    let source = r#"
+function id(x) => x;
+function plus_one(y) => id(y) + 1;
+print(plus_one(41));
+"#;
+    let ir = compile_source(source).expect("codegen should succeed");
+
+    assert!(
+        ir.contains("define double @hulk_id(double %x)"),
+        "expected inferred numeric signature for id, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("call double @hulk_id(double"),
+        "expected typed call to id, got:\n{}",
+        ir
+    );
+}
+
+#[test]
+fn generates_ir_for_recursive_string_function() {
+    let source = r#"
+function stars(n) => if (n == 0) "" else stars(n - 1) @ "*";
+print(stars(5));
+"#;
+    let ir = compile_source(source).expect("codegen should succeed");
+
+    assert!(
+        ir.contains("define i8* @hulk_stars(double %n)"),
+        "expected recursive string function signature, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("call i8* @hulk_stars(double"),
+        "expected recursive typed string call, got:\n{}",
+        ir
+    );
+}
+
+#[test]
 fn generates_ir_for_block_expression_scope() {
     let source = "let y = 1; let x = { let x = 9; let z = 1; x + y }; print(x)";
     let ir = compile_source(source).expect("codegen should succeed");

@@ -65,6 +65,68 @@ print(add_one(1, 2));
 }
 
 #[test]
+fn infers_boolean_parameter_and_string_return_for_function() {
+    let source = r#"
+function label(flag) => if (flag) "yes" else "no";
+print(label(true));
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_user_function_call_with_wrong_argument_type() {
+    let source = r#"
+function negate(flag) => !flag;
+print(negate(1));
+"#;
+
+    let errors = analyze_source(source);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].category, ErrorCategory::Type);
+    assert_eq!(
+        errors[0].message,
+        "Function 'negate' argument #1 expects Boolean, but got Number."
+    );
+}
+
+#[test]
+fn infers_identity_function_from_return_context() {
+    let source = r#"
+function id(x) => x;
+function plus_one(y) => id(y) + 1;
+print(plus_one(41));
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn infers_recursive_string_function_return_type() {
+    let source = r#"
+function stars(n) => if (n == 0) "" else stars(n - 1) @ "*";
+print(stars(5));
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
 fn allows_concat_between_string_and_number_and_string() {
     let source = r#"
 let a = "hello " @ 1;

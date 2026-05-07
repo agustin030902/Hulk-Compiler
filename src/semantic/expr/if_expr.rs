@@ -64,7 +64,10 @@ impl SemanticAnalyzer {
     fn check_condition(&mut self, condition: &Expr, source: &str) -> bool {
         match self.check_expr(condition, source) {
             Some(SemanticType::Boolean) => true,
-            Some(SemanticType::Unknown) => false,
+            Some(SemanticType::Unknown) => {
+                self.constrain_expr_type(condition, SemanticType::Boolean, source)
+                    == SemanticType::Boolean
+            }
             Some(condition_type) => {
                 self.push_type_error(
                     condition.span(),

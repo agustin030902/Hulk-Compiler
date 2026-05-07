@@ -24,6 +24,21 @@ impl SemanticAnalyzer {
             return None;
         }
 
+        if matches!(
+            arg_type,
+            SemanticType::Function(_) | SemanticType::Struct(_)
+        ) {
+            self.push_type_error(
+                span,
+                source,
+                format!(
+                    "Function 'print' cannot print values of type {}.",
+                    arg_type.display_name()
+                ),
+            );
+            return None;
+        }
+
         Some(SemanticType::Unit)
     }
 
@@ -36,30 +51,35 @@ impl SemanticAnalyzer {
     ) -> Option<SemanticType> {
         match function {
             BuiltinFunction::Print => {
-                let Some(arg) = args.first() else {
+                if args.len() != 1 {
                     self.push_semantic_error(
                         span,
                         source,
                         "Function 'print' expects 1 argument.".to_string(),
                     );
                     return None;
-                };
+                }
+                let arg = &args[0];
                 self.check_print_argument(arg, span, source)
             }
             BuiltinFunction::Sin
             | BuiltinFunction::Cos
             | BuiltinFunction::Sqrt
             | BuiltinFunction::Exp => {
-                let Some(arg) = args.first() else {
+                if args.len() != 1 {
                     self.push_semantic_error(
                         span,
                         source,
                         format!("Function '{}' expects 1 argument.", function.name()),
                     );
                     return None;
-                };
+                }
+                let arg = &args[0];
 
-                let arg_type = self.check_expr(arg, source)?;
+                let mut arg_type = self.check_expr(arg, source)?;
+                if arg_type == SemanticType::Unknown {
+                    arg_type = self.constrain_expr_type(arg, SemanticType::Number, source);
+                }
                 if arg_type == SemanticType::Unknown {
                     return Some(SemanticType::Unknown);
                 }
@@ -89,8 +109,14 @@ impl SemanticAnalyzer {
                     return None;
                 }
 
-                let left_type = self.check_expr(&args[0], source)?;
-                let right_type = self.check_expr(&args[1], source)?;
+                let mut left_type = self.check_expr(&args[0], source)?;
+                let mut right_type = self.check_expr(&args[1], source)?;
+                if left_type == SemanticType::Unknown {
+                    left_type = self.constrain_expr_type(&args[0], SemanticType::Number, source);
+                }
+                if right_type == SemanticType::Unknown {
+                    right_type = self.constrain_expr_type(&args[1], SemanticType::Number, source);
+                }
                 if left_type == SemanticType::Unknown || right_type == SemanticType::Unknown {
                     return Some(SemanticType::Unknown);
                 }

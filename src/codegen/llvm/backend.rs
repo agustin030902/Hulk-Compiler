@@ -4,13 +4,14 @@ use crate::{
     codegen::CodegenBackend,
     error::{CompilerError, ErrorCategory},
     parser::expression::Program,
+    semantic::{SemanticAnalyzer, SemanticType},
 };
 
 use super::helper::state::{ValueRef, ValueType, VariableInfo};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(super) struct FunctionInfo {
-    pub(super) arity: usize,
+    pub(super) param_types: Vec<ValueType>,
     pub(super) return_type: ValueType,
 }
 
@@ -143,11 +144,79 @@ impl LlvmBackend {
     pub(super) fn bind_scope(&mut self, scope_index: usize, name: String, info: VariableInfo) {
         self.scopes[scope_index].insert(name, info);
     }
+
+    pub(super) fn load_function_signatures(&mut self, program: &Program) -> bool {
+        let mut analyzer = SemanticAnalyzer::new();
+        let semantic_errors = analyzer.analyze(program, "");
+
+        if !semantic_errors.is_empty() {
+            self.errors.extend(semantic_errors);
+            return false;
+        }
+
+        for (name, signature) in analyzer.function_signatures() {
+            let mut param_types = Vec::with_capacity(signature.param_types.len());
+            for (index, semantic_type) in signature.param_types.iter().copied().enumerate() {
+                let Some(value_type) = self.lower_semantic_type(
+                    semantic_type,
+                    &format!("parameter #{} in function '{}'", index + 1, name),
+                ) else {
+                    return false;
+                };
+                param_types.push(value_type);
+            }
+
+            let Some(return_type) = self.lower_semantic_type(
+                signature.return_type,
+                &format!("return type in function '{}'", name),
+            ) else {
+                return false;
+            };
+
+            self.functions.insert(
+                name.clone(),
+                FunctionInfo {
+                    param_types,
+                    return_type,
+                },
+            );
+        }
+
+        true
+    }
+
+    fn lower_semantic_type(
+        &mut self,
+        semantic_type: SemanticType,
+        context: &str,
+    ) -> Option<ValueType> {
+        let lowered = match semantic_type {
+            SemanticType::Number => ValueType::Double,
+            SemanticType::Boolean => ValueType::Bool,
+            SemanticType::String => ValueType::StringPtr,
+            SemanticType::Unit => ValueType::Unit,
+            SemanticType::Function(_) => ValueType::Function,
+            SemanticType::Struct(type_id) => ValueType::Struct(type_id),
+            SemanticType::Unknown => {
+                self.semantic_error(format!(
+                    "Could not infer a concrete type for {context} before code generation."
+                ));
+                return None;
+            }
+        };
+
+        Some(lowered)
+    }
 }
 
 impl CodegenBackend for LlvmBackend {
     fn generate(&mut self, program: &Program) -> Result<String, Vec<CompilerError>> {
         self.reset();
+
+        if !self.load_function_signatures(program) {
+            return Err(self.errors.clone());
+        }
+
         self.emit_program(program);
 
         if self.errors.is_empty() {

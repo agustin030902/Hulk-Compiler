@@ -169,6 +169,10 @@ impl LlvmBackend {
                 self.semantic_error("Equality operators do not support Unit values");
                 None
             }
+            ValueType::Function | ValueType::Struct(_) => {
+                self.semantic_error("Equality operators do not support Function/Struct values");
+                None
+            }
         }
     }
 

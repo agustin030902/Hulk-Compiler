@@ -11,16 +11,6 @@ use super::{
 impl LlvmBackend {
     pub(super) fn emit_program(&mut self, program: &Program) {
         for function in &program.functions {
-            self.functions.insert(
-                function.name.clone(),
-                super::backend::FunctionInfo {
-                    arity: function.params.len(),
-                    return_type: ValueType::Double,
-                },
-            );
-        }
-
-        for function in &program.functions {
             self.emit_function_decl(function);
         }
 
@@ -30,6 +20,22 @@ impl LlvmBackend {
     }
 
     fn emit_function_decl(&mut self, function: &FunctionDecl) {
+        let Some(info) = self.functions.get(&function.name).cloned() else {
+            self.semantic_error(format!(
+                "Function '{}' has no inferred signature for code generation.",
+                function.name
+            ));
+            return;
+        };
+
+        if info.param_types.len() != function.params.len() {
+            self.semantic_error(format!(
+                "Function '{}' has inconsistent parameter metadata.",
+                function.name
+            ));
+            return;
+        }
+
         let saved_body = std::mem::take(&mut self.body_lines);
         let saved_scopes = std::mem::take(&mut self.scopes);
         self.push_scope();
@@ -37,35 +43,50 @@ impl LlvmBackend {
         let params = function
             .params
             .iter()
-            .map(|param| format!("double %{}", param.name))
+            .zip(info.param_types.iter().copied())
+            .map(|(param, value_type)| format!("{} %{}", value_type.llvm_type(), param.name))
             .collect::<Vec<_>>();
 
-        for param in &function.params {
+        for (param, value_type) in function.params.iter().zip(info.param_types.iter().copied()) {
             let ptr_name = self.next_temp();
-            self.emit_body(format!("{ptr_name} = alloca double"));
-            self.emit_body(format!("store double %{}, double* {ptr_name}", param.name));
+            let llvm_type = value_type.llvm_type();
+            self.emit_body(format!("{ptr_name} = alloca {llvm_type}"));
+            self.emit_body(format!(
+                "store {llvm_type} %{}, {llvm_type}* {ptr_name}",
+                param.name
+            ));
             self.bind_current_scope(
                 param.name.clone(),
                 VariableInfo {
                     ptr_name,
-                    value_type: ValueType::Double,
+                    value_type,
                 },
             );
         }
 
-        let result = self.emit_expr(&function.body).unwrap_or_else(|| ValueRef {
-            value_type: ValueType::Unit,
-            repr: "0".to_string(),
-        });
+        let Some(result) = self.emit_expr(&function.body) else {
+            self.scopes = saved_scopes;
+            self.body_lines = saved_body;
+            return;
+        };
+
+        if result.value_type != info.return_type {
+            self.semantic_error(format!(
+                "Function '{}' returns {} but inferred signature expects {}.",
+                function.name,
+                result.value_type.display_name(),
+                info.return_type.display_name()
+            ));
+            self.scopes = saved_scopes;
+            self.body_lines = saved_body;
+            return;
+        }
+
         let function_body = std::mem::take(&mut self.body_lines);
         self.scopes = saved_scopes;
         self.body_lines = saved_body;
 
-        if let Some(info) = self.functions.get_mut(&function.name) {
-            info.return_type = result.value_type;
-        }
-
-        let return_type = result.value_type.llvm_type();
+        let return_type = info.return_type.llvm_type();
         self.emit_function_line(String::new());
         self.emit_function_line(format!(
             "define {return_type} @hulk_{}({}) {{",
@@ -156,6 +177,12 @@ impl LlvmBackend {
             }
             ValueType::Unit => {
                 self.semantic_error("Function 'print' expects a non-Unit argument");
+            }
+            ValueType::Function | ValueType::Struct(_) => {
+                self.semantic_error(format!(
+                    "Function 'print' cannot print values of type {}.",
+                    value_ref.value_type.display_name()
+                ));
             }
         }
     }

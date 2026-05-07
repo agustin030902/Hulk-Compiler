@@ -1,151 +1,128 @@
 # Semantic
 
-Este modulo implementa el analisis semantico del compilador.
+Este módulo implementa el análisis semántico del compilador Hulk.
 
-Su trabajo es recorrer el AST que sale del parser, validar scopes, redeclaraciones,
-uso de variables, y compatibilidad de tipos antes de que el pipeline llegue a `codegen`.
+Valida:
+- scopes y redeclaraciones
+- uso de variables antes de declarar
+- compatibilidad de tipos en expresiones
+- contratos de funciones (cantidad/tipos de parámetros y tipo de retorno)
 
 ## Estructura actual
 
 ```text
 src/semantic/
   mod.rs
-  README.md
   analyzer.rs
   statement.rs
   helper/
     mod.rs
     types.rs
+    scope.rs
+    function.rs
   expr/
     mod.rs
     binary.rs
     block.rs
     builtin_call.rs
     destructive_assign.rs
+    function_call.rs
+    if_expr.rs
     let_in.rs
     literal.rs
     unary.rs
     variable.rs
+    while_expr.rs
   tests/
     ...
 ```
 
-## Rol de cada archivo
+## Tipos semánticos
 
-- `mod.rs`
-  - Fachada publica del modulo.
-  - Expone `SemanticAnalyzer` y `SemanticType`.
+`SemanticType` modela el tipo lógico del lenguaje:
+- `Number`
+- `Boolean`
+- `String`
+- `Unit`
+- `Function(u32)`
+- `Struct(u32)`
+- `Unknown`
 
-- `analyzer.rs`
-  - Contiene la clase principal `SemanticAnalyzer`.
-  - Guarda el estado compartido del analisis:
-    - `scopes`
-    - `errors`
-  - Define operaciones base como:
-    - `analyze`
-    - `push_scope`
-    - `pop_scope`
-    - `lookup`
-    - `find_scope_index`
-    - `push_type_error`
-    - `push_semantic_error`
+`Unknown` se usa durante inferencia y debe resolverse antes de codegen.
 
-- `statement.rs`
-  - Maneja el dispatch de `Statement`.
-  - Aqui vive la logica de:
-    - `let`
-    - `=`
-    - expression statements
-    - `Statement::Print` si algun dia la gramatica vuelve a construirlo
+## Scope aislado en helper
 
-- `expr/mod.rs`
-  - Punto de dispatch de `Expr`.
-  - Solo enruta cada variant del AST al archivo correspondiente.
+El stack de scopes ya no vive como `Vec<HashMap<...>>` directo en `analyzer.rs`.
+Ahora está abstraído en [`ScopeStack`](./helper/scope.rs):
+- `push` / `pop`
+- `lookup`
+- `lookup_with_index`
+- `contains_in_current`
+- `assign_at`
 
-- `expr/*.rs`
-  - Cada archivo contiene la logica de una categoria concreta del AST.
-  - Esto es lo que reduce conflictos entre varias personas trabajando en paralelo.
+Esto reduce responsabilidades de `SemanticAnalyzer` y centraliza la lógica de alcance.
 
-- `helper/`
-  - Solo debe contener tipos o utilidades compartidas por varias expresiones o statements.
-  - Ahora mismo contiene `SemanticType`.
-  - Si algo es especifico de una expresion, no debe ir aqui.
+## Firmas de función
 
-## Flujo interno
+Las funciones se guardan como [`FunctionSignature`](./helper/function.rs):
+- `type_id`
+- `param_types: Vec<SemanticType>`
+- `return_type: SemanticType`
 
-El flujo real es:
+Ya no se guarda solo la aridad.
 
-```text
-Compiler::compile
-  -> parser construye Program
-  -> SemanticAnalyzer::analyze(&program, source)
-  -> recorre program.statements
-  -> statement.rs
-  -> expr/mod.rs
-  -> expr/<nodo>.rs
+## Inferencia de tipos de función
+
+`SemanticAnalyzer` usa un proceso por punto fijo:
+
+1. Registra todas las funciones con tipos `Unknown`.
+2. Ejecuta pasadas de inferencia (máximo `MAX_INFERENCE_PASSES`) con errores suprimidos.
+3. Reaplica las firmas inferidas.
+4. Ejecuta el chequeo final con errores habilitados.
+5. Si quedan `Unknown`, reporta errores explícitos.
+
+Esto permite inferir casos encadenados y recursivos, incluyendo patrones tipo:
+
+```hulk
+function id(x) => x;
+function plus_one(y) => id(y) + 1;
 ```
 
-Durante el analisis:
+Aquí `id` se resuelve por contexto de retorno/uso, no solo por su cuerpo aislado.
 
-- siempre existe al menos un scope base
-- los `Block` hacen `push_scope()` y `pop_scope()`
-- los `let ... in ...` hacen `push_scope()` y `pop_scope()`
-- las variables se buscan del scope mas interno al mas externo
-- los errores semanticos y de tipos se acumulan en `errors`
+## Reglas principales
 
-## Regla de organizacion
+### Variables
+- `let x = expr;` declara en scope actual.
+- `x = expr;` requiere variable declarada (puede cambiar tipo, por diseño actual).
+- `x := expr` requiere mismo tipo que la variable original.
+- Bloques `{ ... }` y `let ... in ...` crean scope.
 
-Usa esta regla para mantener la estructura consistente:
+### Funciones
+- Se registran globalmente antes de analizar cuerpos (soporta recursión).
+- No se permite redeclarar función.
+- En llamadas se valida:
+  - existencia
+  - aridad
+  - tipo de cada argumento
+- El tipo de retorno se usa para validar contextos (`+`, `@`, `if`, etc.).
 
-- Si el codigo depende de un nodo concreto del AST, va en `expr/<nodo>.rs` o `statement.rs`.
-- Si el codigo es estado compartido del analizador, va en `analyzer.rs`.
-- Si el codigo es una utilidad o tipo compartido por varios archivos del modulo, va en `helper/`.
+### Expresiones
+- `+ - * / ^` => `Number`
+- `@` => `(String,String) | (String,Number) | (Number,String)`
+- comparaciones numéricas => `Boolean`
+- `== !=` requieren mismo tipo comparable
+- `&& || !` sobre booleanos
+- `while` devuelve `Unit`
 
-## Como agregar una nueva expresion
+## Convención de cambios
 
-Supongamos que agregas una nueva variante al AST, por ejemplo `Expr::IfElse`.
+- Lógica compartida de estado/tipos en `helper/`.
+- Reglas por nodo en `expr/*.rs`.
+- Dispatch en `expr/mod.rs` y `statement.rs`.
+- Cualquier feature nuevo debe venir con tests en `src/semantic/tests/`.
 
-Hazlo en este orden:
+## Estado actual
 
-1. Extiende el AST en `src/parser/expression.rs`.
-2. Actualiza la gramatica/parser para que construya el nuevo nodo.
-3. Crea un archivo nuevo en `src/semantic/expr/`, por ejemplo `if_else.rs`.
-4. Declara el modulo en `src/semantic/expr/mod.rs`.
-5. Agrega el dispatch del nuevo variant en `check_expr`.
-6. Implementa la validacion semantica dentro de `impl SemanticAnalyzer`.
-7. Si necesitas tipos o helpers reutilizables por varios nodos, agregalos en `src/semantic/helper/`.
-8. Agrega o ajusta tests en `src/semantic/tests/`.
-9. Luego replica el soporte en `codegen` si la expresion debe generar LLVM IR.
-
-## Como repartir trabajo entre varias personas
-
-La idea de esta refactorizacion es que el equipo pueda dividir ownership por nodo:
-
-- una persona puede trabajar en `expr/binary.rs`
-- otra en `expr/let_in.rs`
-- otra en `expr/builtin_call.rs`
-
-Los archivos con mas posibilidad de conflicto siguen siendo:
-
-- `expr/mod.rs`
-- `statement.rs`
-- `analyzer.rs`
-- `helper/*`
-
-Por eso, cuando agreguen una expresion nueva, intenten que una sola persona toque:
-
-- el cambio de dispatch
-- el archivo nuevo de la expresion
-- sus tests
-
-y que el resto del trabajo vaya en archivos separados.
-
-## Convencion para helpers
-
-Antes de crear algo en `helper/`, preguntate esto:
-
-- Lo usan varias expresiones o statements: entonces si puede vivir en `helper/`.
-- Solo lo usa una expresion: debe vivir en el archivo de esa expresion.
-- Es estado principal del analizador: debe vivir en `analyzer.rs`.
-
-Esa regla evita que `helper/` se convierta otra vez en un archivo grande disfrazado.
+La semántica ya entrega firmas concretas de función para que `codegen` emita LLVM tipado
+(ya no limitado a funciones numéricas únicamente).

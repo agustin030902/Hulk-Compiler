@@ -8,10 +8,14 @@ impl SemanticAnalyzer {
         unary: &UnaryExpr,
         source: &str,
     ) -> Option<SemanticType> {
-        let expr_type = self.check_expr(&unary.expr, source)?;
+        let mut expr_type = self.check_expr(&unary.expr, source)?;
 
         match unary.op {
             UnaryOp::Neg => {
+                if expr_type == SemanticType::Unknown {
+                    expr_type = self.constrain_expr_type(&unary.expr, SemanticType::Number, source);
+                }
+
                 if expr_type == SemanticType::Unknown {
                     return Some(SemanticType::Unknown);
                 }
@@ -31,6 +35,11 @@ impl SemanticAnalyzer {
                 }
             }
             UnaryOp::Not => {
+                if expr_type == SemanticType::Unknown {
+                    expr_type =
+                        self.constrain_expr_type(&unary.expr, SemanticType::Boolean, source);
+                }
+
                 if expr_type == SemanticType::Unknown {
                     return Some(SemanticType::Unknown);
                 }

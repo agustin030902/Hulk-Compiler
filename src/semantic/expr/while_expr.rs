@@ -8,7 +8,11 @@ impl SemanticAnalyzer {
         while_expr: &WhileExpr,
         source: &str,
     ) -> Option<SemanticType> {
-        let condition_type = self.check_expr(&while_expr.condition, source)?;
+        let mut condition_type = self.check_expr(&while_expr.condition, source)?;
+        if condition_type == SemanticType::Unknown {
+            condition_type =
+                self.constrain_expr_type(&while_expr.condition, SemanticType::Boolean, source);
+        }
 
         if condition_type == SemanticType::Unknown {
             return Some(SemanticType::Unknown);

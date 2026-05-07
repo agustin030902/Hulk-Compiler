@@ -23,8 +23,7 @@ impl SemanticAnalyzer {
             let value_type = self
                 .check_expr(&binding.value, source)
                 .unwrap_or(SemanticType::Unknown);
-            self.current_scope_mut()
-                .insert(binding.name.clone(), value_type);
+            self.bind_current_scope(binding.name.clone(), value_type);
         }
 
         let body_type = self.check_expr(&let_in.body, source);

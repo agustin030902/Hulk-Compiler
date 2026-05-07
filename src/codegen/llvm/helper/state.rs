@@ -10,6 +10,8 @@ pub(in crate::codegen::llvm) enum ValueType {
     Bool,
     StringPtr,
     Unit,
+    Function,
+    Struct(u32),
 }
 
 impl ValueType {
@@ -19,6 +21,8 @@ impl ValueType {
             ValueType::Bool => "i1",
             ValueType::StringPtr => "i8*",
             ValueType::Unit => "i8",
+            ValueType::Function => "i8*",
+            ValueType::Struct(_) => "i8*",
         }
     }
 
@@ -28,6 +32,8 @@ impl ValueType {
             ValueType::Bool => "Boolean",
             ValueType::StringPtr => "String",
             ValueType::Unit => "Unit",
+            ValueType::Function => "Function",
+            ValueType::Struct(_) => "Struct",
         }
     }
 }

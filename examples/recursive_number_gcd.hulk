@@ -1,0 +1,7 @@
+function mod(x, y) => if (x < y) x else mod(x - y, y);
+function gcd(a, b) => if (b == 0) a else gcd(b, mod(a, b));
+
+print("gcd(48, 18)");
+print(gcd(48, 18));
+print("gcd(13, 5)");
+print(gcd(13, 5));

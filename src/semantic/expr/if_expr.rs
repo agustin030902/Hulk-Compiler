@@ -29,10 +29,9 @@ impl SemanticAnalyzer {
             return Some(SemanticType::Unknown);
         }
 
-        let Some(expected_type) = branch_types
-            .iter()
-            .find_map(|(_, value_type)| (*value_type != SemanticType::Unknown).then_some(*value_type))
-        else {
+        let Some(expected_type) = branch_types.iter().find_map(|(_, value_type)| {
+            (*value_type != SemanticType::Unknown).then_some(*value_type)
+        }) else {
             return Some(SemanticType::Unknown);
         };
 

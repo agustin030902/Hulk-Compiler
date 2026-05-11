@@ -16,6 +16,42 @@ Recursión que retorna `String`.
 - Mezcla de recursión + concatenación
 - Retorno de función no numérico
 
+### `recursive_number_gcd.hulk`
+Recursión numérica para máximo común divisor (algoritmo de Euclides).
+- `mod(x, y)` implementado por restas recursivas
+- `gcd(a, b)` con llamada recursiva `gcd(b, mod(a, b))`
+- Ejemplo clásico de recursión compuesta entre funciones
+
+### `recursive_number_power.hulk`
+Potencia entera recursiva.
+- `pow_int(base, exp)` con caso base `exp == 0`
+- Multiplicación recursiva decreciendo exponente
+- Función numérica pura con dos parámetros
+
+### `recursive_number_sum_to_n.hulk`
+Suma acumulada recursiva.
+- `sum_to(n)` calcula `1 + 2 + ... + n`
+- Caso base `n == 0`
+- Recursión lineal simple para validar inferencia de retorno numérico
+
+### `recursive_number_factorial_tail.hulk`
+Factorial usando recursión con acumulador.
+- `fact_tail(n, acc)` como versión tail-style
+- `fact(n)` como wrapper para iniciar acumulador en `1`
+- Ejemplo de recursión con estado explícito por parámetros
+
+### `recursive_mutual_even_odd.hulk`
+Recursión mutua entre funciones.
+- `is_even` llama a `is_odd` y viceversa
+- Caso base en `n == 0`
+- Demuestra referencias cruzadas entre firmas globales
+
+### `recursive_string_repeat.hulk`
+Recursión de `String` con múltiples parámetros.
+- `repeat_with_sep(n, text)` construye una secuencia separada por comas
+- Usa `if/elif/else` recursivo
+- Combina concatenación de strings y decremento numérico
+
 ### `mochila_funcionalidades.hulk`
 Ejemplo “mochila” con varias funcionalidades actuales del compilador.
 - Recursión numérica y recursión `String`

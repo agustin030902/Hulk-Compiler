@@ -11,7 +11,8 @@ Interfaz de prueba rápida con `eframe/egui`.
 - Editar código fuente
 - Compilar (lexer -> parser -> semantic -> LLVM IR)
 - Ver errores, tokens, AST e IR
-- Ejecutar el IR con `lli` y ver salida
+- Ver un panel tipo terminal con el reporte de compilación (igual al archivo generado)
+- Instalar automáticamente `hulk-vscode.vsix` desde la propia GUI
 
 ### Ejecutar
 
@@ -32,6 +33,6 @@ cargo run -- run examples/calculator_ok.hulk
 ```
 
 ## Notas
-- La GUI usa `lli` para interpretar IR.
+- La GUI muestra el reporte de compilación generado en archivo (IR o diagnóstico).
 - Para binario nativo (`run`), se usa `clang` (ver `README.md` raíz).
 - Las funciones de usuario ya se emiten con firmas tipadas inferidas (no solo numéricas).

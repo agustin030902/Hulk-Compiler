@@ -1,0 +1,7 @@
+function fact_tail(n, acc) => if (n == 0) acc else fact_tail(n - 1, n * acc);
+function fact(n) => fact_tail(n, 1);
+
+print("fact(6)");
+print(fact(6));
+print("fact(8)");
+print(fact(8));

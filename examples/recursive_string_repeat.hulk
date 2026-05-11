@@ -1,0 +1,4 @@
+function repeat_with_sep(n, text) => if (n == 0) "" elif (n == 1) text else text @ ", " @ repeat_with_sep(n - 1, text);
+
+print(repeat_with_sep(5, "ha"));
+print(repeat_with_sep(3, "Hulk"));

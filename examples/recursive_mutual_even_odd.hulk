@@ -1,0 +1,8 @@
+function is_even(n) => if (n == 0) true else is_odd(n - 1);
+function is_odd(n) => if (n == 0) false else is_even(n - 1);
+function bool_label(flag) => if (flag) "true" else "false";
+
+print("is_even(10) = " @ bool_label(is_even(10)));
+print("is_odd(10) = " @ bool_label(is_odd(10)));
+print("is_even(7) = " @ bool_label(is_even(7)));
+print("is_odd(7) = " @ bool_label(is_odd(7)));

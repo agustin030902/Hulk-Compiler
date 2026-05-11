@@ -1,0 +1,6 @@
+function pow_int(base, exponent) => if (exponent == 0) 1 else base * pow_int(base, exponent - 1);
+
+print("pow_int(2, 10)");
+print(pow_int(2, 10));
+print("pow_int(5, 4)");
+print(pow_int(5, 4));

@@ -127,6 +127,22 @@ print(stars(5));
 }
 
 #[test]
+fn infers_recursive_return_type_from_if_branch_context() {
+    let source = r#"
+function mod(x, y) => if (x < y) x else mod(x - y, y);
+function mcd(a, b) => if (b == 0) a else mcd(a, mod(a, b));
+print(mcd(13, 5));
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
 fn allows_concat_between_string_and_number_and_string() {
     let source = r#"
 let a = "hello " @ 1;

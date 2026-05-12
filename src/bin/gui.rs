@@ -33,19 +33,53 @@ enum AstViewMode {
     DebugText,
 }
 
-const VS_BG_MAIN: Color32 = Color32::from_rgb(30, 30, 30);
-const VS_BG_PANEL: Color32 = Color32::from_rgb(37, 37, 38);
-const VS_BG_INPUT: Color32 = Color32::from_rgb(45, 45, 45);
-const VS_TEXT: Color32 = Color32::from_rgb(212, 212, 212);
-const VS_ACCENT: Color32 = Color32::from_rgb(86, 156, 214);
-const VS_KEYWORD: Color32 = Color32::from_rgb(197, 134, 192);
-const VS_FUNCTION_YELLOW: Color32 = Color32::from_rgb(220, 220, 170);
-const VS_VARIABLE: Color32 = Color32::from_rgb(212, 212, 212);
-const VS_NUMBER: Color32 = Color32::from_rgb(181, 206, 168);
-const VS_STRING: Color32 = Color32::from_rgb(206, 145, 120);
-const VS_BOOLEAN: Color32 = Color32::from_rgb(86, 156, 214);
-const VS_OPERATOR: Color32 = Color32::from_rgb(212, 212, 212);
-const VS_UNKNOWN: Color32 = Color32::from_rgb(244, 71, 71);
+//modo normal
+
+// const VS_BG_MAIN: Color32 = Color32::from_rgb(30, 30, 30);
+// const VS_BG_PANEL: Color32 = Color32::from_rgb(37, 37, 38);
+// const VS_BG_INPUT: Color32 = Color32::from_rgb(45, 45, 45);
+// const VS_TEXT: Color32 = Color32::from_rgb(212, 212, 212);
+// const VS_ACCENT: Color32 = Color32::from_rgb(86, 156, 214);
+// const VS_KEYWORD: Color32 = Color32::from_rgb(197, 134, 192);
+// const VS_FUNCTION_YELLOW: Color32 = Color32::from_rgb(220, 220, 170);
+// const VS_VARIABLE: Color32 = Color32::from_rgb(212, 212, 212);
+// const VS_NUMBER: Color32 = Color32::from_rgb(181, 206, 168);
+// const VS_STRING: Color32 = Color32::from_rgb(206, 145, 120);
+// const VS_BOOLEAN: Color32 = Color32::from_rgb(86, 156, 214);
+// const VS_OPERATOR: Color32 = Color32::from_rgb(212, 212, 212);
+// const VS_UNKNOWN: Color32 = Color32::from_rgb(244, 71, 71);
+
+// modo Cyberpunk
+
+// const VS_BG_MAIN: Color32 = Color32::from_rgb(10, 10, 18);      // #0A0A12 (negro azulado profundo)
+// const VS_BG_PANEL: Color32 = Color32::from_rgb(16, 16, 28);     // #10101C
+// const VS_BG_INPUT: Color32 = Color32::from_rgb(22, 22, 38);     // #161626
+// const VS_TEXT: Color32 = Color32::from_rgb(220, 220, 235);      // #DCDCEB (más suave, menos blanco puro)
+// const VS_ACCENT: Color32 = Color32::from_rgb(0, 255, 255);      // #00FFFF (cian neón)
+// const VS_KEYWORD: Color32 = Color32::from_rgb(255, 0, 200);     // #FF00C8 (magenta neón)
+// const VS_FUNCTION_YELLOW: Color32 = Color32::from_rgb(255, 255, 80); // #FFFF50 (amarillo eléctrico suave)
+// const VS_VARIABLE: Color32 = Color32::from_rgb(200, 200, 220);  // gris frío
+// const VS_NUMBER: Color32 = Color32::from_rgb(0, 255, 140);      // #00FF8C (verde neón)
+// const VS_STRING: Color32 = Color32::from_rgb(255, 140, 0);      // naranja neon controlado
+// const VS_BOOLEAN: Color32 = Color32::from_rgb(0, 200, 255);     // azul eléctrico
+// const VS_OPERATOR: Color32 = Color32::from_rgb(180, 180, 200);  // gris suave
+// const VS_UNKNOWN: Color32 = Color32::from_rgb(255, 60, 60);     // rojo glitch
+
+//Modo capuccino
+
+const VS_BG_MAIN: Color32 = Color32::from_rgb(30, 30, 46);      // base
+const VS_BG_PANEL: Color32 = Color32::from_rgb(24, 24, 37);     // mantle
+const VS_BG_INPUT: Color32 = Color32::from_rgb(17, 17, 27);     // crust
+const VS_TEXT: Color32 = Color32::from_rgb(205, 214, 244);      // text
+const VS_ACCENT: Color32 = Color32::from_rgb(137, 180, 250);    // blue
+const VS_KEYWORD: Color32 = Color32::from_rgb(203, 166, 247);   // mauve
+const VS_FUNCTION_YELLOW: Color32 = Color32::from_rgb(250, 179, 135); // peach (funciones/builtins)
+const VS_VARIABLE: Color32 = Color32::from_rgb(186, 194, 222);  // subtext1
+const VS_NUMBER: Color32 = Color32::from_rgb(166, 227, 161);    // green
+const VS_STRING: Color32 = Color32::from_rgb(249, 226, 175);    // yellow pastel
+const VS_BOOLEAN: Color32 = Color32::from_rgb(137, 180, 250);   // blue
+const VS_OPERATOR: Color32 = Color32::from_rgb(180, 190, 254);  // lavender
+const VS_UNKNOWN: Color32 = Color32::from_rgb(243, 139, 168);   // red (error)
 
 struct HulkGui {
     source: String,

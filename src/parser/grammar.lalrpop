@@ -76,14 +76,15 @@ FunctionDecls: Vec<FunctionDecl> = {
 };
 
 FunctionDecl: FunctionDecl = {
-    <l:@L> "function" <id:IdentifierWithSpan> "(" <params:FunctionParams> ")" "=>" <body:Expr> ";" <r:@R> => FunctionDecl {
+    <l:@L> "function" <id:IdentifierWithSpan> "(" <params:FunctionParams> ")" <return_annotation:OptionalTypeAnnotation> "=>" <body:Expr> ";" <r:@R> => FunctionDecl {
         name: id.0,
         name_span: id.1,
         params,
+        return_type_annotation: return_annotation,
         body,
         span: Span::new(l, r),
     },
-    <l:@L> "function" <id:IdentifierWithSpan> "(" <params:FunctionParams> ")" <body:BlockExpr> <r:@R> =>? {
+    <l:@L> "function" <id:IdentifierWithSpan> "(" <params:FunctionParams> ")" <return_annotation:OptionalTypeAnnotation> <body:BlockExpr> <r:@R> =>? {
         let Expr::Block(body) = body else {
             unreachable!("BlockExpr rule must produce Expr::Block");
         };
@@ -92,6 +93,7 @@ FunctionDecl: FunctionDecl = {
             name: id.0,
             name_span: id.1,
             params,
+            return_type_annotation: return_annotation,
             body: Expr::Block(body),
             span: Span::new(l, r),
         })
@@ -110,8 +112,9 @@ FunctionParams: Vec<FunctionParam> = {
 };
 
 FunctionParam: FunctionParam = {
-    <l:@L> <name:"identifier"> <r:@R> => FunctionParam {
+    <l:@L> <name:"identifier"> <annotation:OptionalTypeAnnotation> <r:@R> => FunctionParam {
         name,
+        type_annotation: annotation,
         span: Span::new(l, r),
     },
 };

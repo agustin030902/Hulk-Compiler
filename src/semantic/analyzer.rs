@@ -415,10 +415,28 @@ impl SemanticAnalyzer {
                 continue;
             }
 
+            let param_types = function
+                .params
+                .iter()
+                .map(|param| {
+                    param
+                        .type_annotation
+                        .as_ref()
+                        .and_then(|annotation| self.resolve_annotation_type(annotation, source))
+                        .unwrap_or(SemanticType::Unknown)
+                })
+                .collect::<Vec<_>>();
+
+            let return_type = function
+                .return_type_annotation
+                .as_ref()
+                .and_then(|annotation| self.resolve_annotation_type(annotation, source))
+                .unwrap_or(SemanticType::Unknown);
+
             let signature = FunctionSignature {
                 type_id: self.next_function_type_id,
-                param_types: vec![SemanticType::Unknown; function.params.len()],
-                return_type: SemanticType::Unknown,
+                param_types,
+                return_type,
             };
             self.next_function_type_id = self.next_function_type_id.saturating_add(1);
             self.functions.insert(function.name.clone(), signature);

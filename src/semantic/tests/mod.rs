@@ -1,5 +1,6 @@
 mod conditionals;
 mod destructive_assign;
+mod function_type_annotations;
 mod let_in;
 mod print_expr;
 mod string_escape;

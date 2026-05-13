@@ -12,6 +12,7 @@ Si una fase falla, se detiene el pipeline y se genera diagnóstico.
 
 - Lenguaje basado en expresiones.
 - Scope léxico en bloques `{ ... }` y `let ... in ...`.
+- Anotaciones explícitas de tipo en `let` y bindings de `let-in`.
 - `while` como expresión (`Unit`).
 - Funciones globales con recursión.
 - Semántica con inferencia de tipos para parámetros y retorno.
@@ -57,8 +58,27 @@ examples/
 - `while (cond) { ... }`
 - bloques `{ ... }`
 - `let ... in ...`
+- `let` con anotación de tipo: `let x: Number = 42;`
 - asignación destructiva `:=`
 - llamadas a funciones de usuario y builtins
+
+### Anotación de tipos en variables
+
+Sintaxis soportada:
+
+```hulk
+let x: Number = 42;
+let y: String = "hola";
+let ok: Boolean = true;
+
+let msg = let base: Number = 10, sufijo: String = " pts" in "score=" @ base @ sufijo;
+```
+
+Reglas:
+
+- Tipos válidos en anotación: `Number`, `Boolean`, `String`, `Unit`.
+- El chequeo semántico valida que el tipo inferido del inicializador sea compatible con la anotación.
+- Si el nombre de tipo anotado no existe o no conforma con el inicializador, se reporta error semántico/de tipo y el pipeline se detiene antes de codegen.
 
 ### Builtins
 
@@ -189,6 +209,8 @@ Este ejemplo combina recursión, `while`, `let-in`, bloques, `:=`, builtins y `p
 - `examples/builtin_math_ok.hulk`
 - `examples/block_scope_ok.hulk`
 - `examples/while_ok.hulk`
+- `examples/type_annotations_ok.hulk`
+- `examples/type_annotations_let_in_ok.hulk`
 
 ### Con error (diagnósticos)
 
@@ -197,6 +219,8 @@ Este ejemplo combina recursión, `while`, `let-in`, bloques, `:=`, builtins y `p
 - `examples/destructive_assign_type_error.hulk`
 - `examples/error_scope_leak.hulk`
 - `examples/while_condition_type_error.hulk`
+- `examples/type_annotations_type_mismatch_error.hulk`
+- `examples/type_annotations_unknown_type_error.hulk`
 
 ## Notas
 

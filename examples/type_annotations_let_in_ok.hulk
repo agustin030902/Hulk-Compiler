@@ -1,0 +1,4 @@
+function id(v) => v;
+
+let message = let base: Number = id(20), suffix: String = " pts" in "score=" @ (base * 2) @ suffix;
+print(message);

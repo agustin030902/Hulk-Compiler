@@ -1,0 +1,5 @@
+function add_base(base, x: Number): Number => base + x;
+function identity(x): Number => x;
+
+print(add_base(10, 2));
+print(identity(42));

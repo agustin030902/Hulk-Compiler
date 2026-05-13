@@ -4,6 +4,7 @@ use crate::{
     error::{CompilerError, ErrorCategory, offset_to_line_column},
     parser::expression::{
         BlockExpr, Expr, FunctionDecl, IfExpr, LetInExpr, Program, Span, Statement,
+        TypeAnnotation,
     },
 };
 
@@ -163,6 +164,57 @@ impl SemanticAnalyzer {
 
     pub(super) fn is_declared_in_current_scope(&self, name: &str) -> bool {
         self.scopes.contains_in_current(name)
+    }
+
+    pub(super) fn resolve_annotation_type(
+        &mut self,
+        annotation: &TypeAnnotation,
+        source: &str,
+    ) -> Option<SemanticType> {
+        let Some(annotation_type) = SemanticType::from_annotation_name(&annotation.name) else {
+            self.push_semantic_error(
+                annotation.span,
+                source,
+                format!(
+                    "Unknown type annotation '{}'. Expected one of: {}.",
+                    annotation.name,
+                    SemanticType::annotation_names()
+                ),
+            );
+            return None;
+        };
+
+        Some(annotation_type)
+    }
+
+    pub(super) fn check_annotated_initializer(
+        &mut self,
+        variable_name: &str,
+        value: &Expr,
+        annotation_type: SemanticType,
+        annotation_span: Span,
+        source: &str,
+    ) -> SemanticType {
+        let mut value_type = self.check_expr(value, source).unwrap_or(SemanticType::Unknown);
+
+        if value_type == SemanticType::Unknown {
+            value_type = self.constrain_expr_type(value, annotation_type, source);
+        }
+
+        if value_type != SemanticType::Unknown && value_type != annotation_type {
+            self.push_type_error(
+                annotation_span,
+                source,
+                format!(
+                    "Type annotation for variable '{}' expects {}, but initializer is {}.",
+                    variable_name,
+                    annotation_type.display_name(),
+                    value_type.display_name()
+                ),
+            );
+        }
+
+        annotation_type
     }
 
     pub(super) fn constrain_expr_type(

@@ -12,6 +12,7 @@ impl SemanticAnalyzer {
             Statement::Let {
                 name,
                 name_span,
+                type_annotation,
                 value,
                 ..
             } => {
@@ -27,11 +28,25 @@ impl SemanticAnalyzer {
                     return None;
                 }
 
-                let value_type = self
-                    .check_expr(value, source)
-                    .unwrap_or(SemanticType::Unknown);
-                self.bind_current_scope(name.clone(), value_type);
-                Some(value_type)
+                let binding_type = if let Some(annotation) = type_annotation {
+                    if let Some(annotation_type) = self.resolve_annotation_type(annotation, source)
+                    {
+                        self.check_annotated_initializer(
+                            name,
+                            value,
+                            annotation_type,
+                            annotation.span,
+                            source,
+                        )
+                    } else {
+                        self.check_expr(value, source).unwrap_or(SemanticType::Unknown)
+                    }
+                } else {
+                    self.check_expr(value, source).unwrap_or(SemanticType::Unknown)
+                };
+
+                self.bind_current_scope(name.clone(), binding_type);
+                Some(binding_type)
             }
             Statement::Print { value, span } => self.check_print_argument(value, *span, source),
             Statement::Expr { value, .. } => self.check_expr(value, source),

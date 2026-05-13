@@ -20,10 +20,24 @@ impl SemanticAnalyzer {
                 continue;
             }
 
-            let value_type = self
-                .check_expr(&binding.value, source)
-                .unwrap_or(SemanticType::Unknown);
-            self.bind_current_scope(binding.name.clone(), value_type);
+            let binding_type = if let Some(annotation) = &binding.type_annotation {
+                if let Some(annotation_type) = self.resolve_annotation_type(annotation, source) {
+                    self.check_annotated_initializer(
+                        &binding.name,
+                        &binding.value,
+                        annotation_type,
+                        annotation.span,
+                        source,
+                    )
+                } else {
+                    self.check_expr(&binding.value, source)
+                        .unwrap_or(SemanticType::Unknown)
+                }
+            } else {
+                self.check_expr(&binding.value, source)
+                    .unwrap_or(SemanticType::Unknown)
+            };
+            self.bind_current_scope(binding.name.clone(), binding_type);
         }
 
         let body_type = self.check_expr(&let_in.body, source);

@@ -21,4 +21,18 @@ impl SemanticType {
             SemanticType::Unknown => "Unknown",
         }
     }
+
+    pub(in crate::semantic) fn from_annotation_name(name: &str) -> Option<Self> {
+        match name {
+            "Number" => Some(SemanticType::Number),
+            "Boolean" => Some(SemanticType::Boolean),
+            "String" => Some(SemanticType::String),
+            "Unit" => Some(SemanticType::Unit),
+            _ => None,
+        }
+    }
+
+    pub(in crate::semantic) const fn annotation_names() -> &'static str {
+        "Number, Boolean, String, Unit"
+    }
 }

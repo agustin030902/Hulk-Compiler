@@ -32,10 +32,17 @@ pub struct FunctionParam {
 }
 
 #[derive(Debug, Clone)]
+pub struct TypeAnnotation {
+    pub name: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
 pub enum Statement {
     Let {
         name: String,
         name_span: Span,
+        type_annotation: Option<TypeAnnotation>,
         value: Expr,
         span: Span,
     },
@@ -173,6 +180,7 @@ pub struct ElifBranch {
 #[derive(Debug, Clone)]
 pub struct LetBinding {
     pub name: String,
+    pub type_annotation: Option<TypeAnnotation>,
     pub value: Expr,
     pub span: Span,
 }

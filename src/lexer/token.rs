@@ -35,6 +35,7 @@ pub enum TokenKind {
     Or,
     Not,
     DestructiveAssign,
+    Colon,
     Comma,
     Semicolon,
     LeftBrace,

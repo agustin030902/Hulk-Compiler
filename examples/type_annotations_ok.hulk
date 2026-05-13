@@ -1,0 +1,6 @@
+let x: Number = 42;
+let y: String = "The answer is " @ x;
+let ok: Boolean = x > 0;
+
+print(y);
+print(ok);

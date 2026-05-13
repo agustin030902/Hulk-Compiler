@@ -2,7 +2,7 @@ use crate::lexer::TokenKind;
 use crate::parser::expression::{
     BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction, DestructiveAssignExpr, Expr,
     ElifBranch, FunctionCallExpr, FunctionDecl, FunctionParam, IfExpr, LetBinding, LetInExpr,
-    Literal, Program, Span, Statement, UnaryExpr, UnaryOp, WhileExpr,
+    Literal, Program, Span, Statement, TypeAnnotation, UnaryExpr, UnaryOp, WhileExpr,
 };
 
 grammar;
@@ -29,6 +29,7 @@ extern {
         "rand" => TokenKind::Rand,
         "in" => TokenKind::In,
         ":=" => TokenKind::DestructiveAssign,
+        ":" => TokenKind::Colon,
         "=>" => TokenKind::Arrow,
         "=" => TokenKind::Assign,
         "+" => TokenKind::Add,
@@ -139,9 +140,10 @@ StatementsAfterSemicolon: Vec<Statement> = {
 };
 
 Statement: Statement = {
-    <l:@L> "let" <id:IdentifierWithSpan> "=" <value:Expr> <r:@R> => Statement::Let {
+    <l:@L> "let" <id:IdentifierWithSpan> <annotation:OptionalTypeAnnotation> "=" <value:Expr> <r:@R> => Statement::Let {
         name: id.0,
         name_span: id.1,
+        type_annotation: annotation,
         value,
         span: Span::new(l, r),
     },
@@ -187,11 +189,20 @@ LetBindings: Vec<LetBinding> = {
 };
 
 LetBinding: LetBinding = {
-    <l:@L> <id:IdentifierWithSpan> "=" <value:Expr> <r:@R> => LetBinding {
+    <l:@L> <id:IdentifierWithSpan> <annotation:OptionalTypeAnnotation> "=" <value:Expr> <r:@R> => LetBinding {
         name: id.0,
+        type_annotation: annotation,
         value,
         span: Span::new(l, r),
     },
+};
+
+OptionalTypeAnnotation: Option<TypeAnnotation> = {
+    <l:@L> ":" <name:"identifier"> <r:@R> => Some(TypeAnnotation {
+        name,
+        span: Span::new(l, r),
+    }),
+    => None,
 };
 
 Assignment: Expr = {

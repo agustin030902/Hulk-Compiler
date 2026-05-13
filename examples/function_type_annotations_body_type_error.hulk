@@ -1,0 +1,3 @@
+function invalid(flag: Number): Boolean => !flag;
+
+print(invalid(1));

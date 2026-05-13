@@ -1,0 +1,3 @@
+function bad(x: Numeric): Number => x;
+
+print(bad(1));

@@ -1,0 +1,8 @@
+function tan(x: Number): Number => sin(x) / cos(x);
+
+function banner(prefix: String): String {
+    prefix @ "!";
+}
+
+print(tan(1));
+print(banner("ready"));

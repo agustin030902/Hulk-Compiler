@@ -13,6 +13,7 @@ Si una fase falla, se detiene el pipeline y se genera diagnóstico.
 - Lenguaje basado en expresiones.
 - Scope léxico en bloques `{ ... }` y `let ... in ...`.
 - Anotaciones explícitas de tipo en `let` y bindings de `let-in`.
+- Anotaciones de tipos en parámetros y retorno de funciones.
 - `while` como expresión (`Unit`).
 - Funciones globales con recursión.
 - Semántica con inferencia de tipos para parámetros y retorno.
@@ -99,6 +100,8 @@ function g(x) {
   print(x);
   x + 1
 }
+
+function tan(x: Number): Number => sin(x) / cos(x);
 ```
 
 Reglas principales:
@@ -108,6 +111,26 @@ Reglas principales:
 - Se valida aridad de llamada.
 - Se valida tipo de cada argumento.
 - Se infiere tipo de retorno desde el cuerpo y su contexto de uso.
+
+### Anotación de tipos en firmas de función
+
+Sintaxis soportada:
+
+```hulk
+function tan(x: Number): Number => sin(x) / cos(x);
+function pick(a, b: Number, c): Number => b;
+function banner(prefix: String): String {
+  prefix @ "!"
+}
+```
+
+Reglas:
+
+- Se puede anotar todos o solo algunos parámetros.
+- La anotación de retorno es opcional.
+- Tipos válidos en anotación: `Number`, `Boolean`, `String`, `Unit`.
+- En declaración, el chequeo semántico valida consistencia del cuerpo con parámetros/retorno anotados.
+- En invocación, el chequeo semántico valida que cada argumento conforma al tipo anotado del parámetro.
 
 Ejemplo de inferencia contextual:
 
@@ -211,6 +234,8 @@ Este ejemplo combina recursión, `while`, `let-in`, bloques, `:=`, builtins y `p
 - `examples/while_ok.hulk`
 - `examples/type_annotations_ok.hulk`
 - `examples/type_annotations_let_in_ok.hulk`
+- `examples/function_type_annotations_ok.hulk`
+- `examples/function_type_annotations_partial_ok.hulk`
 
 ### Con error (diagnósticos)
 
@@ -221,6 +246,10 @@ Este ejemplo combina recursión, `while`, `let-in`, bloques, `:=`, builtins y `p
 - `examples/while_condition_type_error.hulk`
 - `examples/type_annotations_type_mismatch_error.hulk`
 - `examples/type_annotations_unknown_type_error.hulk`
+- `examples/function_type_annotations_param_type_error.hulk`
+- `examples/function_type_annotations_return_type_error.hulk`
+- `examples/function_type_annotations_body_type_error.hulk`
+- `examples/function_type_annotations_unknown_type_error.hulk`
 
 ## Notas
 

@@ -21,6 +21,7 @@ pub struct FunctionDecl {
     pub name: String,
     pub name_span: Span,
     pub params: Vec<FunctionParam>,
+    pub return_type_annotation: Option<TypeAnnotation>,
     pub body: Expr,
     pub span: Span,
 }
@@ -28,6 +29,7 @@ pub struct FunctionDecl {
 #[derive(Debug, Clone)]
 pub struct FunctionParam {
     pub name: String,
+    pub type_annotation: Option<TypeAnnotation>,
     pub span: Span,
 }
 

@@ -98,6 +98,8 @@ enum LogosTokenKind {
     Semicolon,
     #[token(":=")]
     DestructiveAssign,
+    #[token(":")]
+    Colon,
     #[token("=>")]
     Arrow,
     #[token("=")]
@@ -166,6 +168,7 @@ impl LogosTokenKind {
             LogosTokenKind::Or => (TokenKind::Or, lexeme.to_string()),
             LogosTokenKind::Not => (TokenKind::Not, lexeme.to_string()),
             LogosTokenKind::DestructiveAssign => (TokenKind::DestructiveAssign, lexeme.to_string()),
+            LogosTokenKind::Colon => (TokenKind::Colon, lexeme.to_string()),
             LogosTokenKind::Arrow => (TokenKind::Arrow, lexeme.to_string()),
             LogosTokenKind::LeftParen => (TokenKind::LeftParen, lexeme.to_string()),
             LogosTokenKind::RightParen => (TokenKind::RightParen, lexeme.to_string()),

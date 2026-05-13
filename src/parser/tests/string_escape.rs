@@ -86,6 +86,7 @@ fn token(kind: TokenKind, start: usize, end: usize) -> Token {
         TokenKind::Or => "||".to_string(),
         TokenKind::Not => "!".to_string(),
         TokenKind::Comma => ",".to_string(),
+        TokenKind::Colon => ":".to_string(),
         TokenKind::Semicolon => ";".to_string(),
         TokenKind::LeftBrace => "{".to_string(),
         TokenKind::RightBrace => "}".to_string(),

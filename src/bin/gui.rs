@@ -687,6 +687,7 @@ fn classify_highlight_role(tokens: &[Token], idx: usize) -> HighlightRole {
         | TokenKind::Or
         | TokenKind::Not
         | TokenKind::DestructiveAssign
+        | TokenKind::Colon
         | TokenKind::Comma
         | TokenKind::Semicolon
         | TokenKind::LeftBrace

@@ -5,6 +5,7 @@ mod let_in;
 mod print_expr;
 mod string_escape;
 mod type_annotations;
+mod types;
 mod while_expr;
 
 use crate::{error::ErrorCategory, lexer::Lexer, parser::Parser};

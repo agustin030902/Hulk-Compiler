@@ -39,10 +39,12 @@ impl SemanticAnalyzer {
                             source,
                         )
                     } else {
-                        self.check_expr(value, source).unwrap_or(SemanticType::Unknown)
+                        self.check_expr(value, source)
+                            .unwrap_or(SemanticType::Unknown)
                     }
                 } else {
-                    self.check_expr(value, source).unwrap_or(SemanticType::Unknown)
+                    self.check_expr(value, source)
+                        .unwrap_or(SemanticType::Unknown)
                 };
 
                 self.bind_current_scope(name.clone(), binding_type);

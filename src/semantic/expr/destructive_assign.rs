@@ -20,6 +20,15 @@ impl SemanticAnalyzer {
             return None;
         };
 
+        if assign.name == "self" && Some(scope_index) == self.implicit_self_scope_index {
+            self.push_semantic_error(
+                assign.name_span,
+                source,
+                "`self` is not a valid assignment target.".to_string(),
+            );
+            return None;
+        }
+
         let value_type = self.check_expr(&assign.value, source)?;
 
         if existing != SemanticType::Unknown && existing != value_type {

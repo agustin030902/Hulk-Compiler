@@ -237,6 +237,27 @@ fn lexes_power_operator_with_right_associative_shape() {
 }
 
 #[test]
+fn lexes_type_new_and_dot_tokens() {
+    let source = r#"
+type Box(v) {
+    v = v;
+    get() => self.v;
+}
+let b = new Box(1) in b.get();
+"#
+    .to_string();
+    let mut lexer = Lexer::new(source);
+
+    let tokens = lexer.lex();
+    let kinds: Vec<TokenKind> = tokens.into_iter().map(|token| token.kind).collect();
+    assert!(!lexer.has_errors(), "lexer errors: {:?}", lexer.errors());
+
+    assert!(kinds.contains(&TokenKind::Type));
+    assert!(kinds.contains(&TokenKind::New));
+    assert!(kinds.contains(&TokenKind::Dot));
+}
+
+#[test]
 fn lexes_rand_builtin_without_arguments() {
     let source = r#"print(rand());"#.to_string();
     let mut lexer = Lexer::new(source);

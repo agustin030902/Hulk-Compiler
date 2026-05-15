@@ -2,7 +2,9 @@ use crate::lexer::TokenKind;
 use crate::parser::expression::{
     BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction, DestructiveAssignExpr, Expr,
     ElifBranch, FunctionCallExpr, FunctionDecl, FunctionParam, IfExpr, LetBinding, LetInExpr,
-    Literal, Program, Span, Statement, TypeAnnotation, UnaryExpr, UnaryOp, WhileExpr,
+    Literal, MemberAccessExpr, MemberAssignExpr, MethodCallExpr, MethodDecl, NewExpr, Program,
+    Span, Statement, TypeAnnotation, TypeAttributeDecl, TypeDecl, TypeParam, UnaryExpr, UnaryOp,
+    WhileExpr,
 };
 
 grammar;
@@ -14,6 +16,8 @@ extern {
     enum TokenKind {
         "let" => TokenKind::Let,
         "function" => TokenKind::Function,
+        "type" => TokenKind::Type,
+        "new" => TokenKind::New,
         "while" => TokenKind::While,
         "if" => TokenKind::If,
         "elif" => TokenKind::Elif,
@@ -48,6 +52,7 @@ extern {
         "||" => TokenKind::Or,
         "!" => TokenKind::Not,
         "," => TokenKind::Comma,
+        "." => TokenKind::Dot,
         ";" => TokenKind::Semicolon,
         "(" => TokenKind::LeftParen,
         ")" => TokenKind::RightParen,
@@ -63,7 +68,135 @@ extern {
 }
 
 pub Program: Program = {
-    <functions:FunctionDecls> <statements:Statements> "eof" => Program { functions, statements },
+    <type_decls:TypeDecls> <functions:FunctionDecls> <statements:Statements> "eof" => Program {
+        type_decls,
+        functions,
+        statements,
+    },
+};
+
+TypeDecls: Vec<TypeDecl> = {
+    => vec![],
+    <first:TypeDecl> <rest:TypeDecls> => {
+        let mut types = vec![first];
+        types.extend(rest);
+        types
+    },
+};
+
+TypeDecl: TypeDecl = {
+    <l:@L> "type" <id:IdentifierWithSpan> <params:TypeDeclParams> "{" <members:TypeMembers> "}" <r:@R> => TypeDecl {
+        name: id.0,
+        name_span: id.1,
+        params,
+        attributes: members.0,
+        methods: members.1,
+        span: Span::new(l, r),
+    },
+};
+
+TypeDeclParams: Vec<TypeParam> = {
+    => vec![],
+    "(" <params:TypeParams> ")" => params,
+};
+
+TypeParams: Vec<TypeParam> = {
+    => vec![],
+    <first:TypeParam> <rest:("," <TypeParam>)*> => {
+        let mut params = vec![first];
+        for param in rest {
+            params.push(param);
+        }
+        params
+    },
+};
+
+TypeParam: TypeParam = {
+    <l:@L> <name:"identifier"> <annotation:OptionalTypeAnnotation> <r:@R> => TypeParam {
+        name,
+        type_annotation: annotation,
+        span: Span::new(l, r),
+    },
+};
+
+TypeMembers: (Vec<TypeAttributeDecl>, Vec<MethodDecl>) = {
+    => (vec![], vec![]),
+    <first:TypeMember> <rest:TypeMemberTail> => {
+        let mut attributes = Vec::new();
+        let mut methods = Vec::new();
+
+        if let Some(attribute) = first.0 {
+            attributes.push(attribute);
+        }
+        if let Some(method) = first.1 {
+            methods.push(method);
+        }
+
+        for member in rest {
+            if let Some(attribute) = member.0 {
+                attributes.push(attribute);
+            }
+            if let Some(method) = member.1 {
+                methods.push(method);
+            }
+        }
+
+        (attributes, methods)
+    },
+};
+
+TypeMemberTail: Vec<(Option<TypeAttributeDecl>, Option<MethodDecl>)> = {
+    ";" <rest:TypeMembersAfterSemicolon> => rest,
+    => vec![],
+};
+
+TypeMembersAfterSemicolon: Vec<(Option<TypeAttributeDecl>, Option<MethodDecl>)> = {
+    => vec![],
+    <next:TypeMember> <rest:TypeMemberTail> => {
+        let mut members = vec![next];
+        members.extend(rest);
+        members
+    },
+};
+
+TypeMember: (Option<TypeAttributeDecl>, Option<MethodDecl>) = {
+    <attribute:TypeAttribute> => (Some(attribute), None),
+    <method:MethodDecl> => (None, Some(method)),
+};
+
+TypeAttribute: TypeAttributeDecl = {
+    <l:@L> <id:IdentifierWithSpan> <annotation:OptionalTypeAnnotation> "=" <value:Expr> <r:@R> => TypeAttributeDecl {
+        name: id.0,
+        name_span: id.1,
+        type_annotation: annotation,
+        value,
+        span: Span::new(l, r),
+    },
+};
+
+MethodDecl: MethodDecl = {
+    <l:@L> <id:IdentifierWithSpan> "(" <params:FunctionParams> ")" <return_annotation:OptionalTypeAnnotation> "=>" <body:Expr> <r:@R> => MethodDecl {
+        name: id.0,
+        name_span: id.1,
+        params,
+        return_type_annotation: return_annotation,
+        body,
+        span: Span::new(l, r),
+    },
+    <l:@L> <id:IdentifierWithSpan> "(" <params:FunctionParams> ")" <return_annotation:OptionalTypeAnnotation> <body:BlockExpr> <r:@R> =>? {
+        let Expr::Block(body) = body else {
+            unreachable!("BlockExpr rule must produce Expr::Block");
+        };
+
+        Ok(MethodDecl {
+            name: id.0,
+            name_span: id.1,
+            params,
+            return_type_annotation: return_annotation,
+            body: Expr::Block(body),
+            span: Span::new(l, r),
+        })
+    },
 };
 
 FunctionDecls: Vec<FunctionDecl> = {
@@ -209,12 +342,26 @@ OptionalTypeAnnotation: Option<TypeAnnotation> = {
 };
 
 Assignment: Expr = {
-    <l:@L> <id:IdentifierWithSpan> ":=" <value:Assignment> <r:@R> => Expr::DestructiveAssign(DestructiveAssignExpr {
-        name: id.0,
-        name_span: id.1,
-        value: Box::new(value),
-        span: Span::new(l, r),
-    }),
+    <l:@L> <target:Postfix> ":=" <value:Assignment> <r:@R> =>? {
+        match target {
+            Expr::Variable { name, span } => Ok(Expr::DestructiveAssign(DestructiveAssignExpr {
+                name,
+                name_span: span,
+                value: Box::new(value),
+                span: Span::new(l, r),
+            })),
+            Expr::MemberAccess(access) => Ok(Expr::MemberAssign(MemberAssignExpr {
+                instance: access.instance,
+                member: access.member,
+                member_span: access.member_span,
+                value: Box::new(value),
+                span: Span::new(l, r),
+            })),
+            _ => Err(lalrpop_util::ParseError::User {
+                error: "Invalid assignment target for ':='".to_string(),
+            }),
+        }
+    },
     LogicalOr,
 };
 
@@ -335,23 +482,66 @@ Unary: Expr = {
 };
 
 Power: Expr = {
-    <l:@L> <left:Primary> "^" <right:Unary> <r:@R> => Expr::Binary(BinaryExpr {
+    <l:@L> <left:Postfix> "^" <right:Unary> <r:@R> => Expr::Binary(BinaryExpr {
         left: Box::new(left),
         op: BinaryOp::Pow,
         right: Box::new(right),
         span: Span::new(l, r),
     }),
-    Primary,
+    Postfix,
+};
+
+Postfix: Expr = {
+    <base:Primary> <suffixes:PostfixSuffix*> => {
+        let mut expr = base;
+
+        for suffix in suffixes {
+            let span = Span::new(expr.span().start, suffix.2);
+            expr = if let Some(args) = suffix.3 {
+                Expr::MethodCall(MethodCallExpr {
+                    instance: Box::new(expr),
+                    method: suffix.0,
+                    method_span: suffix.1,
+                    args,
+                    span,
+                })
+            } else {
+                Expr::MemberAccess(MemberAccessExpr {
+                    instance: Box::new(expr),
+                    member: suffix.0,
+                    member_span: suffix.1,
+                    span,
+                })
+            };
+        }
+
+        expr
+    }
+};
+
+PostfixSuffix: (String, Span, usize, Option<Vec<Expr>>) = {
+    "." <id:IdentifierWithSpan> "(" <args:CallArgs> ")" <r:@R> => (id.0, id.1, r, Some(args)),
+    "." <id:IdentifierWithSpan> <r:@R> => (id.0, id.1, r, None),
 };
 
 Primary: Expr = {
     WhileExpr,
     BlockExpr,
+    NewExpr,
     <call:BuiltinCallExpr> => call,
     <call:FunctionCallExpr> => call,
     <literal:LiteralExpr> => literal,
     <variable:VariableExpr> => variable,
     "(" <expr:Expr> ")" => expr,
+};
+
+NewExpr: Expr = {
+    <l:@L> "new" <id:IdentifierWithSpan> "(" <args:CallArgs> ")" <r:@R> => Expr::New(NewExpr {
+        type_name: id.0,
+        type_name_span: id.1,
+        args,
+        span: Span::new(l, r),
+    }),
 };
 
 FunctionCallExpr: Expr = {

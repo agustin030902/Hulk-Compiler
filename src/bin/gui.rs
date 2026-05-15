@@ -23,8 +23,8 @@ use error::CompilerError;
 use lexer::{Lexer, Token, TokenKind};
 use parser::expression::{
     BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, DestructiveAssignExpr, Expr,
-    FunctionCallExpr, FunctionDecl, IfExpr, LetInExpr, Literal, Program, Span, Statement,
-    UnaryExpr, UnaryOp, WhileExpr,
+    FunctionCallExpr, FunctionDecl, IfExpr, LetInExpr, Literal, MemberAccessExpr, MemberAssignExpr,
+    MethodCallExpr, NewExpr, Program, Span, Statement, UnaryExpr, UnaryOp, WhileExpr,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,19 +67,19 @@ enum AstViewMode {
 
 //Modo capuccino
 
-const VS_BG_MAIN: Color32 = Color32::from_rgb(30, 30, 46);      // base
-const VS_BG_PANEL: Color32 = Color32::from_rgb(24, 24, 37);     // mantle
-const VS_BG_INPUT: Color32 = Color32::from_rgb(17, 17, 27);     // crust
-const VS_TEXT: Color32 = Color32::from_rgb(205, 214, 244);      // text
-const VS_ACCENT: Color32 = Color32::from_rgb(137, 180, 250);    // blue
-const VS_KEYWORD: Color32 = Color32::from_rgb(203, 166, 247);   // mauve
+const VS_BG_MAIN: Color32 = Color32::from_rgb(30, 30, 46); // base
+const VS_BG_PANEL: Color32 = Color32::from_rgb(24, 24, 37); // mantle
+const VS_BG_INPUT: Color32 = Color32::from_rgb(17, 17, 27); // crust
+const VS_TEXT: Color32 = Color32::from_rgb(205, 214, 244); // text
+const VS_ACCENT: Color32 = Color32::from_rgb(137, 180, 250); // blue
+const VS_KEYWORD: Color32 = Color32::from_rgb(203, 166, 247); // mauve
 const VS_FUNCTION_YELLOW: Color32 = Color32::from_rgb(250, 179, 135); // peach (funciones/builtins)
-const VS_VARIABLE: Color32 = Color32::from_rgb(186, 194, 222);  // subtext1
-const VS_NUMBER: Color32 = Color32::from_rgb(166, 227, 161);    // green
-const VS_STRING: Color32 = Color32::from_rgb(249, 226, 175);    // yellow pastel
-const VS_BOOLEAN: Color32 = Color32::from_rgb(137, 180, 250);   // blue
-const VS_OPERATOR: Color32 = Color32::from_rgb(180, 190, 254);  // lavender
-const VS_UNKNOWN: Color32 = Color32::from_rgb(243, 139, 168);   // red (error)
+const VS_VARIABLE: Color32 = Color32::from_rgb(186, 194, 222); // subtext1
+const VS_NUMBER: Color32 = Color32::from_rgb(166, 227, 161); // green
+const VS_STRING: Color32 = Color32::from_rgb(249, 226, 175); // yellow pastel
+const VS_BOOLEAN: Color32 = Color32::from_rgb(137, 180, 250); // blue
+const VS_OPERATOR: Color32 = Color32::from_rgb(180, 190, 254); // lavender
+const VS_UNKNOWN: Color32 = Color32::from_rgb(243, 139, 168); // red (error)
 
 struct HulkGui {
     source: String,
@@ -643,6 +643,8 @@ fn classify_highlight_role(tokens: &[Token], idx: usize) -> HighlightRole {
     match kind {
         TokenKind::Let
         | TokenKind::Function
+        | TokenKind::Type
+        | TokenKind::New
         | TokenKind::While
         | TokenKind::In
         | TokenKind::If
@@ -660,7 +662,8 @@ fn classify_highlight_role(tokens: &[Token], idx: usize) -> HighlightRole {
         TokenKind::String(_) => HighlightRole::String,
         TokenKind::Boolean(_) => HighlightRole::Boolean,
         TokenKind::Identifier(_) => {
-            let is_declaration_name = matches!(prev_kind, Some(TokenKind::Function));
+            let is_declaration_name =
+                matches!(prev_kind, Some(TokenKind::Function) | Some(TokenKind::Type));
             let is_call_name = matches!(next_kind, Some(TokenKind::LeftParen));
             if is_declaration_name || is_call_name {
                 HighlightRole::FunctionName
@@ -689,6 +692,7 @@ fn classify_highlight_role(tokens: &[Token], idx: usize) -> HighlightRole {
         | TokenKind::DestructiveAssign
         | TokenKind::Colon
         | TokenKind::Comma
+        | TokenKind::Dot
         | TokenKind::Semicolon
         | TokenKind::LeftBrace
         | TokenKind::RightBrace
@@ -866,7 +870,11 @@ fn render_expr_tree(ui: &mut egui::Ui, expr: &Expr, label: &str, query: &str) {
         Expr::Unary(unary) => render_unary_tree(ui, unary, label, query),
         Expr::BuiltinCall(call) => render_builtin_call_tree(ui, call, label, query),
         Expr::FunctionCall(call) => render_function_call_tree(ui, call, label, query),
+        Expr::MethodCall(call) => render_method_call_tree(ui, call, label, query),
         Expr::DestructiveAssign(assign) => render_destructive_assign_tree(ui, assign, label, query),
+        Expr::MemberAssign(assign) => render_member_assign_tree(ui, assign, label, query),
+        Expr::MemberAccess(access) => render_member_access_tree(ui, access, label, query),
+        Expr::New(new_expr) => render_new_expr_tree(ui, new_expr, label, query),
         Expr::LetIn(let_in) => render_let_in_tree(ui, let_in, label, query),
         Expr::Block(block) => render_block_tree(ui, block, label, query),
         Expr::While(while_expr) => render_while_tree(ui, while_expr, label, query),
@@ -940,6 +948,88 @@ fn render_function_call_tree(ui: &mut egui::Ui, call: &FunctionCallExpr, label: 
             ui.small("Sin argumentos");
         }
         for (idx, arg) in call.args.iter().enumerate() {
+            render_expr_tree(ui, arg, &format!("arg[{idx}]"), query);
+        }
+    });
+}
+
+fn render_method_call_tree(ui: &mut egui::Ui, call: &MethodCallExpr, label: &str, query: &str) {
+    CollapsingHeader::new(match_rich_text(
+        format!(
+            "{label}: Method {}(...) [{}]",
+            call.method,
+            span_text(call.span)
+        ),
+        query,
+    ))
+    .default_open(true)
+    .show(ui, |ui| {
+        render_expr_tree(ui, &call.instance, "instance", query);
+        if call.args.is_empty() {
+            ui.small("Sin argumentos");
+        }
+        for (idx, arg) in call.args.iter().enumerate() {
+            render_expr_tree(ui, arg, &format!("arg[{idx}]"), query);
+        }
+    });
+}
+
+fn render_member_access_tree(
+    ui: &mut egui::Ui,
+    access: &MemberAccessExpr,
+    label: &str,
+    query: &str,
+) {
+    CollapsingHeader::new(match_rich_text(
+        format!(
+            "{label}: Member .{} [{}]",
+            access.member,
+            span_text(access.span)
+        ),
+        query,
+    ))
+    .default_open(true)
+    .show(ui, |ui| {
+        render_expr_tree(ui, &access.instance, "instance", query);
+    });
+}
+
+fn render_member_assign_tree(
+    ui: &mut egui::Ui,
+    assign: &MemberAssignExpr,
+    label: &str,
+    query: &str,
+) {
+    CollapsingHeader::new(match_rich_text(
+        format!(
+            "{label}: MemberAssign .{} := ... [{}]",
+            assign.member,
+            span_text(assign.span)
+        ),
+        query,
+    ))
+    .default_open(true)
+    .show(ui, |ui| {
+        render_expr_tree(ui, &assign.instance, "instance", query);
+        render_expr_tree(ui, &assign.value, "value", query);
+    });
+}
+
+fn render_new_expr_tree(ui: &mut egui::Ui, new_expr: &NewExpr, label: &str, query: &str) {
+    CollapsingHeader::new(match_rich_text(
+        format!(
+            "{label}: new {}(...) [{}]",
+            new_expr.type_name,
+            span_text(new_expr.span)
+        ),
+        query,
+    ))
+    .default_open(true)
+    .show(ui, |ui| {
+        if new_expr.args.is_empty() {
+            ui.small("Sin argumentos");
+        }
+        for (idx, arg) in new_expr.args.iter().enumerate() {
             render_expr_tree(ui, arg, &format!("arg[{idx}]"), query);
         }
     });

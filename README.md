@@ -17,6 +17,7 @@ Si una fase falla, se detiene el pipeline y se genera diagnóstico.
 - `while` como expresión (`Unit`).
 - Funciones globales con recursión.
 - Semántica con inferencia de tipos para parámetros y retorno.
+- Soporte de parser/semántica para tipos nominales (`type`, `new`, acceso de miembros y métodos).
 - Codegen LLVM con firmas tipadas reales por función (ya no forzado a `double`).
 
 ## Estructura del proyecto
@@ -257,3 +258,5 @@ Este ejemplo combina recursión, `while`, `let-in`, bloques, `:=`, builtins y `p
 - La CLI aún acepta `.hk` por compatibilidad.
 - `print` devuelve `Unit` (no imprimible como argumento de otro `print`).
 - `:=` exige conservar tipo.
+- Las construcciones OO (`type/new/members`) hoy están soportadas en parser+semántica;
+  su codegen LLVM aún no está implementado.

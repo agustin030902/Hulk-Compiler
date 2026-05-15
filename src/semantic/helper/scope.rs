@@ -64,4 +64,8 @@ impl<T: Clone> ScopeStack<T> {
             .map(|scope| scope.contains_key(name))
             .unwrap_or(false)
     }
+
+    pub fn current_index(&self) -> Option<usize> {
+        self.scopes.len().checked_sub(1)
+    }
 }

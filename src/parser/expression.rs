@@ -12,8 +12,45 @@ impl Span {
 
 #[derive(Debug)]
 pub struct Program {
+    pub type_decls: Vec<TypeDecl>,
     pub functions: Vec<FunctionDecl>,
     pub statements: Vec<Statement>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TypeDecl {
+    pub name: String,
+    pub name_span: Span,
+    pub params: Vec<TypeParam>,
+    pub attributes: Vec<TypeAttributeDecl>,
+    pub methods: Vec<MethodDecl>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct TypeParam {
+    pub name: String,
+    pub type_annotation: Option<TypeAnnotation>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct TypeAttributeDecl {
+    pub name: String,
+    pub name_span: Span,
+    pub type_annotation: Option<TypeAnnotation>,
+    pub value: Expr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct MethodDecl {
+    pub name: String,
+    pub name_span: Span,
+    pub params: Vec<FunctionParam>,
+    pub return_type_annotation: Option<TypeAnnotation>,
+    pub body: Expr,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -70,7 +107,11 @@ pub enum Expr {
     Unary(UnaryExpr),
     BuiltinCall(BuiltinCallExpr),
     FunctionCall(FunctionCallExpr),
+    MethodCall(MethodCallExpr),
     DestructiveAssign(DestructiveAssignExpr),
+    MemberAssign(MemberAssignExpr),
+    MemberAccess(MemberAccessExpr),
+    New(NewExpr),
     LetIn(LetInExpr),
     Block(BlockExpr),
     While(WhileExpr),
@@ -86,7 +127,11 @@ impl Expr {
             Expr::Unary(unary) => unary.span,
             Expr::BuiltinCall(call) => call.span,
             Expr::FunctionCall(call) => call.span,
+            Expr::MethodCall(call) => call.span,
             Expr::DestructiveAssign(assign) => assign.span,
+            Expr::MemberAssign(assign) => assign.span,
+            Expr::MemberAccess(access) => access.span,
+            Expr::New(new_expr) => new_expr.span,
             Expr::LetIn(let_in) => let_in.span,
             Expr::Block(block) => block.span,
             Expr::While(while_expr) => while_expr.span,
@@ -139,6 +184,40 @@ pub struct BuiltinCallExpr {
 pub struct FunctionCallExpr {
     pub name: String,
     pub name_span: Span,
+    pub args: Vec<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct MethodCallExpr {
+    pub instance: Box<Expr>,
+    pub method: String,
+    pub method_span: Span,
+    pub args: Vec<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct MemberAccessExpr {
+    pub instance: Box<Expr>,
+    pub member: String,
+    pub member_span: Span,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct MemberAssignExpr {
+    pub instance: Box<Expr>,
+    pub member: String,
+    pub member_span: Span,
+    pub value: Box<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewExpr {
+    pub type_name: String,
+    pub type_name_span: Span,
     pub args: Vec<Expr>,
     pub span: Span,
 }

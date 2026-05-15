@@ -1,0 +1,29 @@
+type Node(value: Number, left: Node, right: Node) {
+    value: Number = value;
+    left: Node = left;
+    right: Node = right;
+
+    getValue(): Number => self.value;
+
+    dfs() => {
+        print("Node: " @ (self.value @ ""));
+        if (self.left != 0) {
+            self.left.dfs()
+        } else {
+            0
+        };
+        if (self.right != 0) {
+            self.right.dfs()
+        } else {
+            0
+        };
+        0
+    }
+}
+
+let leftChild = new Node(2, 0, 0);
+let rightChild = new Node(3, 0, 0);
+let root = new Node(1, leftChild, rightChild);
+
+root.dfs();
+print("Done!");

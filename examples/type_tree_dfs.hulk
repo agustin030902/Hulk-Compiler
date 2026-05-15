@@ -1,0 +1,19 @@
+type Node(value, depth) {
+    value = value;
+    depth = depth;
+
+    dfs() => {
+        print(self.depth @ ": " @ self.value);
+        if (self.depth > 0) {
+            let l = new Node(self.value * 10 + 1, self.depth - 1);
+            let r = new Node(self.value * 10 + 2, self.depth - 1);
+            l.dfs();
+            r.dfs()
+        } else {
+            0
+        }
+    }
+}
+
+let root = new Node(1, 2);
+root.dfs();

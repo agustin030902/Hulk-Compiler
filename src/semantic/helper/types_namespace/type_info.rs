@@ -1,6 +1,7 @@
-use super::TypeId;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TypeId(pub u32);
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeInfo {
     Number,
     Boolean,
@@ -11,15 +12,42 @@ pub enum TypeInfo {
     Function(FunctionTypeInfo),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructTypeInfo {
     pub name: String,
     pub fields: Vec<(String, TypeId)>,
     pub parent: Option<TypeId>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionTypeInfo {
+    pub receiver: Option<TypeId>,
     pub params: Vec<TypeId>,
     pub return_type: TypeId,
+}
+
+impl FunctionTypeInfo {
+    pub fn new_function(params: Vec<TypeId>, return_type: TypeId) -> Self {
+        Self {
+            receiver: None,
+            params,
+            return_type,
+        }
+    }
+
+    pub fn new_method(receiver: TypeId, params: Vec<TypeId>, return_type: TypeId) -> Self {
+        Self {
+            receiver: Some(receiver),
+            params,
+            return_type,
+        }
+    }
+
+    pub const fn is_method(&self) -> bool {
+        self.receiver.is_some()
+    }
+
+    pub const fn is_function(&self) -> bool {
+        self.receiver.is_none()
+    }
 }

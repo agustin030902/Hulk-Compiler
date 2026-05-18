@@ -2,13 +2,11 @@ use super::TypeId;
 
 #[derive(Debug)]
 pub enum TypeInfo {
-    // Builtins
     Number,
     Boolean,
     String,
     Unit,
-
-    // User types
+    Unknown,
     Type(StructTypeInfo),
     Function(FunctionTypeInfo),
 }

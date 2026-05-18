@@ -13,6 +13,7 @@ impl SemanticType {
             TypeInfo::Boolean => "Boolean",
             TypeInfo::String => "String",
             TypeInfo::Unit => "Unit",
+            TypeInfo::Unknown => "Unknown",
             TypeInfo::Function(_) => "Function",
             TypeInfo::Type(_) => "Type",
         }

@@ -3,11 +3,11 @@ use super::{TypeId, TypeInfo};
 pub struct TypeTable {
     types: Vec<TypeInfo>,
 
-    // IDs de builtins (muy útil guardarlos)
     pub number: TypeId,
     pub boolean: TypeId,
     pub string: TypeId,
     pub unit: TypeId,
+    pub unknown: TypeId,
 }
 
 impl TypeTable {
@@ -20,18 +20,18 @@ impl TypeTable {
             id
         };
 
-        // Registrar builtins al arrancar el compilador
         let number = push(TypeInfo::Number);
         let boolean = push(TypeInfo::Boolean);
         let string = push(TypeInfo::String);
         let unit = push(TypeInfo::Unit);
+        let unknown = push(TypeInfo::Unknown);
 
-        Self { types, number, boolean, string, unit }
+        Self { types, number, boolean, string, unit, unknown }
     }
 
     pub fn register_type(&mut self, info: super::StructTypeInfo) -> TypeId {
         let id = TypeId(self.types.len() as u32);
-        self.types.push(TypeInfo::Struct(info));
+        self.types.push(TypeInfo::Type(info));
         id
     }
 

@@ -3,12 +3,13 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     error::{CompilerError, ErrorCategory, offset_to_line_column},
     parser::expression::{
-        BlockExpr, Expr, FunctionDecl, IfExpr, LetInExpr, Program, Span, Statement,
-        TypeAnnotation,
+        BlockExpr, Expr, FunctionDecl, IfExpr, LetInExpr, Program, Span, Statement, TypeAnnotation,
     },
 };
 
-use super::helper::{FunctionSignature, ScopeStack, SemanticType};
+use super::helper::{
+    FunctionSignature, FunctionSymbol, ScopeStack, SemanticType, TypeId, TypeTable,
+};
 
 const MAX_INFERENCE_PASSES: usize = 8;
 
@@ -16,8 +17,9 @@ const MAX_INFERENCE_PASSES: usize = 8;
 pub struct SemanticAnalyzer {
     pub(super) scopes: ScopeStack<SemanticType>,
     pub(super) functions: HashMap<String, FunctionSignature>,
+    pub(super) function_symbols: HashMap<String, FunctionSymbol>,
+    pub(super) type_table: TypeTable,
     pub(super) errors: Vec<CompilerError>,
-    next_function_type_id: u32,
     suppress_errors: bool,
 }
 
@@ -28,6 +30,14 @@ impl SemanticAnalyzer {
 
     pub fn function_signatures(&self) -> &HashMap<String, FunctionSignature> {
         &self.functions
+    }
+
+    pub fn function_symbols(&self) -> &HashMap<String, FunctionSymbol> {
+        &self.function_symbols
+    }
+
+    pub fn type_table(&self) -> &TypeTable {
+        &self.type_table
     }
 
     pub fn analyze(&mut self, program: &Program, source: &str) -> Vec<CompilerError> {
@@ -47,6 +57,7 @@ impl SemanticAnalyzer {
         }
 
         self.push_unresolved_function_type_errors(program, source);
+        self.sync_function_type_entries();
 
         self.errors.clone()
     }
@@ -84,8 +95,9 @@ impl SemanticAnalyzer {
     fn reset_analysis_state(&mut self) {
         self.scopes.clear();
         self.functions.clear();
+        self.function_symbols.clear();
+        self.type_table = TypeTable::new();
         self.errors.clear();
-        self.next_function_type_id = 0;
         self.suppress_errors = false;
     }
 
@@ -101,6 +113,7 @@ impl SemanticAnalyzer {
                 entry.return_type = signature.return_type;
             }
         }
+        self.sync_function_type_entries();
     }
 
     pub(super) fn push_type_error(&mut self, span: Span, source: &str, message: String) {
@@ -195,7 +208,9 @@ impl SemanticAnalyzer {
         annotation_span: Span,
         source: &str,
     ) -> SemanticType {
-        let mut value_type = self.check_expr(value, source).unwrap_or(SemanticType::Unknown);
+        let mut value_type = self
+            .check_expr(value, source)
+            .unwrap_or(SemanticType::Unknown);
 
         if value_type == SemanticType::Unknown {
             value_type = self.constrain_expr_type(value, annotation_type, source);
@@ -406,7 +421,7 @@ impl SemanticAnalyzer {
 
     fn collect_functions(&mut self, functions: &[FunctionDecl], source: &str) {
         for function in functions {
-            if self.functions.contains_key(&function.name) {
+            if self.function_symbols.contains_key(&function.name) {
                 self.push_semantic_error(
                     function.name_span,
                     source,
@@ -433,12 +448,25 @@ impl SemanticAnalyzer {
                 .and_then(|annotation| self.resolve_annotation_type(annotation, source))
                 .unwrap_or(SemanticType::Unknown);
 
+            let param_type_ids = param_types
+                .iter()
+                .copied()
+                .map(|semantic_type| self.semantic_type_to_type_id(semantic_type))
+                .collect::<Vec<_>>();
+            let return_type_id = self.semantic_type_to_type_id(return_type);
+            let function_type_id = self
+                .type_table
+                .register_plain_function(param_type_ids, return_type_id);
+
             let signature = FunctionSignature {
-                type_id: self.next_function_type_id,
+                type_id: function_type_id.0,
                 param_types,
                 return_type,
             };
-            self.next_function_type_id = self.next_function_type_id.saturating_add(1);
+            self.function_symbols.insert(
+                function.name.clone(),
+                FunctionSymbol::new_function(function.name.clone(), function_type_id),
+            );
             self.functions.insert(function.name.clone(), signature);
         }
     }
@@ -511,6 +539,47 @@ impl SemanticAnalyzer {
 
         let _ =
             self.constrain_function_return_type(&function.name, body_type, function.span, source);
+    }
+
+    fn semantic_type_to_type_id(&self, semantic_type: SemanticType) -> TypeId {
+        match semantic_type {
+            SemanticType::Number => self.type_table.number,
+            SemanticType::Boolean => self.type_table.boolean,
+            SemanticType::String => self.type_table.string,
+            SemanticType::Unit => self.type_table.unit,
+            SemanticType::Unknown => self.type_table.unknown,
+            SemanticType::Function(type_id) | SemanticType::Struct(type_id) => TypeId(type_id),
+        }
+    }
+
+    fn sync_function_type_entries(&mut self) {
+        let function_names = self
+            .function_symbols
+            .keys()
+            .cloned()
+            .collect::<Vec<String>>();
+
+        for name in function_names {
+            let Some(symbol) = self.function_symbols.get(&name) else {
+                continue;
+            };
+            let Some(signature) = self.functions.get(&name) else {
+                continue;
+            };
+
+            let param_type_ids = signature
+                .param_types
+                .iter()
+                .copied()
+                .map(|semantic_type| self.semantic_type_to_type_id(semantic_type))
+                .collect::<Vec<_>>();
+            let return_type_id = self.semantic_type_to_type_id(signature.return_type);
+
+            if let Some(function_info) = self.type_table.get_function_mut(symbol.type_id) {
+                function_info.params = param_type_ids;
+                function_info.return_type = return_type_id;
+            }
+        }
     }
 
     fn push_unresolved_function_type_errors(&mut self, program: &Program, source: &str) {

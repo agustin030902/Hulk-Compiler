@@ -8,6 +8,27 @@ impl SemanticAnalyzer {
         call: &FunctionCallExpr,
         source: &str,
     ) -> Option<SemanticType> {
+        let Some(symbol) = self.function_symbols.get(&call.name).cloned() else {
+            self.push_semantic_error(
+                call.name_span,
+                source,
+                format!("Function '{}' is called before declaration.", call.name),
+            );
+            return None;
+        };
+
+        if symbol.is_method() {
+            self.push_semantic_error(
+                call.name_span,
+                source,
+                format!(
+                    "Method '{}' requires a receiver and cannot be called as a global function.",
+                    call.name
+                ),
+            );
+            return None;
+        }
+
         let Some(signature) = self.functions.get(&call.name).cloned() else {
             self.push_semantic_error(
                 call.name_span,

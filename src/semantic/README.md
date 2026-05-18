@@ -3,6 +3,7 @@
 Este módulo implementa el análisis semántico del compilador Hulk.
 
 Valida:
+
 - scopes y redeclaraciones
 - uso de variables antes de declarar
 - compatibilidad de tipos en expresiones

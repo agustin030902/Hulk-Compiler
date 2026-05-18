@@ -1,7 +1,11 @@
 mod function;
 mod scope;
-mod types;
+mod types_namespace;
 
-pub use function::FunctionSignature;
+#[allow(unused_imports)]
+pub use function::{FunctionSignature, FunctionSymbol};
 pub use scope::ScopeStack;
-pub use types::SemanticType;
+#[allow(unused_imports)]
+pub use types_namespace::{
+    FunctionTypeInfo, SemanticType, StructTypeInfo, TypeId, TypeInfo, TypeTable,
+};

@@ -6,6 +6,9 @@ mod function_call;
 mod if_expr;
 mod let_in;
 mod literal;
+mod member_access;
+mod method_call;
+mod new_expr;
 mod unary;
 mod variable;
 mod while_expr;
@@ -29,6 +32,9 @@ impl SemanticAnalyzer {
                 self.check_builtin_call(call.function, &call.args, call.span, source)
             }
             Expr::FunctionCall(call) => self.check_function_call(call, source),
+            Expr::MethodCall(call) => self.check_method_call(call, source),
+            Expr::MemberAccess(access) => self.check_member_access(access, source),
+            Expr::New(new_expr) => self.check_new_expr(new_expr, source),
             Expr::Binary(binary) => self.check_binary_expr(binary, source),
         }
     }

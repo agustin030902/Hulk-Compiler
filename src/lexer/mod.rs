@@ -16,6 +16,10 @@ enum LogosTokenKind {
     Let,
     #[token("function", priority = 3)]
     Function,
+    #[token("type", priority = 3)]
+    Type,
+    #[token("new", priority = 3)]
+    New,
     #[token("while", priority = 3)]
     While,
     #[token("if", priority = 3)]
@@ -88,6 +92,8 @@ enum LogosTokenKind {
     LeftParen,
     #[token(")")]
     RightParen,
+    #[token(".")]
+    Dot,
     #[token("{")]
     LeftBrace,
     #[token("}")]
@@ -118,6 +124,8 @@ impl LogosTokenKind {
         let (kind, value) = match self {
             LogosTokenKind::Let => (TokenKind::Let, lexeme.to_string()),
             LogosTokenKind::Function => (TokenKind::Function, lexeme.to_string()),
+            LogosTokenKind::Type => (TokenKind::Type, lexeme.to_string()),
+            LogosTokenKind::New => (TokenKind::New, lexeme.to_string()),
             LogosTokenKind::While => (TokenKind::While, lexeme.to_string()),
             LogosTokenKind::If => (TokenKind::If, lexeme.to_string()),
             LogosTokenKind::Elif => (TokenKind::Elif, lexeme.to_string()),
@@ -172,6 +180,7 @@ impl LogosTokenKind {
             LogosTokenKind::Arrow => (TokenKind::Arrow, lexeme.to_string()),
             LogosTokenKind::LeftParen => (TokenKind::LeftParen, lexeme.to_string()),
             LogosTokenKind::RightParen => (TokenKind::RightParen, lexeme.to_string()),
+            LogosTokenKind::Dot => (TokenKind::Dot, lexeme.to_string()),
             LogosTokenKind::LeftBrace => (TokenKind::LeftBrace, lexeme.to_string()),
             LogosTokenKind::RightBrace => (TokenKind::RightBrace, lexeme.to_string()),
             LogosTokenKind::Comma => (TokenKind::Comma, lexeme.to_string()),

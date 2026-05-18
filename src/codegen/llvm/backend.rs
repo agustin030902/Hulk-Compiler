@@ -3,16 +3,30 @@ use std::collections::HashMap;
 use crate::{
     codegen::CodegenBackend,
     error::{CompilerError, ErrorCategory},
-    parser::expression::Program,
-    semantic::{SemanticAnalyzer, SemanticType},
+    parser::expression::{Program, TypeDecl},
+    semantic::{SemanticAnalyzer, SemanticType, TypeId, TypeInfo},
 };
 
 use super::helper::state::{ValueRef, ValueType, VariableInfo};
 
 #[derive(Debug, Clone)]
 pub(super) struct FunctionInfo {
+    pub(super) llvm_name: String,
+    pub(super) receiver_type_id: Option<u32>,
     pub(super) param_types: Vec<ValueType>,
     pub(super) return_type: ValueType,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct FieldLayout {
+    pub(super) offset: usize,
+    pub(super) value_type: ValueType,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct StructLayout {
+    pub(super) size_bytes: usize,
+    pub(super) fields: HashMap<String, FieldLayout>,
 }
 
 #[derive(Debug, Default)]
@@ -23,6 +37,10 @@ pub struct LlvmBackend {
     pub(super) errors: Vec<CompilerError>,
     pub(super) scopes: Vec<HashMap<String, VariableInfo>>,
     pub(super) functions: HashMap<String, FunctionInfo>,
+    pub(super) type_ids: HashMap<String, u32>,
+    pub(super) type_decls: HashMap<String, TypeDecl>,
+    pub(super) struct_layouts: HashMap<u32, StructLayout>,
+    pub(super) method_dispatch: HashMap<(u32, String), String>,
     pub(super) temp_counter: usize,
     pub(super) label_counter: usize,
     pub(super) string_counter: usize,
@@ -40,6 +58,10 @@ impl LlvmBackend {
         self.errors.clear();
         self.scopes.clear();
         self.functions.clear();
+        self.type_ids.clear();
+        self.type_decls.clear();
+        self.struct_layouts.clear();
+        self.method_dispatch.clear();
         self.temp_counter = 0;
         self.label_counter = 0;
         self.string_counter = 0;
@@ -154,25 +176,37 @@ impl LlvmBackend {
             return false;
         }
 
-        for (name, signature) in analyzer.function_signatures() {
-            if analyzer
-                .function_symbols()
-                .get(name)
-                .map(|symbol| symbol.is_method())
-                .unwrap_or(false)
-            {
+        self.type_decls = program
+            .types
+            .iter()
+            .cloned()
+            .map(|type_decl| (type_decl.name.clone(), type_decl))
+            .collect::<HashMap<_, _>>();
+
+        self.type_ids = analyzer
+            .type_symbols()
+            .iter()
+            .map(|(name, type_id)| (name.clone(), type_id.0))
+            .collect::<HashMap<_, _>>();
+
+        if !self.load_struct_layouts(&analyzer) {
+            return false;
+        }
+
+        for (key, signature) in analyzer.function_signatures() {
+            let Some(symbol) = analyzer.function_symbols().get(key) else {
                 self.semantic_error(format!(
-                    "Method '{}' is not supported by LLVM code generation yet.",
-                    name
+                    "Function signature '{}' has no symbol metadata.",
+                    key
                 ));
                 return false;
-            }
+            };
 
             let mut param_types = Vec::with_capacity(signature.param_types.len());
             for (index, semantic_type) in signature.param_types.iter().copied().enumerate() {
                 let Some(value_type) = self.lower_semantic_type(
                     semantic_type,
-                    &format!("parameter #{} in function '{}'", index + 1, name),
+                    &format!("parameter #{} in function '{}'", index + 1, symbol.name),
                 ) else {
                     return false;
                 };
@@ -181,21 +215,153 @@ impl LlvmBackend {
 
             let Some(return_type) = self.lower_semantic_type(
                 signature.return_type,
-                &format!("return type in function '{}'", name),
+                &format!("return type in function '{}'", symbol.name),
             ) else {
                 return false;
             };
 
+            let llvm_name = if let Some(receiver_type_id) = symbol.receiver {
+                format!("hulk_type{}_{}", receiver_type_id.0, symbol.name)
+            } else {
+                format!("hulk_{}", symbol.name)
+            };
+
             self.functions.insert(
-                name.clone(),
+                key.clone(),
                 FunctionInfo {
+                    llvm_name,
+                    receiver_type_id: symbol.receiver.map(|type_id| type_id.0),
                     param_types,
                     return_type,
+                },
+            );
+
+            if let Some(receiver_type_id) = symbol.receiver {
+                self.method_dispatch
+                    .insert((receiver_type_id.0, symbol.name.clone()), key.clone());
+            }
+        }
+
+        true
+    }
+
+    fn load_struct_layouts(&mut self, analyzer: &SemanticAnalyzer) -> bool {
+        for (type_name, type_id) in analyzer.type_symbols() {
+            let Some(type_info) = analyzer.type_table().get_struct(*type_id) else {
+                self.semantic_error(format!(
+                    "Type '{}' is registered but has no struct entry.",
+                    type_name
+                ));
+                return false;
+            };
+
+            let mut offset = 0usize;
+            let mut max_align = 1usize;
+            let mut fields = HashMap::new();
+
+            for (field_name, field_type_id) in &type_info.fields {
+                let semantic_type = self.semantic_type_from_type_id(analyzer, *field_type_id);
+                let Some(value_type) = self.lower_semantic_type(
+                    semantic_type,
+                    &format!("field '{}' in type '{}'", field_name, type_name),
+                ) else {
+                    return false;
+                };
+
+                let (size, align) = Self::value_layout(value_type);
+                offset = Self::align_to(offset, align);
+                max_align = max_align.max(align);
+
+                fields.insert(field_name.clone(), FieldLayout { offset, value_type });
+
+                offset += size;
+            }
+
+            let total_size = Self::align_to(offset.max(1), max_align);
+            self.struct_layouts.insert(
+                type_id.0,
+                StructLayout {
+                    size_bytes: total_size,
+                    fields,
                 },
             );
         }
 
         true
+    }
+
+    fn semantic_type_from_type_id(
+        &self,
+        analyzer: &SemanticAnalyzer,
+        type_id: TypeId,
+    ) -> SemanticType {
+        match analyzer.type_table().get(type_id) {
+            TypeInfo::Number => SemanticType::Number,
+            TypeInfo::Boolean => SemanticType::Boolean,
+            TypeInfo::String => SemanticType::String,
+            TypeInfo::Unit => SemanticType::Unit,
+            TypeInfo::Unknown => SemanticType::Unknown,
+            TypeInfo::Function(_) => SemanticType::Function(type_id.0),
+            TypeInfo::Type(_) => SemanticType::Struct(type_id.0),
+        }
+    }
+
+    fn align_to(value: usize, alignment: usize) -> usize {
+        if alignment <= 1 {
+            return value;
+        }
+        let remainder = value % alignment;
+        if remainder == 0 {
+            value
+        } else {
+            value + (alignment - remainder)
+        }
+    }
+
+    fn value_layout(value_type: ValueType) -> (usize, usize) {
+        match value_type {
+            ValueType::Double => (8, 8),
+            ValueType::Bool => (1, 1),
+            ValueType::StringPtr | ValueType::Function | ValueType::Struct(_) => (8, 8),
+            ValueType::Unit => (1, 1),
+        }
+    }
+
+    pub(super) fn lookup_method_key(
+        &self,
+        receiver_type_id: u32,
+        method_name: &str,
+    ) -> Option<&String> {
+        self.method_dispatch
+            .get(&(receiver_type_id, method_name.to_string()))
+    }
+
+    pub(super) fn struct_layout(&self, type_id: u32) -> Option<&StructLayout> {
+        self.struct_layouts.get(&type_id)
+    }
+
+    pub(super) fn field_layout(&self, type_id: u32, field_name: &str) -> Option<&FieldLayout> {
+        self.struct_layout(type_id)
+            .and_then(|layout| layout.fields.get(field_name))
+    }
+
+    pub(super) fn emit_field_ptr(
+        &mut self,
+        object_repr: &str,
+        field_offset: usize,
+        value_type: ValueType,
+    ) -> String {
+        let raw_ptr = self.next_temp();
+        self.emit_body(format!(
+            "{raw_ptr} = getelementptr i8, i8* {object_repr}, i64 {field_offset}"
+        ));
+
+        let typed_ptr = self.next_temp();
+        self.emit_body(format!(
+            "{typed_ptr} = bitcast i8* {raw_ptr} to {}*",
+            value_type.llvm_type()
+        ));
+        typed_ptr
     }
 
     fn lower_semantic_type(

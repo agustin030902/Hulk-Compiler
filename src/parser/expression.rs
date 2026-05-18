@@ -12,8 +12,50 @@ impl Span {
 
 #[derive(Debug)]
 pub struct Program {
+    pub types: Vec<TypeDecl>,
     pub functions: Vec<FunctionDecl>,
     pub statements: Vec<Statement>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TypeDecl {
+    pub name: String,
+    pub name_span: Span,
+    pub params: Vec<TypeParam>,
+    pub attributes: Vec<TypeAttribute>,
+    pub methods: Vec<MethodDecl>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct TypeParam {
+    pub name: String,
+    pub type_annotation: Option<TypeAnnotation>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct TypeAttribute {
+    pub name: String,
+    pub name_span: Span,
+    pub value: Expr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct MethodDecl {
+    pub name: String,
+    pub name_span: Span,
+    pub params: Vec<FunctionParam>,
+    pub return_type_annotation: Option<TypeAnnotation>,
+    pub body: Expr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum TypeMemberDecl {
+    Attribute(TypeAttribute),
+    Method(MethodDecl),
 }
 
 #[derive(Debug, Clone)]
@@ -70,6 +112,9 @@ pub enum Expr {
     Unary(UnaryExpr),
     BuiltinCall(BuiltinCallExpr),
     FunctionCall(FunctionCallExpr),
+    MethodCall(MethodCallExpr),
+    MemberAccess(MemberAccessExpr),
+    New(NewExpr),
     DestructiveAssign(DestructiveAssignExpr),
     LetIn(LetInExpr),
     Block(BlockExpr),
@@ -86,6 +131,9 @@ impl Expr {
             Expr::Unary(unary) => unary.span,
             Expr::BuiltinCall(call) => call.span,
             Expr::FunctionCall(call) => call.span,
+            Expr::MethodCall(call) => call.span,
+            Expr::MemberAccess(access) => access.span,
+            Expr::New(new_expr) => new_expr.span,
             Expr::DestructiveAssign(assign) => assign.span,
             Expr::LetIn(let_in) => let_in.span,
             Expr::Block(block) => block.span,
@@ -122,10 +170,32 @@ pub struct UnaryExpr {
 
 #[derive(Debug, Clone)]
 pub struct DestructiveAssignExpr {
-    pub name: String,
-    pub name_span: Span,
+    pub target: AssignTarget,
     pub value: Box<Expr>,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum AssignTarget {
+    Variable {
+        name: String,
+        name_span: Span,
+    },
+    Member {
+        object: Box<Expr>,
+        member: String,
+        member_span: Span,
+        span: Span,
+    },
+}
+
+impl AssignTarget {
+    pub fn span(&self) -> Span {
+        match self {
+            AssignTarget::Variable { name_span, .. } => *name_span,
+            AssignTarget::Member { span, .. } => *span,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -139,6 +209,31 @@ pub struct BuiltinCallExpr {
 pub struct FunctionCallExpr {
     pub name: String,
     pub name_span: Span,
+    pub args: Vec<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct MethodCallExpr {
+    pub receiver: Box<Expr>,
+    pub method_name: String,
+    pub method_name_span: Span,
+    pub args: Vec<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct MemberAccessExpr {
+    pub object: Box<Expr>,
+    pub member: String,
+    pub member_span: Span,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewExpr {
+    pub type_name: String,
+    pub type_name_span: Span,
     pub args: Vec<Expr>,
     pub span: Span,
 }

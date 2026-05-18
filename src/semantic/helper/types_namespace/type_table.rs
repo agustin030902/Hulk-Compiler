@@ -1,5 +1,6 @@
 use super::{FunctionTypeInfo, StructTypeInfo, TypeId, TypeInfo};
 
+#[derive(Debug)]
 pub struct TypeTable {
     types: Vec<TypeInfo>,
 
@@ -65,8 +66,19 @@ impl TypeTable {
         &self.types[id.0 as usize]
     }
 
+    pub fn get_mut(&mut self, id: TypeId) -> &mut TypeInfo {
+        &mut self.types[id.0 as usize]
+    }
+
     pub fn get_function(&self, id: TypeId) -> Option<&FunctionTypeInfo> {
         match self.get(id) {
+            TypeInfo::Function(info) => Some(info),
+            _ => None,
+        }
+    }
+
+    pub fn get_function_mut(&mut self, id: TypeId) -> Option<&mut FunctionTypeInfo> {
+        match self.get_mut(id) {
             TypeInfo::Function(info) => Some(info),
             _ => None,
         }

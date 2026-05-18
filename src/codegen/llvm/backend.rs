@@ -155,6 +155,19 @@ impl LlvmBackend {
         }
 
         for (name, signature) in analyzer.function_signatures() {
+            if analyzer
+                .function_symbols()
+                .get(name)
+                .map(|symbol| symbol.is_method())
+                .unwrap_or(false)
+            {
+                self.semantic_error(format!(
+                    "Method '{}' is not supported by LLVM code generation yet.",
+                    name
+                ));
+                return false;
+            }
+
             let mut param_types = Vec::with_capacity(signature.param_types.len());
             for (index, semantic_type) in signature.param_types.iter().copied().enumerate() {
                 let Some(value_type) = self.lower_semantic_type(

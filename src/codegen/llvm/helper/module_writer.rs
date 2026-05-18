@@ -42,6 +42,7 @@ impl LlvmBackend {
             "declare i32 @rand()".to_string(),
             "declare i64 @time(i64*)".to_string(),
             "declare void @srand(i32)".to_string(),
+            "declare i8* @malloc(i64)".to_string(),
             "declare double @llvm.sin.f64(double)".to_string(),
             "declare double @llvm.cos.f64(double)".to_string(),
             "declare double @llvm.sqrt.f64(double)".to_string(),

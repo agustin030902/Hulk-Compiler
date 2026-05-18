@@ -6,6 +6,9 @@ mod function_call;
 mod if_expr;
 mod let_in;
 mod literal;
+mod member_access;
+mod method_call;
+mod new_expr;
 mod unary;
 mod variable;
 mod while_expr;
@@ -27,6 +30,9 @@ impl LlvmBackend {
             Expr::If(if_expr) => self.emit_if_expr(if_expr),
             Expr::BuiltinCall(call) => self.emit_builtin_call(call.function, &call.args),
             Expr::FunctionCall(call) => self.emit_function_call(call),
+            Expr::MethodCall(call) => self.emit_method_call(call),
+            Expr::MemberAccess(access) => self.emit_member_access(access),
+            Expr::New(new_expr) => self.emit_new_expr(new_expr),
             Expr::Binary(binary) => self.emit_binary_expr(binary),
         }
     }

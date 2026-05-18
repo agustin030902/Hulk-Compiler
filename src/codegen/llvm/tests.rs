@@ -269,3 +269,64 @@ let a = 5 in
         ir
     );
 }
+
+#[test]
+fn generates_ir_for_type_instantiation_and_method_calls() {
+    let source = r#"
+type Point(x: Number, y: Number) {
+    x = x;
+    y = y;
+    norm() => sqrt(self.x ^ 2 + self.y ^ 2);
+    describe() => "(" @ self.x @ ", " @ self.y @ ")";
+}
+
+let p = new Point(3, 4);
+print(p.describe() @ " norm=" @ p.norm());
+"#;
+    let ir = compile_source(source).expect("codegen should succeed");
+
+    assert!(
+        ir.contains("call i8* @malloc(i64"),
+        "expected heap allocation for object instantiation, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("norm(i8* %self)"),
+        "expected method definition with receiver parameter, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("describe(i8* %self)"),
+        "expected second method definition with receiver parameter, got:\n{}",
+        ir
+    );
+}
+
+#[test]
+fn generates_ir_for_method_using_another_struct_argument() {
+    let source = r#"
+type Point(x: Number, y: Number) {
+    x = x;
+    y = y;
+    add(other: Point) => new Point(self.x + other.x, self.y + other.y);
+    getX() => self.x;
+}
+
+let p1 = new Point(1, 2);
+let p2 = new Point(3, 4);
+let p3 = p1.add(p2);
+print(p3.getX());
+"#;
+    let ir = compile_source(source).expect("codegen should succeed");
+
+    assert!(
+        ir.contains("add(i8* %self, i8* %other)"),
+        "expected typed method signature for struct argument, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("call i8* @hulk_type"),
+        "expected method call returning struct value, got:\n{}",
+        ir
+    );
+}

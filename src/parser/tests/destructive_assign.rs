@@ -1,7 +1,7 @@
 use crate::lexer::Lexer;
 use crate::parser::{
     Parser,
-    expression::{Expr, Literal, Program, Statement},
+    expression::{AssignTarget, Expr, Literal, Program, Statement},
 };
 
 fn parse_program(source: &str) -> Program {
@@ -34,7 +34,10 @@ fn parses_destructive_assignment_expression() {
     let Expr::DestructiveAssign(assign) = value else {
         panic!("expected destructive assignment expression");
     };
-    assert_eq!(assign.name, "x");
+    assert!(matches!(
+        &assign.target,
+        AssignTarget::Variable { name, .. } if name == "x"
+    ));
     assert!(matches!(
         assign.value.as_ref(),
         Expr::Literal {
@@ -54,10 +57,16 @@ fn destructive_assignment_is_right_associative() {
     let Expr::DestructiveAssign(outer) = value else {
         panic!("expected outer destructive assignment");
     };
-    assert_eq!(outer.name, "a");
+    assert!(matches!(
+        &outer.target,
+        AssignTarget::Variable { name, .. } if name == "a"
+    ));
 
     let Expr::DestructiveAssign(inner) = outer.value.as_ref() else {
         panic!("expected inner destructive assignment");
     };
-    assert_eq!(inner.name, "b");
+    assert!(matches!(
+        &inner.target,
+        AssignTarget::Variable { name, .. } if name == "b"
+    ));
 }

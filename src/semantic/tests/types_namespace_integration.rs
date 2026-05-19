@@ -104,3 +104,44 @@ print(f(1));
     );
     assert_eq!(analyzer.function_symbols().len(), 1);
 }
+
+#[test]
+fn registers_type_methods_as_function_symbols_with_receiver() {
+    let source = r#"
+type Point(x: Number) {
+    x = x;
+    getX() => self.x;
+}
+
+let p = new Point(1);
+print(p.getX());
+"#;
+
+    let (analyzer, errors) = analyze_with_state(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+
+    let point_id = analyzer
+        .type_symbols()
+        .get("Point")
+        .copied()
+        .expect("missing type id for Point");
+    let method_key = format!("type#{}::getX", point_id.0);
+
+    let symbol = analyzer
+        .function_symbols()
+        .get(&method_key)
+        .expect("missing method symbol for Point.getX");
+    assert!(symbol.is_method());
+    assert_eq!(symbol.receiver, Some(point_id));
+
+    let method_info = analyzer
+        .type_table()
+        .get_function(symbol.type_id)
+        .expect("missing method function type entry in TypeTable");
+    assert_eq!(method_info.receiver, Some(point_id));
+    assert!(method_info.params.is_empty());
+}

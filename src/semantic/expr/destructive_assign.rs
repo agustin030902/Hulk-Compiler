@@ -1,6 +1,6 @@
-use crate::parser::expression::DestructiveAssignExpr;
+use crate::parser::expression::{AssignTarget, DestructiveAssignExpr};
 
-use super::super::{SemanticType, analyzer::SemanticAnalyzer};
+use super::super::{SemanticType, analyzer::SemanticAnalyzer, helper::TypeId};
 
 impl SemanticAnalyzer {
     pub(super) fn check_destructive_assign(
@@ -8,33 +8,116 @@ impl SemanticAnalyzer {
         assign: &DestructiveAssignExpr,
         source: &str,
     ) -> Option<SemanticType> {
-        let Some((scope_index, existing)) = self.lookup_with_scope_index(&assign.name) else {
-            self.push_semantic_error(
-                assign.name_span,
-                source,
-                format!(
-                    "Variable '{}' is assigned before declaration. Declare it with 'let' first.",
-                    assign.name
-                ),
-            );
-            return None;
-        };
+        match &assign.target {
+            AssignTarget::Variable { name, name_span } => {
+                let Some((scope_index, existing)) = self.lookup_with_scope_index(name) else {
+                    self.push_semantic_error(
+                        *name_span,
+                        source,
+                        format!(
+                            "Variable '{}' is assigned before declaration. Declare it with 'let' first.",
+                            name
+                        ),
+                    );
+                    return None;
+                };
 
-        let value_type = self.check_expr(&assign.value, source)?;
+                if self.is_self_binding(name, scope_index) {
+                    self.push_semantic_error(
+                        *name_span,
+                        source,
+                        "`self` is not a valid assignment target.".to_string(),
+                    );
+                    return None;
+                }
 
-        if existing != SemanticType::Unknown && existing != value_type {
-            self.push_type_error(
-                assign.span,
-                source,
-                format!(
-                    "Destructive assignment ':=' requires the same type. Variable '{}' is {:?} but expression is {:?}.",
-                    assign.name, existing, value_type
-                ),
-            );
-            return None;
+                let value_type = self.check_expr(&assign.value, source)?;
+
+                if existing != SemanticType::Unknown && existing != value_type {
+                    self.push_type_error(
+                        assign.span,
+                        source,
+                        format!(
+                            "Destructive assignment ':=' requires the same type. Variable '{}' is {:?} but expression is {:?}.",
+                            name, existing, value_type
+                        ),
+                    );
+                    return None;
+                }
+
+                self.assign_in_scope(scope_index, name.clone(), value_type);
+                Some(value_type)
+            }
+            AssignTarget::Member {
+                object,
+                member,
+                member_span,
+                ..
+            } => {
+                let receiver_type = self.check_expr(object, source)?;
+                let SemanticType::Struct(receiver_raw) = receiver_type else {
+                    self.push_type_error(
+                        assign.span,
+                        source,
+                        format!(
+                            "Member assignment expects a struct instance, but got {}.",
+                            receiver_type.display_name()
+                        ),
+                    );
+                    return None;
+                };
+
+                let receiver_id = TypeId(receiver_raw);
+                if !self.can_access_private_field(receiver_id) {
+                    self.push_semantic_error(
+                        *member_span,
+                        source,
+                        format!(
+                            "Attribute '{}' is private and cannot be assigned from this context.",
+                            member
+                        ),
+                    );
+                    return None;
+                }
+
+                let Some(field_type_id) = self.lookup_field_type_id(receiver_id, member) else {
+                    self.push_semantic_error(
+                        *member_span,
+                        source,
+                        format!("Attribute '{}' is not declared in this type.", member),
+                    );
+                    return None;
+                };
+
+                let expected_type = self.type_id_to_semantic_type(field_type_id);
+                let mut value_type = self.check_expr(&assign.value, source)?;
+
+                if value_type == SemanticType::Unknown && expected_type != SemanticType::Unknown {
+                    value_type = self.constrain_expr_type(&assign.value, expected_type, source);
+                }
+
+                if expected_type != SemanticType::Unknown
+                    && value_type != SemanticType::Unknown
+                    && expected_type != value_type
+                {
+                    self.push_type_error(
+                        assign.span,
+                        source,
+                        format!(
+                            "Destructive assignment ':=' requires type {}, but expression is {}.",
+                            expected_type.display_name(),
+                            value_type.display_name()
+                        ),
+                    );
+                    return None;
+                }
+
+                if expected_type != SemanticType::Unknown {
+                    Some(expected_type)
+                } else {
+                    Some(value_type)
+                }
+            }
         }
-
-        self.assign_in_scope(scope_index, assign.name.clone(), value_type);
-        Some(value_type)
     }
 }

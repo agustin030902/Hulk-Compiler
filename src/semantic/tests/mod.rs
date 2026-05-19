@@ -5,6 +5,7 @@ mod let_in;
 mod print_expr;
 mod string_escape;
 mod type_annotations;
+mod types;
 mod types_namespace_integration;
 mod while_expr;
 

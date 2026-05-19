@@ -6,4 +6,4 @@ mod statement;
 mod tests;
 
 pub use analyzer::SemanticAnalyzer;
-pub use helper::SemanticType;
+pub use helper::{SemanticType, TypeId, TypeInfo};

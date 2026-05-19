@@ -15,7 +15,9 @@ pub enum TypeInfo {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructTypeInfo {
     pub name: String,
+    pub constructor_params: Vec<(String, TypeId)>,
     pub fields: Vec<(String, TypeId)>,
+    pub methods: Vec<(String, TypeId)>,
     pub parent: Option<TypeId>,
 }
 

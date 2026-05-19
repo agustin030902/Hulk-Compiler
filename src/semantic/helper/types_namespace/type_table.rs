@@ -84,6 +84,20 @@ impl TypeTable {
         }
     }
 
+    pub fn get_struct(&self, id: TypeId) -> Option<&StructTypeInfo> {
+        match self.get(id) {
+            TypeInfo::Type(info) => Some(info),
+            _ => None,
+        }
+    }
+
+    pub fn get_struct_mut(&mut self, id: TypeId) -> Option<&mut StructTypeInfo> {
+        match self.get_mut(id) {
+            TypeInfo::Type(info) => Some(info),
+            _ => None,
+        }
+    }
+
     pub fn is_method(&self, id: TypeId) -> bool {
         self.get_function(id)
             .map(FunctionTypeInfo::is_method)

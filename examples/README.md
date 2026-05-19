@@ -62,6 +62,12 @@ Ejemplo “mochila” con varias funcionalidades actuales del compilador.
 - Builtins (`sin`, `cos`, `sqrt`, `exp`, `log`, `rand`)
 - `print(...)` como expresión
 
+### `types_point_ok.hulk`
+Ejemplo de tipos nominales con instanciación y métodos.
+- Declaración de `type Point` con atributos y métodos
+- Uso de `new Point(...)`
+- Llamadas a métodos por `.` y uso de `self`
+
 ### `calculator_ok.hulk`
 Ejemplo básico con operaciones aritméticas simples.
 - Declara variables con valores numéricos

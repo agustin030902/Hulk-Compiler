@@ -1,8 +1,10 @@
 use crate::lexer::TokenKind;
 use crate::parser::expression::{
-    BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction, DestructiveAssignExpr, Expr,
-    ElifBranch, FunctionCallExpr, FunctionDecl, FunctionParam, IfExpr, LetBinding, LetInExpr,
-    Literal, Program, Span, Statement, TypeAnnotation, UnaryExpr, UnaryOp, WhileExpr,
+    AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction,
+    DestructiveAssignExpr, ElifBranch, Expr, FunctionCallExpr, FunctionDecl, FunctionParam, IfExpr,
+    LetBinding, LetInExpr, Literal, MemberAccessExpr, MethodCallExpr, MethodDecl, NewExpr, Program,
+    Span, Statement, TypeAnnotation, TypeAttribute, TypeDecl, TypeMemberDecl, TypeParam, UnaryExpr,
+    UnaryOp, WhileExpr,
 };
 
 grammar;
@@ -14,6 +16,8 @@ extern {
     enum TokenKind {
         "let" => TokenKind::Let,
         "function" => TokenKind::Function,
+        "type" => TokenKind::Type,
+        "new" => TokenKind::New,
         "while" => TokenKind::While,
         "if" => TokenKind::If,
         "elif" => TokenKind::Elif,
@@ -51,6 +55,7 @@ extern {
         ";" => TokenKind::Semicolon,
         "(" => TokenKind::LeftParen,
         ")" => TokenKind::RightParen,
+        "." => TokenKind::Dot,
         "{" => TokenKind::LeftBrace,
         "}" => TokenKind::RightBrace,
         "identifier" => TokenKind::Identifier(<String>),
@@ -63,7 +68,103 @@ extern {
 }
 
 pub Program: Program = {
-    <functions:FunctionDecls> <statements:Statements> "eof" => Program { functions, statements },
+    <types:TypeDecls> <functions:FunctionDecls> <statements:Statements> "eof" => Program {
+        types,
+        functions,
+        statements,
+    },
+};
+
+TypeDecls: Vec<TypeDecl> = {
+    => vec![],
+    <first:TypeDecl> <rest:TypeDecls> => {
+        let mut types = vec![first];
+        types.extend(rest);
+        types
+    },
+};
+
+TypeDecl: TypeDecl = {
+    <l:@L> "type" <id:IdentifierWithSpan> <params:TypeDeclParams> "{" <members:TypeMembers> "}" <r:@R> => {
+        let mut attributes = Vec::new();
+        let mut methods = Vec::new();
+
+        for member in members {
+            match member {
+                TypeMemberDecl::Attribute(attribute) => attributes.push(attribute),
+                TypeMemberDecl::Method(method) => methods.push(method),
+            }
+        }
+
+        TypeDecl {
+            name: id.0,
+            name_span: id.1,
+            params,
+            attributes,
+            methods,
+            span: Span::new(l, r),
+        }
+    },
+};
+
+TypeDeclParams: Vec<TypeParam> = {
+    => vec![],
+    "(" ")" => vec![],
+    "(" <first:TypeParam> <rest:("," <TypeParam>)*> ")" => {
+        let mut params = vec![first];
+        for param in rest {
+            params.push(param);
+        }
+        params
+    },
+};
+
+TypeParam: TypeParam = {
+    <l:@L> <name:"identifier"> <annotation:OptionalTypeAnnotation> <r:@R> => TypeParam {
+        name,
+        type_annotation: annotation,
+        span: Span::new(l, r),
+    },
+};
+
+TypeMembers: Vec<TypeMemberDecl> = {
+    => vec![],
+    <first:TypeMember> <rest:TypeMembers> => {
+        let mut members = vec![first];
+        members.extend(rest);
+        members
+    },
+};
+
+TypeMember: TypeMemberDecl = {
+    <l:@L> <id:IdentifierWithSpan> "=" <value:Expr> ";" <r:@R> => TypeMemberDecl::Attribute(TypeAttribute {
+        name: id.0,
+        name_span: id.1,
+        value,
+        span: Span::new(l, r),
+    }),
+    <l:@L> <id:IdentifierWithSpan> "(" <params:FunctionParams> ")" <return_annotation:OptionalTypeAnnotation> "=>" <body:Expr> ";" <r:@R> => TypeMemberDecl::Method(MethodDecl {
+        name: id.0,
+        name_span: id.1,
+        params,
+        return_type_annotation: return_annotation,
+        body,
+        span: Span::new(l, r),
+    }),
+    <l:@L> <id:IdentifierWithSpan> "(" <params:FunctionParams> ")" <return_annotation:OptionalTypeAnnotation> <body:BlockExpr> <r:@R> =>? {
+        let Expr::Block(body) = body else {
+            unreachable!("BlockExpr rule must produce Expr::Block");
+        };
+
+        Ok(TypeMemberDecl::Method(MethodDecl {
+            name: id.0,
+            name_span: id.1,
+            params,
+            return_type_annotation: return_annotation,
+            body: Expr::Block(body),
+            span: Span::new(l, r),
+        }))
+    },
 };
 
 FunctionDecls: Vec<FunctionDecl> = {
@@ -209,13 +310,36 @@ OptionalTypeAnnotation: Option<TypeAnnotation> = {
 };
 
 Assignment: Expr = {
-    <l:@L> <id:IdentifierWithSpan> ":=" <value:Assignment> <r:@R> => Expr::DestructiveAssign(DestructiveAssignExpr {
-        name: id.0,
-        name_span: id.1,
-        value: Box::new(value),
-        span: Span::new(l, r),
-    }),
+    <l:@L> <target_expr:AssignmentTargetExpr> ":=" <value:Assignment> <r:@R> =>? {
+        let target = match target_expr {
+            Expr::Variable { name, span } => AssignTarget::Variable {
+                name,
+                name_span: span,
+            },
+            Expr::MemberAccess(access) => AssignTarget::Member {
+                object: access.object,
+                member: access.member,
+                member_span: access.member_span,
+                span: access.span,
+            },
+            _ => {
+                return Err(lalrpop_util::ParseError::User {
+                    error: "Invalid assignment target for ':='. Expected a variable or member access.".to_string(),
+                });
+            }
+        };
+
+        Ok(Expr::DestructiveAssign(DestructiveAssignExpr {
+            target,
+            value: Box::new(value),
+            span: Span::new(l, r),
+        }))
+    },
     LogicalOr,
+};
+
+AssignmentTargetExpr: Expr = {
+    PostfixExpr,
 };
 
 LogicalOr: Expr = {
@@ -347,8 +471,30 @@ Power: Expr = {
 Primary: Expr = {
     WhileExpr,
     BlockExpr,
+    PostfixExpr,
+};
+
+PostfixExpr: Expr = {
+    <l:@L> <receiver:PostfixExpr> "." <id:IdentifierWithSpan> "(" <args:CallArgs> ")" <r:@R> => Expr::MethodCall(MethodCallExpr {
+        receiver: Box::new(receiver),
+        method_name: id.0,
+        method_name_span: id.1,
+        args,
+        span: Span::new(l, r),
+    }),
+    <l:@L> <object:PostfixExpr> "." <id:IdentifierWithSpan> <r:@R> => Expr::MemberAccess(MemberAccessExpr {
+        object: Box::new(object),
+        member: id.0,
+        member_span: id.1,
+        span: Span::new(l, r),
+    }),
+    PrimaryAtom,
+};
+
+PrimaryAtom: Expr = {
     <call:BuiltinCallExpr> => call,
     <call:FunctionCallExpr> => call,
+    <new_expr:NewExpr> => new_expr,
     <literal:LiteralExpr> => literal,
     <variable:VariableExpr> => variable,
     "(" <expr:Expr> ")" => expr,
@@ -358,6 +504,15 @@ FunctionCallExpr: Expr = {
     <l:@L> <id:IdentifierWithSpan> "(" <args:CallArgs> ")" <r:@R> => Expr::FunctionCall(FunctionCallExpr {
         name: id.0,
         name_span: id.1,
+        args,
+        span: Span::new(l, r),
+    }),
+};
+
+NewExpr: Expr = {
+    <l:@L> "new" <id:IdentifierWithSpan> "(" <args:CallArgs> ")" <r:@R> => Expr::New(NewExpr {
+        type_name: id.0,
+        type_name_span: id.1,
         args,
         span: Span::new(l, r),
     }),

@@ -14,6 +14,7 @@ Si una fase falla, se detiene el pipeline y se genera diagnóstico.
 - Scope léxico en bloques `{ ... }` y `let ... in ...`.
 - Anotaciones explícitas de tipo en `let` y bindings de `let-in`.
 - Anotaciones de tipos en parámetros y retorno de funciones.
+- Tipos nominales de usuario con `type`, instanciación `new` y métodos con `self`.
 - `while` como expresión (`Unit`).
 - Funciones globales con recursión.
 - Semántica con inferencia de tipos para parámetros y retorno.
@@ -62,6 +63,8 @@ examples/
 - `let` con anotación de tipo: `let x: Number = 42;`
 - asignación destructiva `:=`
 - llamadas a funciones de usuario y builtins
+- acceso a miembros por `.` (métodos y atributos privados dentro del tipo)
+- instanciación de tipos con `new TypeName(...)`
 
 ### Anotación de tipos en variables
 
@@ -80,6 +83,31 @@ Reglas:
 - Tipos válidos en anotación: `Number`, `Boolean`, `String`, `Unit`.
 - El chequeo semántico valida que el tipo inferido del inicializador sea compatible con la anotación.
 - Si el nombre de tipo anotado no existe o no conforma con el inicializador, se reporta error semántico/de tipo y el pipeline se detiene antes de codegen.
+
+### Tipos de usuario (`type`)
+
+Sintaxis soportada:
+
+```hulk
+type Point(x: Number, y: Number) {
+  x = x;
+  y = y;
+
+  norm() => sqrt(self.x ^ 2 + self.y ^ 2);
+  add(other: Point) => new Point(self.x + other.x, self.y + other.y);
+  describe() => "(" @ self.x @ ", " @ self.y @ ")";
+}
+
+let p = new Point(3, 4);
+print(p.describe() @ " norm=" @ p.norm());
+```
+
+Reglas principales:
+
+- Los tipos se declaran con `type`.
+- Los atributos se inicializan en el cuerpo del tipo.
+- Los métodos se declaran dentro del tipo y reciben `self` implícitamente.
+- Los atributos son privados fuera del tipo.
 
 ### Builtins
 
@@ -236,6 +264,7 @@ Este ejemplo combina recursión, `while`, `let-in`, bloques, `:=`, builtins y `p
 - `examples/type_annotations_let_in_ok.hulk`
 - `examples/function_type_annotations_ok.hulk`
 - `examples/function_type_annotations_partial_ok.hulk`
+- `examples/types_point_ok.hulk`
 
 ### Con error (diagnósticos)
 

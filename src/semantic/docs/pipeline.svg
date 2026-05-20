@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="820" viewBox="0 0 1280 820" role="img" aria-labelledby="title desc">
+  <title id="title">Semantic Pipeline</title>
+  <desc id="desc">Pipeline del modulo semantic: SymbolCollector, SignatureInferencePass, apply inference y TypeChecker.</desc>
+
+  <defs>
+    <style>
+      .bg { fill: #f4f7fb; }
+      .panel { fill: #ffffff; stroke: #1b2a41; stroke-width: 2; rx: 14; ry: 14; }
+      .phase { fill: #e8f1ff; stroke: #2d5a9f; stroke-width: 2; rx: 12; ry: 12; }
+      .phase-accent { fill: #e9fbef; stroke: #1f7a46; stroke-width: 2; rx: 12; ry: 12; }
+      .state { fill: #fff6e6; stroke: #b86b00; stroke-width: 2; rx: 12; ry: 12; }
+      .out { fill: #fdecec; stroke: #9f2d2d; stroke-width: 2; rx: 12; ry: 12; }
+      .title { font: 700 30px 'Segoe UI', sans-serif; fill: #1b2a41; }
+      .subtitle { font: 600 18px 'Segoe UI', sans-serif; fill: #1b2a41; }
+      .text { font: 500 15px 'Segoe UI', sans-serif; fill: #1b2a41; }
+      .small { font: 500 13px 'Segoe UI', sans-serif; fill: #314158; }
+      .arrow { stroke: #1b2a41; stroke-width: 3; fill: none; marker-end: url(#arrowhead); }
+      .dashed { stroke-dasharray: 8 8; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#1b2a41" />
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="820" />
+
+  <text class="title" x="50" y="60">Hulk Compiler: Semantic Pipeline</text>
+  <text class="small" x="50" y="90">SemanticAnalyzer actua como orquestador. Las fases trabajan sobre estado compartido.</text>
+
+  <rect class="panel" x="40" y="120" width="1200" height="650" />
+
+  <rect class="phase" x="90" y="180" width="220" height="90" />
+  <text class="subtitle" x="115" y="215">Input</text>
+  <text class="text" x="115" y="242">Program AST + source</text>
+
+  <rect class="phase" x="360" y="165" width="260" height="110" />
+  <text class="subtitle" x="390" y="202">1) SymbolCollector</text>
+  <text class="small" x="390" y="228">collect_types</text>
+  <text class="small" x="390" y="248">collect_functions / collect_methods</text>
+
+  <rect class="phase" x="360" y="315" width="260" height="130" />
+  <text class="subtitle" x="390" y="352">2) SignatureInferencePass</text>
+  <text class="small" x="390" y="378">infer_function_signatures</text>
+  <text class="small" x="390" y="398">loop max: MAX_INFERENCE_PASSES</text>
+  <text class="small" x="390" y="418">(errores suprimidos)</text>
+
+  <rect class="phase" x="360" y="490" width="260" height="100" />
+  <text class="subtitle" x="390" y="527">3) Apply Inference</text>
+  <text class="small" x="390" y="553">apply_inferred_signatures</text>
+  <text class="small" x="390" y="573">sync_function_type_entries</text>
+
+  <rect class="phase-accent" x="360" y="635" width="260" height="95" />
+  <text class="subtitle" x="390" y="672">4) TypeChecker</text>
+  <text class="small" x="390" y="698">check_type_decl / check_function_decl</text>
+  <text class="small" x="390" y="718">check_statement / check_expr</text>
+
+  <rect class="state" x="700" y="200" width="490" height="380" />
+  <text class="subtitle" x="730" y="238">Estado Compartido (SemanticAnalyzer)</text>
+
+  <rect class="panel" x="730" y="265" width="215" height="95" />
+  <text class="text" x="750" y="298">type_table</text>
+  <text class="small" x="750" y="320">TypeId, FunctionTypeInfo,</text>
+  <text class="small" x="750" y="340">StructTypeInfo</text>
+
+  <rect class="panel" x="965" y="265" width="200" height="95" />
+  <text class="text" x="985" y="298">function_symbols</text>
+  <text class="small" x="985" y="320">+ function signatures</text>
+
+  <rect class="panel" x="730" y="385" width="215" height="80" />
+  <text class="text" x="750" y="418">type_symbols</text>
+  <text class="small" x="750" y="440">nombre -> TypeId</text>
+
+  <rect class="panel" x="965" y="385" width="200" height="80" />
+  <text class="text" x="985" y="418">ScopeStack</text>
+  <text class="small" x="985" y="440">push/pop/lookup</text>
+
+  <rect class="panel" x="730" y="490" width="435" height="70" />
+  <text class="text" x="750" y="532">current_method_receiver, current_self_scope_index, suppress_errors</text>
+
+  <rect class="out" x="700" y="635" width="490" height="95" />
+  <text class="subtitle" x="730" y="672">Salida</text>
+  <text class="text" x="730" y="699">Vec&lt;CompilerError&gt; (Semantic + Type)</text>
+
+  <path class="arrow" d="M 310 225 L 360 220" />
+  <path class="arrow" d="M 490 275 L 490 315" />
+  <path class="arrow" d="M 490 445 L 490 490" />
+  <path class="arrow" d="M 490 590 L 490 635" />
+
+  <path class="arrow" d="M 620 220 L 700 220" />
+  <path class="arrow" d="M 620 380 L 700 380" />
+  <path class="arrow" d="M 620 540 L 700 540" />
+  <path class="arrow" d="M 620 685 L 700 685" />
+
+  <path class="arrow dashed" d="M 945 580 L 945 635" />
+
+  <text class="small" x="850" y="610">push_unresolved_function_type_errors + sync final</text>
+</svg>

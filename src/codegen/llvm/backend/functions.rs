@@ -1,0 +1,100 @@
+use crate::{parser::expression::Program, semantic::SemanticAnalyzer};
+
+use super::LlvmBackend;
+
+#[derive(Debug, Clone)]
+pub(in crate::codegen::llvm) struct FunctionInfo {
+    pub(in crate::codegen::llvm) llvm_name: String,
+    pub(in crate::codegen::llvm) receiver_type_id: Option<u32>,
+    pub(in crate::codegen::llvm) param_types: Vec<crate::codegen::llvm::helper::state::ValueType>,
+    pub(in crate::codegen::llvm) return_type: crate::codegen::llvm::helper::state::ValueType,
+}
+
+impl LlvmBackend {
+    pub(in crate::codegen::llvm) fn load_function_signatures(&mut self, program: &Program) -> bool {
+        let mut analyzer = SemanticAnalyzer::new();
+        let semantic_errors = analyzer.analyze(program, "");
+
+        if !semantic_errors.is_empty() {
+            self.errors.extend(semantic_errors);
+            return false;
+        }
+
+        self.type_decls = program
+            .types
+            .iter()
+            .cloned()
+            .map(|type_decl| (type_decl.name.clone(), type_decl))
+            .collect();
+
+        self.type_ids = analyzer
+            .type_symbols()
+            .iter()
+            .map(|(name, type_id)| (name.clone(), type_id.0))
+            .collect();
+
+        if !self.load_struct_layouts(&analyzer) {
+            return false;
+        }
+
+        for (key, signature) in analyzer.function_signatures() {
+            let Some(symbol) = analyzer.function_symbols().get(key) else {
+                self.semantic_error(format!(
+                    "Function signature '{}' has no symbol metadata.",
+                    key
+                ));
+                return false;
+            };
+
+            let mut param_types = Vec::with_capacity(signature.param_types.len());
+            for (index, semantic_type) in signature.param_types.iter().copied().enumerate() {
+                let Some(value_type) = self.lower_semantic_type(
+                    semantic_type,
+                    &format!("parameter #{} in function '{}'", index + 1, symbol.name),
+                ) else {
+                    return false;
+                };
+                param_types.push(value_type);
+            }
+
+            let Some(return_type) = self.lower_semantic_type(
+                signature.return_type,
+                &format!("return type in function '{}'", symbol.name),
+            ) else {
+                return false;
+            };
+
+            let llvm_name = if let Some(receiver_type_id) = symbol.receiver {
+                format!("hulk_type{}_{}", receiver_type_id.0, symbol.name)
+            } else {
+                format!("hulk_{}", symbol.name)
+            };
+
+            self.functions.insert(
+                key.clone(),
+                FunctionInfo {
+                    llvm_name,
+                    receiver_type_id: symbol.receiver.map(|type_id| type_id.0),
+                    param_types,
+                    return_type,
+                },
+            );
+
+            if let Some(receiver_type_id) = symbol.receiver {
+                self.method_dispatch
+                    .insert((receiver_type_id.0, symbol.name.clone()), key.clone());
+            }
+        }
+
+        true
+    }
+
+    pub(in crate::codegen::llvm) fn lookup_method_key(
+        &self,
+        receiver_type_id: u32,
+        method_name: &str,
+    ) -> Option<&String> {
+        self.method_dispatch
+            .get(&(receiver_type_id, method_name.to_string()))
+    }
+}

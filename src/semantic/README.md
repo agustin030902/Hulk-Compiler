@@ -2,128 +2,78 @@
 
 Este módulo implementa el análisis semántico del compilador Hulk.
 
-Valida:
+## Qué valida
 
 - scopes y redeclaraciones
 - uso de variables antes de declarar
 - compatibilidad de tipos en expresiones
-- contratos de funciones (cantidad/tipos de parámetros y tipo de retorno)
+- contratos de funciones y métodos (parámetros y retorno)
+- inferencia de tipos sobre firmas incompletas
 
 ## Estructura actual
 
 ```text
 src/semantic/
   mod.rs
-  analyzer.rs
-  statement.rs
+  analyzer.rs                  # orquestador del pipeline
   helper/
     mod.rs
-    types.rs
     scope.rs
     function.rs
-  expr/
+    types_namespace/
+      mod.rs
+      type_info.rs
+      type_table.rs
+      types.rs
+  pipeline/
     mod.rs
-    binary.rs
-    block.rs
-    builtin_call.rs
-    destructive_assign.rs
-    function_call.rs
-    if_expr.rs
-    let_in.rs
-    literal.rs
-    unary.rs
-    variable.rs
-    while_expr.rs
+    symbol_collector.rs
+    type_resolver.rs
+    type_constraint_engine.rs
+    type_checker.rs
+    signature_inference_pass.rs
+  docs/
+    pipeline.svg
   tests/
     ...
 ```
 
-## Tipos semánticos
+## Flujo del pipeline
 
-`SemanticType` modela el tipo lógico del lenguaje:
-- `Number`
-- `Boolean`
-- `String`
-- `Unit`
-- `Function(u32)`
-- `Struct(u32)`
-- `Unknown`
+![Semantic Pipeline](./docs/pipeline.svg)
 
-`Unknown` se usa durante inferencia y debe resolverse antes de codegen.
+Orden de ejecución (sin cambiar semántica externa):
 
-## Scope aislado en helper
+1. `SymbolCollector`
+2. `SignatureInferencePass` (loop hasta `MAX_INFERENCE_PASSES`)
+3. `apply_inferred_signatures`
+4. `TypeChecker`
+5. `push_unresolved_function_type_errors` + `sync_function_type_entries`
 
-El stack de scopes ya no vive como `Vec<HashMap<...>>` directo en `analyzer.rs`.
-Ahora está abstraído en [`ScopeStack`](./helper/scope.rs):
-- `push` / `pop`
-- `lookup`
-- `lookup_with_index`
-- `contains_in_current`
-- `assign_at`
+La API pública se mantiene:
 
-Esto reduce responsabilidades de `SemanticAnalyzer` y centraliza la lógica de alcance.
+- `SemanticAnalyzer::analyze(program, source) -> Vec<CompilerError>`
+- getters de `type_table`, `function_symbols`, `type_symbols`, `function_signatures`
 
-## Firmas de función
+## Responsabilidades por módulo
 
-Las funciones se guardan como [`FunctionSignature`](./helper/function.rs):
-- `type_id`
-- `param_types: Vec<SemanticType>`
-- `return_type: SemanticType`
+- `analyzer.rs`: orquestación y estado compartido.
+- `pipeline/symbol_collector.rs`: construcción de tablas y símbolos.
+- `pipeline/type_resolver.rs`: resolución de tipos (`SemanticType <-> TypeId`).
+- `pipeline/type_constraint_engine.rs`: unificación/propagación (`merge_types`, `constrain_*`).
+- `pipeline/type_checker.rs`: traversal del AST y validaciones semánticas.
+- `pipeline/signature_inference_pass.rs`: inferencia iterativa de firmas.
+- `helper/scope.rs`: implementación de `ScopeStack` (sin cambios estructurales).
 
-Ya no se guarda solo la aridad.
+## Estado compartido principal
 
-## Inferencia de tipos de función
+`SemanticAnalyzer` centraliza:
 
-`SemanticAnalyzer` usa un proceso por punto fijo:
+- `type_table`
+- `function_symbols`
+- `type_symbols`
+- `functions` (firmas)
+- `scopes` (`ScopeStack`)
+- `errors`
 
-1. Registra todas las funciones con tipos `Unknown`.
-2. Ejecuta pasadas de inferencia (máximo `MAX_INFERENCE_PASSES`) con errores suprimidos.
-3. Reaplica las firmas inferidas.
-4. Ejecuta el chequeo final con errores habilitados.
-5. Si quedan `Unknown`, reporta errores explícitos.
-
-Esto permite inferir casos encadenados y recursivos, incluyendo patrones tipo:
-
-```hulk
-function id(x) => x;
-function plus_one(y) => id(y) + 1;
-```
-
-Aquí `id` se resuelve por contexto de retorno/uso, no solo por su cuerpo aislado.
-
-## Reglas principales
-
-### Variables
-- `let x = expr;` declara en scope actual.
-- `x = expr;` requiere variable declarada (puede cambiar tipo, por diseño actual).
-- `x := expr` requiere mismo tipo que la variable original.
-- Bloques `{ ... }` y `let ... in ...` crean scope.
-
-### Funciones
-- Se registran globalmente antes de analizar cuerpos (soporta recursión).
-- No se permite redeclarar función.
-- En llamadas se valida:
-  - existencia
-  - aridad
-  - tipo de cada argumento
-- El tipo de retorno se usa para validar contextos (`+`, `@`, `if`, etc.).
-
-### Expresiones
-- `+ - * / ^` => `Number`
-- `@` => `(String,String) | (String,Number) | (Number,String)`
-- comparaciones numéricas => `Boolean`
-- `== !=` requieren mismo tipo comparable
-- `&& || !` sobre booleanos
-- `while` devuelve `Unit`
-
-## Convención de cambios
-
-- Lógica compartida de estado/tipos en `helper/`.
-- Reglas por nodo en `expr/*.rs`.
-- Dispatch en `expr/mod.rs` y `statement.rs`.
-- Cualquier feature nuevo debe venir con tests en `src/semantic/tests/`.
-
-## Estado actual
-
-La semántica ya entrega firmas concretas de función para que `codegen` emita LLVM tipado
-(ya no limitado a funciones numéricas únicamente).
+Las fases operan sobre este estado de forma ordenada para mantener comportamiento consistente.

@@ -1,0 +1,47 @@
+type Pokemon(name: String, level: Number, hp: Number) {
+    name = name;
+    level = level;
+    hp = hp;
+
+    isAlive() =>
+        self.hp > 0;
+
+    attack(other: Pokemon) =>
+        new Pokemon(
+            other.name,
+            other.level,
+            other.hp - (self.level * 2)
+        );
+
+    levelUp() =>
+        new Pokemon(
+            self.name,
+            self.level + 1,
+            self.hp + 10
+        );
+
+    describe() =>
+        self.name @ " (lvl " @ self.level @ ") HP=" @ self.hp;
+}
+
+let pikachu = new Pokemon("Pikachu", 5, 30);
+let charmander = new Pokemon("Charmander", 4, 28);
+
+print(pikachu.describe());
+print(charmander.describe());
+
+let charmander2 = pikachu.attack(charmander);
+
+print("After attack:");
+print(charmander2.describe());
+
+let pikachu2 = pikachu.levelUp();
+
+print("Pikachu leveled up:");
+print(pikachu2.describe());
+
+if (charmander2.isAlive()) {
+    print("Charmander is still alive");
+} else {
+    print("Charmander fainted");
+};

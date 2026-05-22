@@ -106,6 +106,53 @@ impl LlvmBackend {
         left: &ValueRef,
         right: &ValueRef,
     ) -> Option<ValueRef> {
+        if left.value_type == ValueType::Null && right.value_type == ValueType::Null {
+            let repr = match op {
+                BinaryOp::Equal => "1",
+                BinaryOp::NotEqual => "0",
+                _ => unreachable!("non-equality operator in emit_equality"),
+            };
+            return Some(ValueRef {
+                value_type: ValueType::Bool,
+                repr: repr.to_string(),
+            });
+        }
+
+        if left.value_type == ValueType::Null || right.value_type == ValueType::Null {
+            let (other, other_is_left) = if left.value_type == ValueType::Null {
+                (right, false)
+            } else {
+                (left, true)
+            };
+
+            if !Self::is_nullable_value_type(other.value_type) {
+                self.semantic_error(format!(
+                    "Operator '{}' compares 'Null' only with nullable operands, but got {} and {}.",
+                    if matches!(op, BinaryOp::Equal) { "==" } else { "!=" },
+                    left.value_type.display_name(),
+                    right.value_type.display_name()
+                ));
+                return None;
+            }
+
+            let operand_repr = if other_is_left {
+                left.repr.clone()
+            } else {
+                right.repr.clone()
+            };
+            let predicate = match op {
+                BinaryOp::Equal => "eq",
+                BinaryOp::NotEqual => "ne",
+                _ => unreachable!("non-equality operator in emit_equality"),
+            };
+            let result = self.next_temp();
+            self.emit_body(format!("{result} = icmp {predicate} i8* {operand_repr}, null"));
+            return Some(ValueRef {
+                value_type: ValueType::Bool,
+                repr: result,
+            });
+        }
+
         if left.value_type != right.value_type {
             self.semantic_error("Equality operators require operands of the same type");
             return None;
@@ -170,6 +217,7 @@ impl LlvmBackend {
                 self.semantic_error("Equality operators do not support Unit values");
                 None
             }
+            ValueType::Null => unreachable!("null equality should be handled before type dispatch"),
             ValueType::Function | ValueType::Struct(_) => {
                 self.semantic_error("Equality operators do not support Function/Struct values");
                 None

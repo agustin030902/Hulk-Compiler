@@ -22,6 +22,15 @@ impl<'a> TypeChecker<'a> {
             return None;
         }
 
+        if arg_type == SemanticType::Null {
+            self.analyzer.push_type_error(
+                span,
+                source,
+                "Function 'print' cannot print values of type Null.".to_string(),
+            );
+            return None;
+        }
+
         if matches!(
             arg_type,
             SemanticType::Function(_) | SemanticType::Struct(_)

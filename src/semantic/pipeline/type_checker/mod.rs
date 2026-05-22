@@ -169,6 +169,9 @@ impl<'a> TypeChecker<'a> {
         }
 
         if value_type != SemanticType::Unknown && value_type != annotation_type {
+            if Self::types_compatible(annotation_type, value_type) {
+                return annotation_type;
+            }
             self.analyzer.push_type_error(
                 annotation_span,
                 source,
@@ -182,6 +185,12 @@ impl<'a> TypeChecker<'a> {
         }
 
         annotation_type
+    }
+
+    pub(super) fn types_compatible(expected: SemanticType, actual: SemanticType) -> bool {
+        expected == actual
+            || (actual == SemanticType::Null && expected.is_nullable())
+            || (expected == SemanticType::Null && actual.is_nullable())
     }
 
     pub(in crate::semantic) fn check_type_decl(&mut self, type_decl: &TypeDecl, source: &str) {

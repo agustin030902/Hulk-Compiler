@@ -120,26 +120,86 @@ impl LlvmBackend {
     }
 
     pub(super) fn allocate_storage(&mut self, value_ref: &ValueRef) -> VariableInfo {
-        let ptr_name = self.next_temp();
-        let llvm_ty = value_ref.value_type.llvm_type();
-        self.emit_body(format!("{ptr_name} = alloca {llvm_ty}"));
-        self.emit_body(format!(
-            "store {llvm_ty} {}, {llvm_ty}* {ptr_name}",
-            value_ref.repr
-        ));
+        self.allocate_storage_typed(value_ref.value_type, value_ref)
+            .expect("value type should always be compatible with itself")
+    }
 
-        VariableInfo {
+    pub(super) fn allocate_storage_typed(
+        &mut self,
+        expected_type: super::helper::state::ValueType,
+        value_ref: &ValueRef,
+    ) -> Option<VariableInfo> {
+        let repr = self.value_repr_for_expected_type(expected_type, value_ref)?;
+        let ptr_name = self.next_temp();
+        let llvm_ty = expected_type.llvm_type();
+        self.emit_body(format!("{ptr_name} = alloca {llvm_ty}"));
+        self.emit_body(format!("store {llvm_ty} {repr}, {llvm_ty}* {ptr_name}"));
+
+        Some(VariableInfo {
             ptr_name,
-            value_type: value_ref.value_type,
-        }
+            value_type: expected_type,
+        })
     }
 
     pub(super) fn store_value_at(&mut self, ptr_name: &str, value_ref: &ValueRef) {
-        let llvm_ty = value_ref.value_type.llvm_type();
+        self.store_value_at_typed(ptr_name, value_ref.value_type, value_ref);
+    }
+
+    pub(super) fn store_value_at_typed(
+        &mut self,
+        ptr_name: &str,
+        expected_type: super::helper::state::ValueType,
+        value_ref: &ValueRef,
+    ) {
+        let llvm_ty = expected_type.llvm_type();
+        let repr = self
+            .value_repr_for_expected_type(expected_type, value_ref)
+            .unwrap_or_else(|| value_ref.repr.clone());
         self.emit_body(format!(
             "store {llvm_ty} {}, {llvm_ty}* {ptr_name}",
-            value_ref.repr
+            repr
         ));
+    }
+
+    pub(super) fn is_nullable_value_type(
+        value_type: super::helper::state::ValueType,
+    ) -> bool {
+        matches!(
+            value_type,
+            super::helper::state::ValueType::Null
+                | super::helper::state::ValueType::StringPtr
+                | super::helper::state::ValueType::Function
+                | super::helper::state::ValueType::Struct(_)
+        )
+    }
+
+    pub(super) fn are_compatible_value_types(
+        expected: super::helper::state::ValueType,
+        actual: super::helper::state::ValueType,
+    ) -> bool {
+        expected == actual
+            || (actual == super::helper::state::ValueType::Null
+                && Self::is_nullable_value_type(expected))
+            || (expected == super::helper::state::ValueType::Null
+                && Self::is_nullable_value_type(actual))
+    }
+
+    pub(super) fn value_repr_for_expected_type(
+        &self,
+        expected: super::helper::state::ValueType,
+        value_ref: &ValueRef,
+    ) -> Option<String> {
+        if value_ref.value_type == expected {
+            return Some(value_ref.repr.clone());
+        }
+
+        if value_ref.value_type == super::helper::state::ValueType::Null
+            && Self::is_nullable_value_type(expected)
+        {
+            return Some("null".to_string());
+        }
+
+        None
     }
 
     pub(super) fn bind_current_scope(&mut self, name: String, info: VariableInfo) {

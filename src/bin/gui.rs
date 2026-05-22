@@ -291,7 +291,12 @@ impl HulkGui {
             .stroke(egui::Stroke::new(1.0, Color32::from_rgb(64, 64, 64)))
             .inner_margin(egui::Margin::same(8))
             .show(ui, |ui| {
-                ui.add_sized(ui.available_size(), editor);
+                egui::ScrollArea::both()
+                    .id_salt("source_editor_scroll")
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        ui.add_sized(ui.available_size(), editor);
+                    });
             });
     }
 
@@ -660,7 +665,7 @@ fn classify_highlight_role(tokens: &[Token], idx: usize) -> HighlightRole {
         TokenKind::Pi | TokenKind::E => HighlightRole::FunctionName,
         TokenKind::Number(_) => HighlightRole::Number,
         TokenKind::String(_) => HighlightRole::String,
-        TokenKind::Boolean(_) => HighlightRole::Boolean,
+        TokenKind::Boolean(_) | TokenKind::Null => HighlightRole::Boolean,
         TokenKind::Identifier(_) => {
             let is_declaration_name = matches!(prev_kind, Some(TokenKind::Function));
             let is_call_name = matches!(next_kind, Some(TokenKind::LeftParen));
@@ -1144,6 +1149,7 @@ fn literal_text(literal: &Literal) -> String {
         Literal::Float(value) => format!("Float({value})"),
         Literal::Boolean(value) => format!("Boolean({value})"),
         Literal::String(value) => format!("String(\"{}\")", value.replace('\n', "\\n")),
+        Literal::Null => "Null".to_string(),
     }
 }
 

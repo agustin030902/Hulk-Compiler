@@ -4,6 +4,7 @@ pub enum SemanticType {
     Boolean,
     String,
     Unit,
+    Null,
     Function(u32),
     Struct(u32),
     Unknown,
@@ -16,6 +17,7 @@ impl SemanticType {
             SemanticType::Boolean => "Boolean",
             SemanticType::String => "String",
             SemanticType::Unit => "Unit",
+            SemanticType::Null => "Null",
             SemanticType::Function(_) => "Function",
             SemanticType::Struct(_) => "Struct",
             SemanticType::Unknown => "Unknown",
@@ -28,11 +30,22 @@ impl SemanticType {
             "Boolean" => Some(SemanticType::Boolean),
             "String" => Some(SemanticType::String),
             "Unit" => Some(SemanticType::Unit),
+            "Null" => Some(SemanticType::Null),
             _ => None,
         }
     }
 
     pub(in crate::semantic) const fn annotation_names() -> &'static str {
-        "Number, Boolean, String, Unit"
+        "Number, Boolean, String, Unit, Null"
+    }
+
+    pub(in crate::semantic) const fn is_nullable(self) -> bool {
+        matches!(
+            self,
+            SemanticType::Null
+                | SemanticType::String
+                | SemanticType::Function(_)
+                | SemanticType::Struct(_)
+        )
     }
 }

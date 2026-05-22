@@ -65,7 +65,7 @@ impl<'a> TypeChecker<'a> {
 
             if expected_type != SemanticType::Unknown
                 && arg_type != SemanticType::Unknown
-                && expected_type != arg_type
+                && !Self::types_compatible(expected_type, arg_type)
             {
                 self.analyzer.push_type_error(
                     arg.span(),

@@ -1,0 +1,43 @@
+type Node(value: Number, left: Node, right: Node) {
+    value = value;
+    left = left;
+    right = right;
+
+    preorder() => if (self.left == null && self.right == null)
+        self.value @ ""
+    elif (self.left == null)
+        self.value @ " " @ self.right.preorder()
+    elif (self.right == null)
+        self.value @ " " @ self.left.preorder()
+    else
+        self.value @ " " @ self.left.preorder() @ " " @ self.right.preorder();
+
+    inorder() => if (self.left == null && self.right == null)
+        self.value @ ""
+    elif (self.left == null)
+        self.value @ " " @ self.right.inorder()
+    elif (self.right == null)
+        self.left.inorder() @ " " @ self.value
+    else
+        self.left.inorder() @ " " @ self.value @ " " @ self.right.inorder();
+
+    postorder() => if (self.left == null && self.right == null)
+        self.value @ ""
+    elif (self.left == null)
+        self.right.postorder() @ " " @ self.value
+    elif (self.right == null)
+        self.left.postorder() @ " " @ self.value
+    else
+        self.left.postorder() @ " " @ self.right.postorder() @ " " @ self.value;
+}
+
+let n4 = new Node(4, null, null);
+let n5 = new Node(5, null, null);
+let n6 = new Node(6, null, null);
+let n2 = new Node(2, n4, n5);
+let n3 = new Node(3, n6, null);
+let root = new Node(1, n2, n3);
+
+print("pre:  " @ root.preorder());
+print("in:   " @ root.inorder());
+print("post: " @ root.postorder());

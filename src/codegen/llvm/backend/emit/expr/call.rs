@@ -155,7 +155,7 @@ impl LlvmBackend {
             let value = self.emit_expr(arg)?;
             let expected = info.param_types[index];
 
-            if value.value_type != expected {
+            if !Self::are_compatible_value_types(expected, value.value_type) {
                 self.semantic_error(format!(
                     "Function '{}' argument #{} expects {}, but got {}.",
                     call.name,
@@ -166,7 +166,18 @@ impl LlvmBackend {
                 return None;
             }
 
-            arg_values.push(format!("{} {}", expected.llvm_type(), value.repr));
+            let Some(arg_repr) = self.value_repr_for_expected_type(expected, &value) else {
+                self.semantic_error(format!(
+                    "Function '{}' argument #{} expects {}, but got {}.",
+                    call.name,
+                    index + 1,
+                    expected.display_name(),
+                    value.value_type.display_name()
+                ));
+                return None;
+            };
+
+            arg_values.push(format!("{} {}", expected.llvm_type(), arg_repr));
         }
 
         let return_type = info.return_type.llvm_type();
@@ -239,7 +250,7 @@ impl LlvmBackend {
             let value = self.emit_expr(arg)?;
             let expected = info.param_types[index];
 
-            if value.value_type != expected {
+            if !Self::are_compatible_value_types(expected, value.value_type) {
                 self.semantic_error(format!(
                     "Method '{}' argument #{} expects {}, but got {}.",
                     call.method_name,
@@ -250,7 +261,18 @@ impl LlvmBackend {
                 return None;
             }
 
-            arg_values.push(format!("{} {}", expected.llvm_type(), value.repr));
+            let Some(arg_repr) = self.value_repr_for_expected_type(expected, &value) else {
+                self.semantic_error(format!(
+                    "Method '{}' argument #{} expects {}, but got {}.",
+                    call.method_name,
+                    index + 1,
+                    expected.display_name(),
+                    value.value_type.display_name()
+                ));
+                return None;
+            };
+
+            arg_values.push(format!("{} {}", expected.llvm_type(), arg_repr));
         }
 
         let return_type = info.return_type.llvm_type();

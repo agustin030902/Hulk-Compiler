@@ -445,3 +445,21 @@ fn parses_block_expression_and_scoping_shape() {
         Expr::Variable { name, .. } if name == "y"
     ));
 }
+
+#[test]
+fn parses_null_literal_in_let_initializer() {
+    let program = parse_program("let root = null;");
+    assert_eq!(program.statements.len(), 1);
+
+    let Statement::Let { value, .. } = &program.statements[0] else {
+        panic!("expected let statement");
+    };
+
+    assert!(matches!(
+        value,
+        Expr::Literal {
+            value: Literal::Null,
+            ..
+        }
+    ));
+}

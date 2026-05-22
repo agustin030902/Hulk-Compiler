@@ -1,0 +1,61 @@
+type Node(value: Number, left: Node, right: Node) {
+    value = value;
+    left = left;
+    right = right;
+
+    height() => if (self.left == null && self.right == null)
+        1
+    elif (self.left == null)
+        1 + self.right.height()
+    elif (self.right == null)
+        1 + self.left.height()
+    elif (self.left.height() > self.right.height())
+        1 + self.left.height()
+    else
+        1 + self.right.height();
+
+    level(k: Number): String => if (k == 1)
+        self.value @ ""
+    elif (self.left == null && self.right == null)
+        ""
+    elif (self.left == null)
+        self.right.level(k - 1)
+    elif (self.right == null)
+        self.left.level(k - 1)
+    else {
+        let l = self.left.level(k - 1);
+        let r = self.right.level(k - 1);
+
+        if (l == "") r
+        elif (r == "") l
+        else l @ " " @ r
+    };
+}
+
+function bfs(root: Node): String {
+    let level = 1;
+    let max_level = root.height();
+    let out = "";
+
+    let loop_result = while (level <= max_level) {
+        let current = root.level(level);
+        if (out == "")
+            out := current
+        else
+            out := out @ " | " @ current;
+
+        level := level + 1;
+    };
+
+    out
+}
+
+let n4 = new Node(4, null, null);
+let n5 = new Node(5, null, null);
+let n6 = new Node(6, null, null);
+let n7 = new Node(7, null, null);
+let n2 = new Node(2, n4, n5);
+let n3 = new Node(3, n6, n7);
+let root = new Node(1, n2, n3);
+
+print("bfs: " @ bfs(root));

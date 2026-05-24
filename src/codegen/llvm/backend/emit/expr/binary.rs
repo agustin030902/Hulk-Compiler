@@ -263,36 +263,71 @@ impl LlvmBackend {
                 "@.fmt.concat.ss",
                 format!("i8* {}, i8* {}", left.repr, right.repr),
             ),
+    
             (ValueType::StringPtr, ValueType::Double) => (
                 "@.fmt.concat.sn",
                 format!("i8* {}, double {}", left.repr, right.repr),
             ),
+    
             (ValueType::Double, ValueType::StringPtr) => (
                 "@.fmt.concat.ns",
                 format!("double {}, i8* {}", left.repr, right.repr),
             ),
+    
+            (ValueType::StringPtr, ValueType::Bool) => {
+                let bool_i32 = self.next_temp();
+    
+                self.emit_body(format!(
+                    "{bool_i32} = zext i1 {} to i32",
+                    right.repr
+                ));
+    
+                (
+                    "@.fmt.concat.bs",
+                    format!("i8* {}, i32 {}", left.repr, bool_i32),
+                )
+            }
+    
+            (ValueType::Bool, ValueType::StringPtr) => {
+                let bool_i32 = self.next_temp();
+    
+                self.emit_body(format!(
+                    "{bool_i32} = zext i1 {} to i32",
+                    left.repr
+                ));
+    
+                (
+                    "@.fmt.concat.sb",
+                    format!("i32 {}, i8* {}", bool_i32, right.repr),
+                )
+            }
+    
             _ => {
                 self.semantic_error(format!(
-                    "Operator '@' expects (String, String), (String, Number), or (Number, String), but got {} and {} in code generation.",
+                    "Operator '@' expects (String, String), (String, Number), \
+                     (Number, String), (Boolean, String), or (String, Boolean), \
+                     but got {} and {} in code generation.",
                     left.value_type.display_name(),
                     right.value_type.display_name()
                 ));
                 return None;
             }
         };
-
+    
         let result_slot = self.next_temp();
         self.emit_body(format!("{result_slot} = alloca i8*"));
-
+    
         let call_tmp = self.next_temp();
         let fmt_ptr = format_ptr_global(fmt_name, 5);
+    
         self.emit_body(format!(
-            "{call_tmp} = call i32 (i8**, i8*, ...) @asprintf(i8** {result_slot}, i8* {fmt_ptr}, {arg_values})"
+            "{call_tmp} = call i32 (i8**, i8*, ...) @asprintf(\
+             i8** {result_slot}, i8* {fmt_ptr}, {arg_values})"
         ));
-
+    
         let loaded = self.next_temp();
         self.emit_body(format!("{loaded} = load i8*, i8** {result_slot}"));
-
+    
         Some(ValueRef {
             value_type: ValueType::StringPtr,
             repr: loaded,

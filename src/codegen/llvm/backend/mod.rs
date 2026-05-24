@@ -30,6 +30,7 @@ pub struct LlvmBackend {
     pub(super) temp_counter: usize,
     pub(super) label_counter: usize,
     pub(super) string_counter: usize,
+    pub(crate) current_block: String,
 }
 
 impl LlvmBackend {
@@ -55,7 +56,14 @@ impl LlvmBackend {
     }
 
     pub(super) fn emit_body(&mut self, line: impl Into<String>) {
-        self.body_lines.push(line.into());
+        let line = line.into();
+    
+        if line.ends_with(':') {
+            self.current_block =
+                line.trim_end_matches(':').to_string();
+        }
+    
+        self.body_lines.push(line);
     }
 
     pub(super) fn emit_function_line(&mut self, line: impl Into<String>) {

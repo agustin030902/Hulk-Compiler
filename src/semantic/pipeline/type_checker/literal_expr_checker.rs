@@ -10,6 +10,7 @@ impl<'a> TypeChecker<'a> {
             Literal::Integer(_) | Literal::Float(_) => SemanticType::Number,
             Literal::Boolean(_) => SemanticType::Boolean,
             Literal::String(_) => SemanticType::String,
+            Literal::Null => SemanticType::Null,
         }
     }
 }

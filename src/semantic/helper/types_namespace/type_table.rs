@@ -8,7 +8,9 @@ pub struct TypeTable {
     pub boolean: TypeId,
     pub string: TypeId,
     pub unit: TypeId,
+    pub null: TypeId,
     pub unknown: TypeId,
+    pub object: TypeId,
 }
 
 impl TypeTable {
@@ -25,7 +27,15 @@ impl TypeTable {
         let boolean = push(TypeInfo::Boolean);
         let string = push(TypeInfo::String);
         let unit = push(TypeInfo::Unit);
+        let null = push(TypeInfo::Null);
         let unknown = push(TypeInfo::Unknown);
+        let object = push(TypeInfo::Type(StructTypeInfo {
+            name: "Object".to_string(),
+            constructor_params: Vec::new(),
+            fields: Vec::new(),
+            methods: Vec::new(),
+            parent: None,
+        }));
 
         Self {
             types,
@@ -33,7 +43,9 @@ impl TypeTable {
             boolean,
             string,
             unit,
+            null,
             unknown,
+            object,
         }
     }
 

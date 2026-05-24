@@ -14,6 +14,8 @@ impl TypeConstraintEngine {
             (SemanticType::Unknown, known) => Ok(known),
             (known, SemanticType::Unknown) => Ok(known),
             (left, right) if left == right => Ok(left),
+            (left, SemanticType::Null) if left.is_nullable() => Ok(left),
+            (SemanticType::Null, right) if right.is_nullable() => Ok(right),
             (left, right) => Err((left, right)),
         }
     }

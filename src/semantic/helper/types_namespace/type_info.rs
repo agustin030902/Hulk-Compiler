@@ -7,6 +7,7 @@ pub enum TypeInfo {
     Boolean,
     String,
     Unit,
+    Null,
     Unknown,
     Type(StructTypeInfo),
     Function(FunctionTypeInfo),

@@ -108,3 +108,45 @@ let p = new Point(true, 2);
         "Type 'Point' constructor argument #1 expects Number, but got Boolean."
     );
 }
+
+#[test]
+fn allows_null_constructor_arguments_for_struct_references() {
+    let source = r#"
+type Node(value: Number, left: Node, right: Node) {
+    value = value;
+    left = left;
+    right = right;
+
+    isLeaf() => self.left == null && self.right == null;
+}
+
+let leaf = new Node(1, null, null);
+print(leaf.isLeaf());
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_null_for_number_constructor_parameter() {
+    let source = r#"
+type Box(value: Number) {
+    value = value;
+}
+
+let b = new Box(null);
+"#;
+
+    let errors = analyze_source(source);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].category, ErrorCategory::Type);
+    assert_eq!(
+        errors[0].message,
+        "Type 'Box' constructor argument #1 expects Number, but got Null."
+    );
+}

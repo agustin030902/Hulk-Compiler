@@ -27,9 +27,15 @@ impl<'a> TypeChecker<'a> {
             return Some(SemanticType::Unknown);
         }
 
-        let Some(expected_type) = branch_types.iter().find_map(|(_, value_type)| {
+        let preferred_type = branch_types.iter().find_map(|(_, value_type)| {
+            (*value_type != SemanticType::Unknown && *value_type != SemanticType::Null)
+                .then_some(*value_type)
+        });
+        let fallback_type = branch_types.iter().find_map(|(_, value_type)| {
             (*value_type != SemanticType::Unknown).then_some(*value_type)
-        }) else {
+        });
+
+        let Some(expected_type) = preferred_type.or(fallback_type) else {
             return Some(SemanticType::Unknown);
         };
 
@@ -52,7 +58,7 @@ impl<'a> TypeChecker<'a> {
         }
 
         for (branch_expr, actual_type) in branch_types.iter().copied() {
-            if actual_type != expected_type {
+            if !Self::types_compatible(expected_type, actual_type) {
                 self.analyzer.push_type_error(
                     branch_expr.span(),
                     source,

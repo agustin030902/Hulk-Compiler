@@ -145,3 +145,60 @@ print(p.getX());
     assert_eq!(method_info.receiver, Some(point_id));
     assert!(method_info.params.is_empty());
 }
+
+#[test]
+fn registers_builtin_object_type_symbol() {
+    let source = r#"print(1);"#;
+    let (analyzer, errors) = analyze_with_state(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+
+    let object_id = analyzer
+        .type_symbols()
+        .get("Object")
+        .copied()
+        .expect("missing built-in type id for Object");
+    let object_info = analyzer
+        .type_table()
+        .get_struct(object_id)
+        .expect("missing struct entry for Object");
+    assert_eq!(object_info.name, "Object");
+    assert_eq!(object_info.parent, None);
+}
+
+#[test]
+fn user_struct_types_inherit_from_object_by_default() {
+    let source = r#"
+type Point(x: Number) {
+    x = x;
+}
+print(1);
+"#;
+
+    let (analyzer, errors) = analyze_with_state(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+
+    let object_id = analyzer
+        .type_symbols()
+        .get("Object")
+        .copied()
+        .expect("missing built-in type id for Object");
+    let point_id = analyzer
+        .type_symbols()
+        .get("Point")
+        .copied()
+        .expect("missing type id for Point");
+    let point_info = analyzer
+        .type_table()
+        .get_struct(point_id)
+        .expect("missing struct entry for Point");
+
+    assert_eq!(point_info.parent, Some(object_id));
+}

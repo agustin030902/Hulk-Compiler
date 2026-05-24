@@ -52,9 +52,13 @@ impl LlvmBackend {
             "@.fmt.number = private unnamed_addr constant [4 x i8] c\"%g\\0A\\00\"".to_string(),
             "@.fmt.string = private unnamed_addr constant [4 x i8] c\"%s\\0A\\00\"".to_string(),
             "@.fmt.bool = private unnamed_addr constant [4 x i8] c\"%d\\0A\\00\"".to_string(),
+            "@.bool.true = private unnamed_addr constant [5 x i8] c\"true\\00\"".to_string(),
+            "@.bool.false = private unnamed_addr constant [6 x i8] c\"false\\00\"".to_string(),
             "@.fmt.concat.ss = private unnamed_addr constant [5 x i8] c\"%s%s\\00\"".to_string(),
             "@.fmt.concat.sn = private unnamed_addr constant [5 x i8] c\"%s%g\\00\"".to_string(),
             "@.fmt.concat.ns = private unnamed_addr constant [5 x i8] c\"%g%s\\00\"".to_string(),
+            "@.fmt.concat.bs = private unnamed_addr constant [5 x i8] c\"%s%d\\00\"".to_string(),
+            "@.fmt.concat.sb = private unnamed_addr constant [5 x i8] c\"%d%s\\00\"".to_string(),
         ];
 
         out.extend(self.global_lines.clone());

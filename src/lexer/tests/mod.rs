@@ -307,3 +307,25 @@ fn lexes_block_tokens_without_trailing_semicolon() {
         ]
     );
 }
+
+#[test]
+fn lexes_null_literal() {
+    let source = "let root = null;".to_string();
+    let mut lexer = Lexer::new(source);
+
+    let tokens = lexer.lex();
+    let kinds: Vec<TokenKind> = tokens.into_iter().map(|token| token.kind).collect();
+
+    assert!(!lexer.has_errors());
+    assert_eq!(
+        kinds,
+        vec![
+            TokenKind::Let,
+            TokenKind::Identifier("root".to_string()),
+            TokenKind::Assign,
+            TokenKind::Null,
+            TokenKind::Semicolon,
+            TokenKind::EOF,
+        ]
+    );
+}

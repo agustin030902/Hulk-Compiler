@@ -72,6 +72,8 @@ impl SemanticAnalyzer {
         self.function_symbols.clear();
         self.type_symbols.clear();
         self.type_table = TypeTable::new();
+        self.type_symbols
+            .insert("Object".to_string(), self.type_table.object);
         self.errors.clear();
         self.current_method_receiver = None;
         self.current_self_scope_index = None;

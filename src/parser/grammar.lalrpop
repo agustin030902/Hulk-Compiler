@@ -32,6 +32,7 @@ extern {
         "log" => TokenKind::Log,
         "rand" => TokenKind::Rand,
         "in" => TokenKind::In,
+        "null" => TokenKind::Null,
         ":=" => TokenKind::DestructiveAssign,
         ":" => TokenKind::Colon,
         "=>" => TokenKind::Arrow,
@@ -674,6 +675,10 @@ LiteralExpr: Expr = {
     },
     <l:@L> <raw:"string"> <r:@R> => Expr::Literal {
         value: Literal::String(raw),
+        span: Span::new(l, r),
+    },
+    <l:@L> "null" <r:@R> => Expr::Literal {
+        value: Literal::Null,
         span: Span::new(l, r),
     },
 };

@@ -1,0 +1,26 @@
+type Node(value: Number, left: Node, right: Node) {
+    value = value;
+    left = left;
+    right = right;
+
+    attachLeft(child: Node) => self.left := child;
+    attachRight(child: Node) => self.right := child;
+    detachLeft() => self.left := null;
+    detachRight() => self.right := null;
+    isLeaf() => self.left == null && self.right == null;
+    describe() => self.value @ "";
+}
+
+let root = new Node(10, null, null);
+let left = new Node(20, null, null);
+let right = new Node(30, null, null);
+
+root.attachLeft(left);
+root.attachRight(right);
+print("leaf? " @ root.isLeaf());
+
+root.detachRight();
+print("leaf after detachRight? " @ root.isLeaf());
+
+root.detachLeft();
+print("leaf after detachLeft? " @ root.isLeaf());

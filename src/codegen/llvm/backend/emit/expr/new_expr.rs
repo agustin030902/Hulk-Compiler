@@ -53,7 +53,35 @@ impl LlvmBackend {
         self.push_scope();
 
         for (param, value) in type_decl.params.iter().zip(ctor_values.iter()) {
-            let info = self.allocate_storage(value);
+            let expected_type = param
+                .type_annotation
+                .as_ref()
+                .and_then(|annotation| self.value_type_from_annotation_name(&annotation.name))
+                .unwrap_or(value.value_type);
+
+            if !Self::are_compatible_value_types(expected_type, value.value_type) {
+                self.semantic_error(format!(
+                    "Type '{}' constructor parameter '{}' expects {}, but got {}.",
+                    new_expr.type_name,
+                    param.name,
+                    expected_type.display_name(),
+                    value.value_type.display_name()
+                ));
+                self.pop_scope();
+                return None;
+            }
+
+            let Some(info) = self.allocate_storage_typed(expected_type, value) else {
+                self.semantic_error(format!(
+                    "Type '{}' constructor parameter '{}' expects {}, but got {}.",
+                    new_expr.type_name,
+                    param.name,
+                    expected_type.display_name(),
+                    value.value_type.display_name()
+                ));
+                self.pop_scope();
+                return None;
+            };
             self.bind_current_scope(param.name.clone(), info);
         }
 
@@ -68,7 +96,7 @@ impl LlvmBackend {
             };
 
             let value = self.emit_expr(&attribute.value)?;
-            if value.value_type != field_layout.value_type {
+            if !Self::are_compatible_value_types(field_layout.value_type, value.value_type) {
                 self.semantic_error(format!(
                     "Attribute '{}' in type '{}' expects {}, but initializer produced {}.",
                     attribute.name,
@@ -80,12 +108,25 @@ impl LlvmBackend {
                 return None;
             }
 
+            let Some(stored_repr) = self.value_repr_for_expected_type(field_layout.value_type, &value)
+            else {
+                self.semantic_error(format!(
+                    "Attribute '{}' in type '{}' expects {}, but initializer produced {}.",
+                    attribute.name,
+                    new_expr.type_name,
+                    field_layout.value_type.display_name(),
+                    value.value_type.display_name()
+                ));
+                self.pop_scope();
+                return None;
+            };
+
             let field_ptr =
                 self.emit_field_ptr(&object_ptr, field_layout.offset, field_layout.value_type);
             let llvm_type = field_layout.value_type.llvm_type();
             self.emit_body(format!(
                 "store {llvm_type} {}, {llvm_type}* {field_ptr}",
-                value.repr
+                stored_repr
             ));
         }
 
@@ -95,5 +136,16 @@ impl LlvmBackend {
             value_type: ValueType::Struct(type_id),
             repr: object_ptr,
         })
+    }
+
+    fn value_type_from_annotation_name(&self, name: &str) -> Option<ValueType> {
+        match name {
+            "Number" => Some(ValueType::Double),
+            "Boolean" => Some(ValueType::Bool),
+            "String" => Some(ValueType::StringPtr),
+            "Unit" => Some(ValueType::Unit),
+            "Null" => Some(ValueType::Null),
+            _ => self.type_ids.get(name).copied().map(ValueType::Struct),
+        }
     }
 }

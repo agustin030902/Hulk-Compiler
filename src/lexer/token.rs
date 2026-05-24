@@ -19,6 +19,7 @@ pub enum TokenKind {
     Log,
     Rand,
     In,
+    Null,
     Assign,
     Arrow,
     Add,

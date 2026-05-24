@@ -32,7 +32,9 @@ impl<'a> TypeChecker<'a> {
 
                 let value_type = self.check_expr(&assign.value, source)?;
 
-                if existing != SemanticType::Unknown && existing != value_type {
+                if existing != SemanticType::Unknown
+                    && !Self::types_compatible(existing, value_type)
+                {
                     self.analyzer.push_type_error(
                         assign.span,
                         source,
@@ -44,9 +46,16 @@ impl<'a> TypeChecker<'a> {
                     return None;
                 }
 
+                let assigned_type = match (existing, value_type) {
+                    (SemanticType::Unknown, inferred) => inferred,
+                    (SemanticType::Null, inferred) if inferred.is_nullable() => inferred,
+                    (known, SemanticType::Null) if known.is_nullable() => known,
+                    (known, _) => known,
+                };
+
                 self.analyzer
-                    .assign_in_scope(scope_index, name.clone(), value_type);
-                Some(value_type)
+                    .assign_in_scope(scope_index, name.clone(), assigned_type);
+                Some(assigned_type)
             }
             AssignTarget::Member {
                 object,
@@ -104,7 +113,7 @@ impl<'a> TypeChecker<'a> {
 
                 if expected_type != SemanticType::Unknown
                     && value_type != SemanticType::Unknown
-                    && expected_type != value_type
+                    && !Self::types_compatible(expected_type, value_type)
                 {
                     self.analyzer.push_type_error(
                         assign.span,

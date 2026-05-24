@@ -154,6 +154,24 @@ impl<'a> TypeChecker<'a> {
                     return Some(SemanticType::Unknown);
                 }
 
+                if left_type == SemanticType::Null || right_type == SemanticType::Null {
+                    if left_type.is_nullable() && right_type.is_nullable() {
+                        return Some(SemanticType::Boolean);
+                    }
+
+                    self.analyzer.push_type_error(
+                        binary.span,
+                        source,
+                        format!(
+                            "Operator '{}' compares 'Null' only with nullable operands, but got {} and {}.",
+                            op_symbol(binary.op.clone()),
+                            left_type.display_name(),
+                            right_type.display_name()
+                        ),
+                    );
+                    return None;
+                }
+
                 if left_type != right_type {
                     self.analyzer.push_type_error(
                         binary.span,
@@ -244,6 +262,10 @@ fn is_valid_concat_pair(left: SemanticType, right: SemanticType) -> bool {
         (SemanticType::String, SemanticType::String)
             | (SemanticType::String, SemanticType::Number)
             | (SemanticType::Number, SemanticType::String)
+            | (SemanticType::String, SemanticType::Boolean)
+            | (SemanticType::Boolean, SemanticType::String)
+            //| (SemanticType::String, SemanticType::Number)
+            //| (SemanticType::String, SemanticType::Number)
     )
 }
 

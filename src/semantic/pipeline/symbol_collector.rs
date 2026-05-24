@@ -45,7 +45,7 @@ impl SymbolCollector {
                 constructor_params: Vec::new(),
                 fields: Vec::new(),
                 methods: Vec::new(),
-                parent: None,
+                parent: Some(analyzer.type_table.object),
             });
             analyzer
                 .type_symbols

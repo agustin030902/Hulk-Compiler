@@ -151,6 +151,7 @@ pub enum Literal {
     Float(f64),
     Boolean(bool),
     String(String),
+    Null,
 }
 
 #[derive(Debug, Clone)]

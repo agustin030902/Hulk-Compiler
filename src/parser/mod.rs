@@ -134,6 +134,7 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::Log => "log".to_string(),
         TokenKind::Rand => "rand".to_string(),
         TokenKind::In => "in".to_string(),
+        TokenKind::Null => "null".to_string(),
         TokenKind::Assign => "=".to_string(),
         TokenKind::Arrow => "=>".to_string(),
         TokenKind::Add => "+".to_string(),

@@ -1,0 +1,50 @@
+type Node(value: Number, left: Node, right: Node) {
+    value = value;
+    left = left;
+    right = right;
+
+    setValue(v: Number) => { self.value := v};
+    setLeft(l: Node) => {self.left := l};
+    setRight(r: Node) =>{ self.right := r};
+
+    insert(x: Number) => {
+	if (x <= self.value)
+        if (self.left == null)
+            self.setLeft(new Node(x, null, null))
+        else
+            self.left.insert(x)
+    else 
+        if (self.right == null)
+            self.setRight(new Node(x, null, null))
+        else
+            self.right.insert(x)
+
+	};
+
+
+   inorder() => {
+    if (self.left == null && self.right == null)
+        self.value @ ""
+    elif (self.left == null)
+        self.value @ " " @ self.right.inorder()
+    elif (self.right == null)
+        self.left.inorder() @ " " @ self.value
+    else
+        self.left.inorder() @ " " @ self.value @ " " @ self.right.inorder();
+	};
+
+}
+
+let root = new Node(8, null, null);
+
+root.insert(3);
+root.insert(10);
+root.insert(1);
+root.insert(6);
+root.insert(14);
+root.insert(4);
+root.insert(7);
+root.insert(13);
+
+
+print("in:   " @ root.inorder());

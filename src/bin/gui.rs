@@ -649,7 +649,9 @@ fn classify_highlight_role(tokens: &[Token], idx: usize) -> HighlightRole {
         | TokenKind::In
         | TokenKind::If
         | TokenKind::Else
-        | TokenKind::Elif => HighlightRole::Keyword,
+        | TokenKind::Elif
+        | TokenKind::Inherits
+        | TokenKind::Base => HighlightRole::Keyword,
         TokenKind::Print
         | TokenKind::Sin
         | TokenKind::Cos
@@ -661,6 +663,7 @@ fn classify_highlight_role(tokens: &[Token], idx: usize) -> HighlightRole {
         TokenKind::Number(_) => HighlightRole::Number,
         TokenKind::String(_) => HighlightRole::String,
         TokenKind::Boolean(_) => HighlightRole::Boolean,
+        TokenKind::Null => HighlightRole::Keyword,
         TokenKind::Identifier(_) => {
             let is_declaration_name = matches!(prev_kind, Some(TokenKind::Function));
             let is_call_name = matches!(next_kind, Some(TokenKind::LeftParen));
@@ -877,6 +880,12 @@ fn render_expr_tree(ui: &mut egui::Ui, expr: &Expr, label: &str, query: &str) {
         Expr::Block(block) => render_block_tree(ui, block, label, query),
         Expr::While(while_expr) => render_while_tree(ui, while_expr, label, query),
         Expr::If(if_expr) => render_if_tree(ui, if_expr, label, query),
+        Expr::Base { span } => {
+            ui.label(match_rich_text(
+                format!("{label}: Base [{}]", span_text(*span)),
+                query,
+            ));
+        }
     }
 }
 
@@ -1144,6 +1153,7 @@ fn literal_text(literal: &Literal) -> String {
         Literal::Float(value) => format!("Float({value})"),
         Literal::Boolean(value) => format!("Boolean({value})"),
         Literal::String(value) => format!("String(\"{}\")", value.replace('\n', "\\n")),
+        Literal::Null => "Null".to_string(),
     }
 }
 

@@ -101,3 +101,14 @@ fn lexes_new_expression_and_method_call_tokens() {
         ]
     );
 }
+
+#[test]
+fn lexes_null_keyword_token() {
+    let source = "let head: Node = null;".to_string();
+    let mut lexer = Lexer::new(source);
+    let tokens = lexer.lex();
+    let kinds: Vec<TokenKind> = tokens.into_iter().map(|token| token.kind).collect();
+
+    assert!(!lexer.has_errors());
+    assert!(kinds.contains(&TokenKind::Null));
+}

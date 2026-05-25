@@ -27,11 +27,34 @@ impl<'a> TypeChecker<'a> {
             return Some(SemanticType::Unknown);
         }
 
-        let Some(expected_type) = branch_types.iter().find_map(|(_, value_type)| {
+        let Some(mut expected_type) = branch_types.iter().find_map(|(_, value_type)| {
             (*value_type != SemanticType::Unknown).then_some(*value_type)
         }) else {
             return Some(SemanticType::Unknown);
         };
+
+        for (_, actual_type) in &branch_types {
+            if *actual_type == SemanticType::Unknown {
+                continue;
+            }
+            if self.is_assignable(expected_type, *actual_type) {
+                continue;
+            }
+            if self.is_assignable(*actual_type, expected_type) {
+                expected_type = *actual_type;
+                continue;
+            }
+            self.analyzer.push_type_error(
+                if_expr.span,
+                source,
+                format!(
+                    "If branches must return compatible types, but got {} and {}.",
+                    expected_type.display_name(),
+                    actual_type.display_name()
+                ),
+            );
+            return None;
+        }
 
         for (branch_expr, value_type) in &mut branch_types {
             if *value_type == SemanticType::Unknown {
@@ -52,12 +75,12 @@ impl<'a> TypeChecker<'a> {
         }
 
         for (branch_expr, actual_type) in branch_types.iter().copied() {
-            if actual_type != expected_type {
+            if !self.is_assignable(expected_type, actual_type) {
                 self.analyzer.push_type_error(
                     branch_expr.span(),
                     source,
                     format!(
-                        "If branches must return the same type, but got {} and {}.",
+                        "If branches must return compatible types, but got {} and {}.",
                         expected_type.display_name(),
                         actual_type.display_name()
                     ),

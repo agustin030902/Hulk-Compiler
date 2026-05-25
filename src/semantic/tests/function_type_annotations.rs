@@ -39,7 +39,7 @@ print(tan(1));
 #[test]
 fn allows_function_with_partial_parameter_annotations() {
     let source = r#"
-function sum_with_base(base, x: Number): Number => base + x;
+function sum_with_base(seed, x: Number): Number => seed + x;
 print(sum_with_base(10, 2));
 "#;
 
@@ -111,7 +111,7 @@ print(f(1));
     assert_eq!(errors[0].category, ErrorCategory::Semantic);
     assert_eq!(
         errors[0].message,
-        "Unknown type annotation 'Numeric'. Expected one of: Number, Boolean, String, Unit."
+        "Unknown type annotation 'Numeric'. Expected one of: Number, Boolean, String, Null, Unit, Object."
     );
 }
 
@@ -127,7 +127,7 @@ print(f(1));
     assert_eq!(errors[0].category, ErrorCategory::Semantic);
     assert_eq!(
         errors[0].message,
-        "Unknown type annotation 'Numeric'. Expected one of: Number, Boolean, String, Unit."
+        "Unknown type annotation 'Numeric'. Expected one of: Number, Boolean, String, Null, Unit, Object."
     );
 }
 

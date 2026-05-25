@@ -22,6 +22,9 @@ pub struct TypeDecl {
     pub name: String,
     pub name_span: Span,
     pub params: Vec<TypeParam>,
+    pub parent_name: Option<String>,
+    pub parent_span: Option<Span>,
+    pub parent_init_exprs: Vec<Expr>,
     pub attributes: Vec<TypeAttribute>,
     pub methods: Vec<MethodDecl>,
     pub span: Span,
@@ -122,6 +125,7 @@ pub enum Expr {
     If(IfExpr),
     Literal { value: Literal, span: Span },
     Variable { name: String, span: Span },
+    Base { span: Span },
 }
 
 impl Expr {
@@ -141,6 +145,7 @@ impl Expr {
             Expr::If(if_expr) => if_expr.span,
             Expr::Literal { span, .. } => *span,
             Expr::Variable { span, .. } => *span,
+            Expr::Base { span } => *span,
         }
     }
 }
@@ -151,6 +156,7 @@ pub enum Literal {
     Float(f64),
     Boolean(bool),
     String(String),
+    Null,
 }
 
 #[derive(Debug, Clone)]

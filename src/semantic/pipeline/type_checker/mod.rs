@@ -148,7 +148,22 @@ impl<'a> TypeChecker<'a> {
             Expr::MemberAccess(access) => self.check_member_access(access, source),
             Expr::New(new_expr) => self.check_new_expr(new_expr, source),
             Expr::Binary(binary) => self.check_binary_expr(binary, source),
+            Expr::Base { span } => self.check_base_call(*span, source),
         }
+    }
+
+    fn check_base_call(&mut self, span: Span, source: &str) -> Option<SemanticType> {
+        // base() can only be called within a method
+        if self.analyzer.current_method_receiver.is_none() {
+            self.analyzer.push_semantic_error(
+                span,
+                source,
+                "base() can only be called within a method".to_string(),
+            );
+            return Some(SemanticType::Unknown);
+        }
+        // Return Unknown for now; will be resolved based on parent's method
+        Some(SemanticType::Unknown)
     }
 
     fn check_annotated_initializer(
@@ -169,16 +184,18 @@ impl<'a> TypeChecker<'a> {
         }
 
         if value_type != SemanticType::Unknown && value_type != annotation_type {
-            self.analyzer.push_type_error(
-                annotation_span,
-                source,
-                format!(
-                    "Type annotation for variable '{}' expects {}, but initializer is {}.",
-                    variable_name,
-                    annotation_type.display_name(),
-                    value_type.display_name()
-                ),
-            );
+            if !self.is_assignable(annotation_type, value_type) {
+                self.analyzer.push_type_error(
+                    annotation_span,
+                    source,
+                    format!(
+                        "Type annotation for variable '{}' expects {}, but initializer is {}.",
+                        variable_name,
+                        annotation_type.display_name(),
+                        value_type.display_name()
+                    ),
+                );
+            }
         }
 
         annotation_type
@@ -478,11 +495,20 @@ impl<'a> TypeChecker<'a> {
     }
 
     fn lookup_field_type_id(&self, receiver: TypeId, field_name: &str) -> Option<TypeId> {
-        self.analyzer
-            .type_table
-            .get_struct(receiver)
-            .and_then(|info| info.fields.iter().find(|(name, _)| name == field_name))
-            .map(|(_, type_id)| *type_id)
+        let mut cursor = Some(receiver);
+        while let Some(current) = cursor {
+            if let Some(struct_info) = self.analyzer.type_table.get_struct(current) {
+                if let Some((_, type_id)) =
+                    struct_info.fields.iter().find(|(name, _)| name == field_name)
+                {
+                    return Some(*type_id);
+                }
+                cursor = struct_info.parent;
+            } else {
+                return None;
+            }
+        }
+        None
     }
 
     fn can_access_private_field(&self, receiver: TypeId) -> bool {
@@ -491,5 +517,52 @@ impl<'a> TypeChecker<'a> {
 
     fn is_self_binding(&self, name: &str, scope_index: usize) -> bool {
         name == "self" && self.analyzer.current_self_scope_index == Some(scope_index)
+    }
+
+    pub(in crate::semantic) fn is_assignable(
+        &self,
+        expected: SemanticType,
+        actual: SemanticType,
+    ) -> bool {
+        if expected == SemanticType::Unknown || actual == SemanticType::Unknown {
+            return true;
+        }
+
+        if expected == actual {
+            return true;
+        }
+
+        match (expected, actual) {
+            (SemanticType::Struct(_), SemanticType::Null) => true,
+            (SemanticType::Struct(expected_id), SemanticType::Struct(actual_id)) => {
+                self.is_subtype_of(TypeId(actual_id), TypeId(expected_id))
+            }
+            _ => false,
+        }
+    }
+
+    pub(in crate::semantic) fn is_subtype_of(&self, child: TypeId, parent: TypeId) -> bool {
+        if child == parent {
+            return true;
+        }
+
+        let mut cursor = self
+            .analyzer
+            .type_table
+            .get_struct(child)
+            .and_then(|info| info.parent);
+
+        while let Some(current) = cursor {
+            if current == parent {
+                return true;
+            }
+            cursor = self
+                .analyzer
+                .type_table
+                .get_struct(current)
+                .and_then(|info| info.parent);
+        }
+
+        false
     }
 }

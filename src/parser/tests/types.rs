@@ -1,7 +1,7 @@
 use crate::lexer::Lexer;
 use crate::parser::{
     Parser,
-    expression::{AssignTarget, Expr, Program},
+    expression::{AssignTarget, Expr, Literal, Program},
 };
 
 fn parse_program(source: &str) -> Program {
@@ -104,4 +104,31 @@ type Box(v: Number) {
 fn reports_error_for_invalid_destructive_assignment_target() {
     let message = parse_error_message("let x = (a + b) := 1;");
     assert!(message.contains("Invalid assignment target for ':='"));
+}
+
+#[test]
+fn parses_null_literal_inside_constructor_arguments() {
+    let source = r#"
+type Node(v: Number, next: Node) {
+    v = v;
+    next = next;
+}
+
+let n = new Node(1, null);
+"#;
+
+    let program = parse_program(source);
+    let crate::parser::expression::Statement::Let { value, .. } = &program.statements[0] else {
+        panic!("expected let statement");
+    };
+    let Expr::New(new_expr) = value else {
+        panic!("expected new expression");
+    };
+    assert!(matches!(
+        new_expr.args[1],
+        Expr::Literal {
+            value: Literal::Null,
+            ..
+        }
+    ));
 }

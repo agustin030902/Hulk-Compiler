@@ -114,7 +114,7 @@ let value = if (true) 1 else "no";
     assert_eq!(errors[0].category, ErrorCategory::Type);
     assert_eq!(
         errors[0].message,
-        "If branches must return the same type, but got Number and String."
+        "If branches must return compatible types, but got Number and String."
     );
 }
 
@@ -129,6 +129,6 @@ let value = if (false) 1 elif (true) "yes" else 2;
     assert_eq!(errors[0].category, ErrorCategory::Type);
     assert_eq!(
         errors[0].message,
-        "If branches must return the same type, but got Number and String."
+        "If branches must return compatible types, but got Number and String."
     );
 }

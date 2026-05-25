@@ -18,8 +18,15 @@ impl SymbolCollector {
         type_decls: &[TypeDecl],
         source: &str,
     ) {
+        analyzer
+            .type_symbols
+            .insert("Object".to_string(), analyzer.type_table.object);
+
+        // First pass: register all types without resolving inheritance
         for type_decl in type_decls {
-            if SemanticType::from_annotation_name(&type_decl.name).is_some() {
+            if SemanticType::from_annotation_name(&type_decl.name).is_some()
+                || type_decl.name == "Object"
+            {
                 analyzer.push_semantic_error(
                     type_decl.name_span,
                     source,
@@ -52,6 +59,65 @@ impl SymbolCollector {
                 .insert(type_decl.name.clone(), type_id);
         }
 
+        // Second pass: resolve parent types and validate inheritance
+        for type_decl in type_decls {
+            let Some(type_id) = analyzer.type_symbols.get(&type_decl.name).copied() else {
+                continue;
+            };
+
+            // Resolve parent type
+            let parent_type_id = if let Some(parent_name) = &type_decl.parent_name {
+                // Validate that parent type exists
+                if let Some(parent_id) = analyzer.type_symbols.get(parent_name).copied() {
+                    // Validate that we're not inheriting from built-in types
+                    if matches!(parent_name.as_str(), "Number" | "String" | "Boolean" | "Unit") {
+                        if let Some(parent_span) = type_decl.parent_span {
+                            analyzer.push_semantic_error(
+                                parent_span,
+                                source,
+                                format!("Cannot inherit from built-in type '{}'", parent_name),
+                            );
+                        }
+                        None
+                    } else {
+                        Some(parent_id)
+                    }
+                } else {
+                    if let Some(parent_span) = type_decl.parent_span {
+                        analyzer.push_semantic_error(
+                            parent_span,
+                            source,
+                            format!("Parent type '{}' not found", parent_name),
+                        );
+                    }
+                    None
+                }
+            } else if type_id == analyzer.type_table.object {
+                None
+            } else {
+                Some(analyzer.type_table.object)
+            };
+
+            // Check for circular inheritance
+            if let Some(parent_id) = parent_type_id {
+                if Self::is_circular_inheritance(analyzer, parent_id, type_id) {
+                    if let Some(parent_span) = type_decl.parent_span {
+                        analyzer.push_semantic_error(
+                            parent_span,
+                            source,
+                            format!("Circular inheritance detected for type '{}'", type_decl.name),
+                        );
+                    }
+                }
+            }
+
+            // Set parent in struct info
+            if let Some(struct_info) = analyzer.type_table.get_struct_mut(type_id) {
+                struct_info.parent = parent_type_id;
+            }
+        }
+
+        // Third pass: collect constructor params
         for type_decl in type_decls {
             let Some(type_id) = analyzer.type_symbols.get(&type_decl.name).copied() else {
                 continue;
@@ -74,6 +140,29 @@ impl SymbolCollector {
 
             if let Some(struct_info) = analyzer.type_table.get_struct_mut(type_id) {
                 struct_info.constructor_params = constructor_params;
+            }
+        }
+    }
+
+    fn is_circular_inheritance(
+        analyzer: &SemanticAnalyzer,
+        parent_id: TypeId,
+        child_id: TypeId,
+    ) -> bool {
+        let mut current = parent_id;
+        loop {
+            if current == child_id {
+                return true;
+            }
+            match analyzer.type_table.get_struct(current) {
+                Some(info) => {
+                    if let Some(next_parent) = info.parent {
+                        current = next_parent;
+                    } else {
+                        return false;
+                    }
+                }
+                None => return false,
             }
         }
     }
@@ -152,6 +241,8 @@ impl SymbolCollector {
 
             for method in &type_decl.methods {
                 let key = Self::method_symbol_key(receiver_type_id, &method.name);
+                
+                // Check if method is redeclared in the same type
                 if analyzer.function_symbols.contains_key(&key) {
                     analyzer.push_semantic_error(
                         method.name_span,
@@ -164,6 +255,7 @@ impl SymbolCollector {
                     continue;
                 }
 
+                // Resolve method types
                 let param_types = method
                     .params
                     .iter()
@@ -194,6 +286,29 @@ impl SymbolCollector {
                     })
                     .collect::<Vec<_>>();
                 let return_type_id = TypeResolver::semantic_type_to_type_id(analyzer, return_type);
+
+                // Check for override - look in parent chain
+                if let Some(parent_method_signature) = Self::find_method_in_parent(
+                    analyzer,
+                    receiver_type_id,
+                    &method.name,
+                ) {
+                    // Validate that override has the same signature
+                    if parent_method_signature.param_types != param_types
+                        || parent_method_signature.return_type != return_type
+                    {
+                        analyzer.push_semantic_error(
+                            method.name_span,
+                            source,
+                            format!(
+                                "Method '{}' override in type '{}' has different signature than parent.",
+                                method.name, type_decl.name
+                            ),
+                        );
+                        continue;
+                    }
+                }
+
                 let method_type_id = analyzer.type_table.register_method(
                     receiver_type_id,
                     param_type_ids,
@@ -222,5 +337,22 @@ impl SymbolCollector {
                 }
             }
         }
+    }
+
+    fn find_method_in_parent(
+        analyzer: &SemanticAnalyzer,
+        type_id: TypeId,
+        method_name: &str,
+    ) -> Option<FunctionSignature> {
+        let struct_info = analyzer.type_table.get_struct(type_id)?;
+        let parent_id = struct_info.parent?;
+
+        let key = Self::method_symbol_key(parent_id, method_name);
+        if let Some(func_symbol) = analyzer.function_symbols.get(&key) {
+            return analyzer.functions.get(&key).cloned();
+        }
+
+        // Recursively search in parent's parent
+        Self::find_method_in_parent(analyzer, parent_id, method_name)
     }
 }

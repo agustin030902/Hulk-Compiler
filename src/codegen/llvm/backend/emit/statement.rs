@@ -62,7 +62,7 @@ impl LlvmBackend {
 
         let value_ref = self.emit_expr(value)?;
 
-        if existing.value_type == value_ref.value_type {
+        if self.is_assignable_value_type(existing.value_type, value_ref.value_type) {
             self.store_value_at(&existing.ptr_name, &value_ref);
             Some(value_ref)
         } else {
@@ -102,7 +102,7 @@ impl LlvmBackend {
             ValueType::Unit => {
                 self.semantic_error("Function 'print' expects a non-Unit argument");
             }
-            ValueType::Function | ValueType::Struct(_) => {
+            ValueType::Null | ValueType::Function | ValueType::Struct(_) => {
                 self.semantic_error(format!(
                     "Function 'print' cannot print values of type {}.",
                     value_ref.value_type.display_name()

@@ -29,7 +29,7 @@ impl LlvmBackend {
         // Emit then branch
         self.emit_body(format!("{then_label}:"));
         let then_value = self.emit_expr(&if_expr.then_branch)?;
-        let result_type = then_value.value_type;
+        let mut result_type = then_value.value_type;
         let then_result_repr = then_value.repr.clone();
         self.emit_body(format!("br label %{end_label}"));
 
@@ -60,7 +60,11 @@ impl LlvmBackend {
 
             self.emit_body(format!("{elif_then_label}:"));
             let elif_value = self.emit_expr(&elif_branch.body)?;
-            if elif_value.value_type != result_type {
+            if self.is_assignable_value_type(result_type, elif_value.value_type) {
+                // keep current result_type
+            } else if self.is_assignable_value_type(elif_value.value_type, result_type) {
+                result_type = elif_value.value_type;
+            } else {
                 self.semantic_error(format!(
                     "Elif branch returns {} but expected {}",
                     elif_value.value_type.display_name(),
@@ -77,7 +81,11 @@ impl LlvmBackend {
         // Emit else branch
         self.emit_body(format!("{current_next_label}:"));
         let else_value = self.emit_expr(&if_expr.else_branch)?;
-        if else_value.value_type != result_type {
+        if self.is_assignable_value_type(result_type, else_value.value_type) {
+            // keep current
+        } else if self.is_assignable_value_type(else_value.value_type, result_type) {
+            result_type = else_value.value_type;
+        } else {
             self.semantic_error(format!(
                 "Else branch returns {} but expected {}",
                 else_value.value_type.display_name(),

@@ -13,6 +13,7 @@ impl LlvmBackend {
             SemanticType::Number => ValueType::Double,
             SemanticType::Boolean => ValueType::Bool,
             SemanticType::String => ValueType::StringPtr,
+            SemanticType::Null => ValueType::Null,
             SemanticType::Unit => ValueType::Unit,
             SemanticType::Function(_) => ValueType::Function,
             SemanticType::Struct(type_id) => ValueType::Struct(type_id),
@@ -36,6 +37,7 @@ impl LlvmBackend {
             TypeInfo::Number => SemanticType::Number,
             TypeInfo::Boolean => SemanticType::Boolean,
             TypeInfo::String => SemanticType::String,
+            TypeInfo::Null => SemanticType::Null,
             TypeInfo::Unit => SemanticType::Unit,
             TypeInfo::Unknown => SemanticType::Unknown,
             TypeInfo::Function(_) => SemanticType::Function(type_id.0),
@@ -59,7 +61,7 @@ impl LlvmBackend {
         match value_type {
             ValueType::Double => (8, 8),
             ValueType::Bool => (1, 1),
-            ValueType::StringPtr | ValueType::Function | ValueType::Struct(_) => (8, 8),
+            ValueType::StringPtr | ValueType::Null | ValueType::Function | ValueType::Struct(_) => (8, 8),
             ValueType::Unit => (1, 1),
         }
     }

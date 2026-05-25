@@ -119,6 +119,7 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::Number(v) => format!("number({})", v),
         TokenKind::String(v) => format!("string({})", v),
         TokenKind::Boolean(v) => format!("boolean({})", v),
+        TokenKind::Null => "null".to_string(),
         TokenKind::Let => "let".to_string(),
         TokenKind::Function => "function".to_string(),
         TokenKind::Type => "type".to_string(),
@@ -164,6 +165,8 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::If => "if".to_string(),
         TokenKind::Else => "else".to_string(),
         TokenKind::Elif => "elif".to_string(),
+        TokenKind::Inherits => "inherits".to_string(),
+        TokenKind::Base => "base".to_string(),
         TokenKind::EOF => "EOF".to_string(),
     }
 }

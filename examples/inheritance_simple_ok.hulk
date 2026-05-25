@@ -1,0 +1,22 @@
+// Simple inheritance example
+// Point is the base type, Point3D inherits from Point and adds a z coordinate
+
+type Point(x, y) {
+    x = x;
+    y = y;
+
+    getX() => self.x;
+    getY() => self.y;
+}
+
+type Point3D(x, y, z) inherits Point(x, y) {
+    z = z;
+    
+    getZ() => self.z;
+}
+
+let p = new Point(3, 4) in
+    print("2D Point: " @ p.getX() @ ", " @ p.getY());
+
+let p3d = new Point3D(1, 2, 3) in
+    print("3D Point: " @ p3d.getX() @ ", " @ p3d.getY() @ ", " @ p3d.getZ());

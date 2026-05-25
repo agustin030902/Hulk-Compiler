@@ -23,11 +23,7 @@ print(p3.describe() @ " norm=" @ p3.norm());
 "#;
 
     let errors = analyze_source(source);
-    assert!(
-        errors.is_empty(),
-        "expected no semantic errors, got: {:?}",
-        errors
-    );
+    assert!(errors.is_empty(), "expected no semantic errors, got: {:?}", errors);
 }
 
 #[test]
@@ -107,4 +103,75 @@ let p = new Point(true, 2);
         errors[0].message,
         "Type 'Point' constructor argument #1 expects Number, but got Boolean."
     );
+}
+
+#[test]
+fn allows_null_for_struct_typed_binding() {
+    let source = r#"
+type Node(v: Number, next: Node) {
+    v = v;
+    next = next;
+}
+
+let head: Node = null;
+"#;
+
+    let errors = analyze_source(source);
+    assert!(errors.is_empty(), "expected no semantic errors, got: {:?}", errors);
+}
+
+#[test]
+fn rejects_null_for_number_typed_binding() {
+    let source = r#"
+let n: Number = null;
+"#;
+
+    let errors = analyze_source(source);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].category, ErrorCategory::Type);
+}
+
+#[test]
+fn allows_polymorphic_assignment_from_child_to_parent() {
+    let source = r#"
+type Animal(name: String) {
+    name = name;
+    speak() => "generic";
+}
+
+type Dog(name: String) inherits Animal(name) {
+    speak() => "woof";
+}
+
+let pet: Animal = new Dog("Firulais");
+print(pet.speak());
+"#;
+
+    let errors = analyze_source(source);
+    assert!(errors.is_empty(), "expected no semantic errors, got: {:?}", errors);
+}
+
+#[test]
+fn registers_object_as_implicit_parent() {
+    let source = r#"
+type A() { id() => 1; }
+"#;
+
+    let mut lexer = crate::lexer::Lexer::new(source.to_string());
+    let tokens = lexer.lex();
+    assert!(!lexer.has_errors(), "lexer errors: {:?}", lexer.errors());
+
+    let mut parser = crate::parser::Parser::new(source);
+    let program = parser.parse_program(tokens).expect("program");
+    assert!(!parser.has_errors(), "parser errors: {:?}", parser.errors());
+
+    let mut analyzer = crate::semantic::SemanticAnalyzer::new();
+    let errors = analyzer.analyze(&program, source);
+    assert!(errors.is_empty(), "semantic errors: {:?}", errors);
+
+    let object_id = analyzer.type_symbols().get("Object").copied().unwrap();
+    let a_id = analyzer.type_symbols().get("A").copied().unwrap();
+    let a_info = analyzer.type_table().get_struct(a_id).unwrap();
+
+    assert_eq!(a_info.parent, Some(object_id));
 }

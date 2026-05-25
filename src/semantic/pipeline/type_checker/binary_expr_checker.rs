@@ -154,7 +154,9 @@ impl<'a> TypeChecker<'a> {
                     return Some(SemanticType::Unknown);
                 }
 
-                if left_type != right_type {
+                if !self.is_assignable(left_type, right_type)
+                    && !self.is_assignable(right_type, left_type)
+                {
                     self.analyzer.push_type_error(
                         binary.span,
                         source,
@@ -250,6 +252,10 @@ fn is_valid_concat_pair(left: SemanticType, right: SemanticType) -> bool {
 fn is_equality_type(value_type: SemanticType) -> bool {
     matches!(
         value_type,
-        SemanticType::Number | SemanticType::Boolean | SemanticType::String
+        SemanticType::Number
+            | SemanticType::Boolean
+            | SemanticType::String
+            | SemanticType::Struct(_)
+            | SemanticType::Null
     )
 }

@@ -20,7 +20,7 @@ impl LlvmBackend {
 
                 let value_ref = self.emit_expr(&assign.value)?;
 
-                if value_ref.value_type != existing.value_type {
+                if !self.is_assignable_value_type(existing.value_type, value_ref.value_type) {
                     self.semantic_error(format!(
                         "Destructive assignment ':=' requires the same type. Variable '{}' is {:?} but expression is {:?}.",
                         name, existing.value_type, value_ref.value_type
@@ -50,7 +50,7 @@ impl LlvmBackend {
                 };
 
                 let value_ref = self.emit_expr(&assign.value)?;
-                if value_ref.value_type != field_layout.value_type {
+                if !self.is_assignable_value_type(field_layout.value_type, value_ref.value_type) {
                     self.semantic_error(format!(
                         "Destructive assignment ':=' requires type {}, but expression is {}.",
                         field_layout.value_type.display_name(),

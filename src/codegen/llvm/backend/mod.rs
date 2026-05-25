@@ -11,7 +11,7 @@ use crate::{
     parser::expression::{Program, TypeDecl},
 };
 
-use super::helper::state::{ValueRef, VariableInfo};
+use super::helper::state::{ValueRef, ValueType, VariableInfo};
 use functions::FunctionInfo;
 use layout::StructLayout;
 
@@ -151,6 +151,48 @@ impl LlvmBackend {
 
     pub(super) fn bind_scope(&mut self, scope_index: usize, name: String, info: VariableInfo) {
         self.scopes[scope_index].insert(name, info);
+    }
+
+    pub(super) fn is_subtype_struct(&self, child: u32, parent: u32) -> bool {
+        if child == parent {
+            return true;
+        }
+
+        let mut cursor = self
+            .type_ids
+            .iter()
+            .find_map(|(name, id)| (*id == child).then_some(name.as_str()))
+            .and_then(|name| self.type_decls.get(name))
+            .and_then(|decl| decl.parent_name.clone());
+
+        while let Some(parent_name) = cursor {
+            let Some(parent_id) = self.type_ids.get(&parent_name).copied() else {
+                return false;
+            };
+            if parent_id == parent {
+                return true;
+            }
+            cursor = self
+                .type_decls
+                .get(&parent_name)
+                .and_then(|decl| decl.parent_name.clone());
+        }
+
+        false
+    }
+
+    pub(super) fn is_assignable_value_type(&self, expected: ValueType, actual: ValueType) -> bool {
+        if expected == actual {
+            return true;
+        }
+
+        match (expected, actual) {
+            (ValueType::Struct(_), ValueType::Null) => true,
+            (ValueType::Struct(parent), ValueType::Struct(child)) => {
+                self.is_subtype_struct(child, parent)
+            }
+            _ => false,
+        }
     }
 }
 

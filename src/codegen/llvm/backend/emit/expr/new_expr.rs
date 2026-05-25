@@ -68,7 +68,7 @@ impl LlvmBackend {
             };
 
             let value = self.emit_expr(&attribute.value)?;
-            if value.value_type != field_layout.value_type {
+            if !self.is_assignable_value_type(field_layout.value_type, value.value_type) {
                 self.semantic_error(format!(
                     "Attribute '{}' in type '{}' expects {}, but initializer produced {}.",
                     attribute.name,

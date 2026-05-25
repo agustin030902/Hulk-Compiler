@@ -43,6 +43,12 @@ impl LlvmBackend {
                     repr: temp,
                 })
             }
+            Literal::Null => {
+                Some(ValueRef {
+                    value_type: ValueType::Null,
+                    repr: "null".to_string(),
+                })
+            }
         }
     }
 }

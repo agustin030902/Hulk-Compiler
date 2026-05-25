@@ -84,7 +84,7 @@ impl LlvmBackend {
             return;
         };
 
-        if result.value_type != info.return_type {
+        if !self.is_assignable_value_type(info.return_type, result.value_type) {
             self.semantic_error(format!(
                 "Method '{}.{}' returns {} but inferred signature expects {}.",
                 type_decl.name,

@@ -71,7 +71,7 @@ fn rejects_unknown_type_annotation_name() {
     assert_eq!(errors[0].category, ErrorCategory::Semantic);
     assert_eq!(
         errors[0].message,
-        "Unknown type annotation 'Numeric'. Expected one of: Number, Boolean, String, Unit."
+        "Unknown type annotation 'Numeric'. Expected one of: Number, Boolean, String, Null, Unit, Object."
     );
 }
 

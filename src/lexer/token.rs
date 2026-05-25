@@ -4,6 +4,7 @@ pub enum TokenKind {
     Number(String),
     String(String),
     Boolean(String),
+    Null,
     Let,
     Function,
     Type,
@@ -50,6 +51,8 @@ pub enum TokenKind {
     If,
     Else,
     Elif,
+    Inherits,
+    Base,
 }
 
 #[derive(Clone, Debug)]

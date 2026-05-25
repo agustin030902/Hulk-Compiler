@@ -32,6 +32,8 @@ extern {
         "log" => TokenKind::Log,
         "rand" => TokenKind::Rand,
         "in" => TokenKind::In,
+        "inherits" => TokenKind::Inherits,
+        "base" => TokenKind::Base,
         ":=" => TokenKind::DestructiveAssign,
         ":" => TokenKind::Colon,
         "=>" => TokenKind::Arrow,
@@ -62,6 +64,7 @@ extern {
         "number" => TokenKind::Number(<String>),
         "string" => TokenKind::String(<String>),
         "boolean" => TokenKind::Boolean(<String>),
+        "null" => TokenKind::Null,
         "unknown" => TokenKind::Unknown,
         "eof" => TokenKind::EOF,
     }
@@ -85,7 +88,7 @@ TypeDecls: Vec<TypeDecl> = {
 };
 
 TypeDecl: TypeDecl = {
-    <l:@L> "type" <id:IdentifierWithSpan> <params:TypeDeclParams> "{" <members:TypeMembers> "}" <r:@R> => {
+    <l:@L> "type" <id:IdentifierWithSpan> <params:TypeDeclParams> <inheritance:TypeInheritance> "{" <members:TypeMembers> "}" <r:@R> => {
         let mut attributes = Vec::new();
         let mut methods = Vec::new();
 
@@ -96,14 +99,29 @@ TypeDecl: TypeDecl = {
             }
         }
 
+        let (parent_name, parent_span, parent_init_exprs) = inheritance;
+
         TypeDecl {
             name: id.0,
             name_span: id.1,
             params,
+            parent_name,
+            parent_span,
+            parent_init_exprs,
             attributes,
             methods,
             span: Span::new(l, r),
         }
+    },
+};
+
+TypeInheritance: (Option<String>, Option<Span>, Vec<Expr>) = {
+    => (None, None, vec![]),
+    <pl:@L> "inherits" <parent_id:IdentifierWithSpan> "(" <args:CallArgs> ")" <pr:@R> => {
+        (Some(parent_id.0), Some(Span::new(pl, pr)), args)
+    },
+    "inherits" <parent_id:IdentifierWithSpan> => {
+        (Some(parent_id.0), None, vec![])
     },
 };
 
@@ -494,10 +512,23 @@ PostfixExpr: Expr = {
 PrimaryAtom: Expr = {
     <call:BuiltinCallExpr> => call,
     <call:FunctionCallExpr> => call,
+    <call:BaseCallExpr> => call,
     <new_expr:NewExpr> => new_expr,
     <literal:LiteralExpr> => literal,
     <variable:VariableExpr> => variable,
     "(" <expr:Expr> ")" => expr,
+};
+
+BaseCallExpr: Expr = {
+    <l:@L> "base" "(" <args:CallArgs> ")" <r:@R> => {
+        // Note: base() is actually called on self, we parse it as base(method_args...)
+        Expr::FunctionCall(FunctionCallExpr {
+            name: "base".to_string(),
+            name_span: Span::new(l, r),
+            args,
+            span: Span::new(l, r),
+        })
+    },
 };
 
 FunctionCallExpr: Expr = {
@@ -670,6 +701,10 @@ LiteralExpr: Expr = {
     },
     <l:@L> <raw:"boolean"> <r:@R> => Expr::Literal {
         value: Literal::Boolean(raw == "true"),
+        span: Span::new(l, r),
+    },
+    <l:@L> "null" <r:@R> => Expr::Literal {
+        value: Literal::Null,
         span: Span::new(l, r),
     },
     <l:@L> <raw:"string"> <r:@R> => Expr::Literal {

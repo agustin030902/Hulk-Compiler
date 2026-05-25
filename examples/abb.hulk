@@ -1,0 +1,49 @@
+type Node(v: Number, left: Node, right: Node) {
+    v = v;
+    left = left;
+    right = right;
+
+    key() => self.v;
+}
+
+type ABB(root: Node) {
+    root = root;
+
+    minFrom(n: Node): Number =>
+        if (n.left == null) n.key() else self.minFrom(n.left);
+
+    maxFrom(n: Node): Number =>
+        if (n.right == null) n.key() else self.maxFrom(n.right);
+
+    contains(n: Node, x: Number): Boolean =>
+        if (n == null) false
+        elif (x == n.key()) true
+        elif (x < n.key()) self.contains(n.left, x)
+        else self.contains(n.right, x);
+
+    describe() =>
+        if (self.root == null)
+            "ABB(empty)"
+        else
+            "ABB[min=" @ self.minFrom(self.root) @ ", max=" @ self.maxFrom(self.root) @ "]";
+}
+
+let n20 = new Node(20, null, null);
+let n10 = new Node(10, null, null);
+let n30 = new Node(30, null, null);
+let n5 = new Node(5, null, null);
+let n15 = new Node(15, null, null);
+let n25 = new Node(25, null, null);
+let n40 = new Node(40, null, null);
+
+n20.left := n10;
+n20.right := n30;
+n10.left := n5;
+n10.right := n15;
+n30.left := n25;
+n30.right := n40;
+
+let tree = new ABB(n20);
+print(tree.describe());
+print("contains 25: " @ tree.contains(n20, 25));
+print("contains 13: " @ tree.contains(n20, 13));

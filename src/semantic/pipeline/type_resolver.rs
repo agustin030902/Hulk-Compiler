@@ -45,7 +45,7 @@ impl TypeResolver {
     }
 
     pub(in crate::semantic) fn known_annotation_names(analyzer: &SemanticAnalyzer) -> String {
-        let mut names = vec!["Number", "Boolean", "String", "Unit"]
+        let mut names = vec!["Number", "Boolean", "String", "Null", "Unit"]
             .into_iter()
             .map(str::to_string)
             .collect::<Vec<_>>();
@@ -65,6 +65,7 @@ impl TypeResolver {
             SemanticType::Number => analyzer.type_table.number,
             SemanticType::Boolean => analyzer.type_table.boolean,
             SemanticType::String => analyzer.type_table.string,
+            SemanticType::Null => analyzer.type_table.null,
             SemanticType::Unit => analyzer.type_table.unit,
             SemanticType::Unknown => analyzer.type_table.unknown,
             SemanticType::Function(type_id) | SemanticType::Struct(type_id) => TypeId(type_id),
@@ -83,6 +84,9 @@ impl TypeResolver {
         }
         if type_id == analyzer.type_table.string {
             return SemanticType::String;
+        }
+        if type_id == analyzer.type_table.null {
+            return SemanticType::Null;
         }
         if type_id == analyzer.type_table.unit {
             return SemanticType::Unit;

@@ -106,7 +106,9 @@ impl LlvmBackend {
         left: &ValueRef,
         right: &ValueRef,
     ) -> Option<ValueRef> {
-        if left.value_type != right.value_type {
+        if !self.is_assignable_value_type(left.value_type, right.value_type)
+            && !self.is_assignable_value_type(right.value_type, left.value_type)
+        {
             self.semantic_error("Equality operators require operands of the same type");
             return None;
         }
@@ -166,12 +168,25 @@ impl LlvmBackend {
                     repr: result,
                 })
             }
+            ValueType::Null | ValueType::Function | ValueType::Struct(_) => {
+                let predicate = match op {
+                    BinaryOp::Equal => "eq",
+                    BinaryOp::NotEqual => "ne",
+                    _ => unreachable!("non-equality operator in emit_equality"),
+                };
+
+                let result = self.next_temp();
+                self.emit_body(format!(
+                    "{result} = icmp {predicate} i8* {}, {}",
+                    left.repr, right.repr
+                ));
+                Some(ValueRef {
+                    value_type: ValueType::Bool,
+                    repr: result,
+                })
+            }
             ValueType::Unit => {
                 self.semantic_error("Equality operators do not support Unit values");
-                None
-            }
-            ValueType::Function | ValueType::Struct(_) => {
-                self.semantic_error("Equality operators do not support Function/Struct values");
                 None
             }
         }

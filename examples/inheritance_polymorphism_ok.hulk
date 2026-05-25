@@ -1,0 +1,22 @@
+// Polymorphism example: method override
+// Person is a base type with a name method
+// Student is a type that inherits from Person and can override the toString method
+
+type Person(name) {
+    name = name;
+    
+    greet() => "Hello, my name is " @ self.name;
+}
+
+type Student(name, studentId) inherits Person(name) {
+    studentId = studentId;
+    
+    // Override the greet method with additional info
+    greet() => "Hello, my name is " @ self.name @ " (Student #" @ self.studentId @ ")";
+}
+
+let person = new Person("Alice") in
+    print(person.greet());
+
+let student = new Student("Bob", 12345) in
+    print(student.greet());

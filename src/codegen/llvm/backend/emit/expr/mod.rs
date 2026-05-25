@@ -35,5 +35,11 @@ pub(in crate::codegen::llvm) fn emit_expr(
         Expr::MemberAccess(access) => backend.emit_member_access(access),
         Expr::New(new_expr) => backend.emit_new_expr(new_expr),
         Expr::Binary(binary) => backend.emit_binary_expr(binary),
+        Expr::Base { .. } => {
+            // base() calls are transformed into method calls to parent in the semantic phase
+            // This should not reach here if semantic analysis is correct
+            eprintln!("Warning: base() expression should be resolved in semantic phase");
+            None
+        }
     }
 }

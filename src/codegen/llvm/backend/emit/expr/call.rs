@@ -155,7 +155,7 @@ impl LlvmBackend {
             let value = self.emit_expr(arg)?;
             let expected = info.param_types[index];
 
-            if value.value_type != expected {
+            if !self.is_assignable_value_type(expected, value.value_type) {
                 self.semantic_error(format!(
                     "Function '{}' argument #{} expects {}, but got {}.",
                     call.name,
@@ -239,7 +239,7 @@ impl LlvmBackend {
             let value = self.emit_expr(arg)?;
             let expected = info.param_types[index];
 
-            if value.value_type != expected {
+            if !self.is_assignable_value_type(expected, value.value_type) {
                 self.semantic_error(format!(
                     "Method '{}' argument #{} expects {}, but got {}.",
                     call.method_name,

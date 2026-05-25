@@ -287,7 +287,11 @@ Este ejemplo combina recursión, `while`, `let-in`, bloques, `:=`, builtins y `p
 - `examples/function_type_annotations_ok.hulk`
 - `examples/function_type_annotations_partial_ok.hulk`
 - `examples/types_point_ok.hulk`
+- `examples/inheritance_simple_ok.hulk`
 - `examples/inheritance_polymorphism_ok.hulk`
+- `examples/tree.hulk`
+- `examples/abb.hulk`
+- `examples/avl.hulk`
 - `examples/avl_inheritance_ok.hulk`
 
 ### Con error (diagnósticos)

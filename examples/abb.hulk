@@ -1,0 +1,55 @@
+type Node(v: Number, left: Node, right: Node) {
+    v = v;
+    left = left;
+    right = right;
+
+    key() => self.v;
+    leftNode() => self.left;
+    rightNode() => self.right;
+    setLeft(node: Node) => self.left := node;
+    setRight(node: Node) => self.right := node;
+}
+
+type ABB(root: Node) {
+    root = root;
+
+    minFrom(n: Node): Number =>
+        if (n.leftNode() == null) n.key() else self.minFrom(n.leftNode());
+
+    maxFrom(n: Node): Number =>
+        if (n.rightNode() == null) n.key() else self.maxFrom(n.rightNode());
+
+    contains(n: Node, x: Number): Boolean =>
+        if (n == null) false
+        elif (x == n.key()) true
+        elif (x < n.key()) self.contains(n.leftNode(), x)
+        else self.contains(n.rightNode(), x);
+
+    describe() =>
+        if (self.root == null)
+            "ABB(empty)"
+        else
+            "ABB[min=" @ self.minFrom(self.root) @ ", max=" @ self.maxFrom(self.root) @ "]";
+}
+
+let n20 = new Node(20, null, null);
+let n10 = new Node(10, null, null);
+let n30 = new Node(30, null, null);
+let n5 = new Node(5, null, null);
+let n15 = new Node(15, null, null);
+let n25 = new Node(25, null, null);
+let n40 = new Node(40, null, null);
+
+n20.setLeft(n10);
+n20.setRight(n30);
+n10.setLeft(n5);
+n10.setRight(n15);
+n30.setLeft(n25);
+n30.setRight(n40);
+
+let tree = new ABB(n20);
+print(tree.describe());
+let has25 = if (tree.contains(n20, 25)) "true" else "false";
+let has13 = if (tree.contains(n20, 13)) "true" else "false";
+print("contains 25: " @ has25);
+print("contains 13: " @ has13);

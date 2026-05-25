@@ -94,7 +94,21 @@ impl LlvmBackend {
         receiver_type_id: u32,
         method_name: &str,
     ) -> Option<&String> {
-        self.method_dispatch
-            .get(&(receiver_type_id, method_name.to_string()))
+        let mut current = Some(receiver_type_id);
+        while let Some(type_id) = current {
+            if let Some(key) = self.method_dispatch.get(&(type_id, method_name.to_string())) {
+                return Some(key);
+            }
+
+            current = self
+                .type_ids
+                .iter()
+                .find_map(|(name, id)| (*id == type_id).then_some(name.as_str()))
+                .and_then(|name| self.type_decls.get(name))
+                .and_then(|decl| decl.parent_name.as_ref())
+                .and_then(|parent_name| self.type_ids.get(parent_name).copied());
+        }
+
+        None
     }
 }

@@ -1,0 +1,61 @@
+type TreeNode(v: Number, left: TreeNode, right: TreeNode) {
+    v = v;
+    left = left;
+    right = right;
+
+    key() => self.v;
+    balanceFactor() => 0;
+    leftNode() => self.left;
+    rightNode() => self.right;
+    setLeft(node: TreeNode) => self.left := node;
+    setRight(node: TreeNode) => self.right := node;
+}
+
+type AvlNode(v: Number, left: TreeNode, right: TreeNode, h: Number)
+    inherits TreeNode(v, left, right) {
+    h = h;
+
+    key() => self.v;
+    balanceFactor() => self.h;
+}
+
+type AVL(root: TreeNode) {
+    root = root;
+
+    rotateRight(y: TreeNode): TreeNode =>
+        if (y.leftNode() == null) y
+        else {
+            let x = y.leftNode() in {
+                y.setLeft(x.rightNode());
+                x.setRight(y);
+                x
+            }
+        };
+
+    rotateLeft(x: TreeNode): TreeNode =>
+        if (x.rightNode() == null) x
+        else {
+            let y = x.rightNode() in {
+                x.setRight(y.leftNode());
+                y.setLeft(x);
+                y
+            }
+        };
+
+    summary() =>
+        if (self.root == null)
+            "AVL(empty)"
+        else
+            "AVL(root=" @ self.root.key() @ ", bf=" @ self.root.balanceFactor() @ ")";
+}
+
+let a = new AvlNode(30, null, null, 0);
+let b = new AvlNode(20, null, null, 1);
+let c = new AvlNode(10, null, null, 0);
+a.setLeft(b);
+b.setLeft(c);
+
+let avl = new AVL(a);
+print(avl.summary());
+let rotated = avl.rotateRight(a);
+print("rotated root: " @ rotated.key());

@@ -33,7 +33,7 @@ impl<'a> TypeChecker<'a> {
                 let value_type = self.check_expr(&assign.value, source)?;
 
                 if existing != SemanticType::Unknown
-                    && !Self::types_compatible(existing, value_type)
+                    && !self.types_compatible(existing, value_type)
                 {
                     self.analyzer.push_type_error(
                         assign.span,
@@ -113,7 +113,7 @@ impl<'a> TypeChecker<'a> {
 
                 if expected_type != SemanticType::Unknown
                     && value_type != SemanticType::Unknown
-                    && !Self::types_compatible(expected_type, value_type)
+                    && !self.types_compatible(expected_type, value_type)
                 {
                     self.analyzer.push_type_error(
                         assign.span,

@@ -45,11 +45,68 @@ impl SymbolCollector {
                 constructor_params: Vec::new(),
                 fields: Vec::new(),
                 methods: Vec::new(),
-                parent: Some(analyzer.type_table.object),
+                parent: None,
             });
             analyzer
                 .type_symbols
                 .insert(type_decl.name.clone(), type_id);
+        }
+
+        for type_decl in type_decls {
+            let Some(type_id) = analyzer.type_symbols.get(&type_decl.name).copied() else {
+                continue;
+            };
+
+            let parent_type_id = if let Some(parent_name) = &type_decl.parent_name {
+                match analyzer.type_symbols.get(parent_name).copied() {
+                    Some(parent_id) => {
+                        if parent_id == type_id {
+                            if let Some(parent_span) = type_decl.parent_span {
+                                analyzer.push_semantic_error(
+                                    parent_span,
+                                    source,
+                                    format!(
+                                        "Circular inheritance detected for type '{}'.",
+                                        type_decl.name
+                                    ),
+                                );
+                            }
+                            None
+                        } else {
+                            Some(parent_id)
+                        }
+                    }
+                    None => {
+                        if let Some(parent_span) = type_decl.parent_span {
+                            analyzer.push_semantic_error(
+                                parent_span,
+                                source,
+                                format!("Parent type '{}' not found.", parent_name),
+                            );
+                        }
+                        None
+                    }
+                }
+            } else {
+                Some(analyzer.type_table.object)
+            };
+
+            if let Some(parent_id) = parent_type_id {
+                if Self::is_circular_inheritance(analyzer, parent_id, type_id) {
+                    if let Some(parent_span) = type_decl.parent_span {
+                        analyzer.push_semantic_error(
+                            parent_span,
+                            source,
+                            format!("Circular inheritance detected for type '{}'.", type_decl.name),
+                        );
+                    }
+                    continue;
+                }
+            }
+
+            if let Some(struct_info) = analyzer.type_table.get_struct_mut(type_id) {
+                struct_info.parent = parent_type_id;
+            }
         }
 
         for type_decl in type_decls {
@@ -76,6 +133,24 @@ impl SymbolCollector {
                 struct_info.constructor_params = constructor_params;
             }
         }
+    }
+
+    fn is_circular_inheritance(
+        analyzer: &SemanticAnalyzer,
+        parent_id: TypeId,
+        child_id: TypeId,
+    ) -> bool {
+        let mut cursor = Some(parent_id);
+        while let Some(current) = cursor {
+            if current == child_id {
+                return true;
+            }
+            cursor = analyzer
+                .type_table
+                .get_struct(current)
+                .and_then(|info| info.parent);
+        }
+        false
     }
 
     pub(in crate::semantic) fn collect_functions(
@@ -194,6 +269,25 @@ impl SymbolCollector {
                     })
                     .collect::<Vec<_>>();
                 let return_type_id = TypeResolver::semantic_type_to_type_id(analyzer, return_type);
+
+                if let Some(parent_signature) =
+                    Self::find_method_in_parent(analyzer, receiver_type_id, &method.name)
+                {
+                    if parent_signature.param_types != param_types
+                        || parent_signature.return_type != return_type
+                    {
+                        analyzer.push_semantic_error(
+                            method.name_span,
+                            source,
+                            format!(
+                                "Method '{}' override in type '{}' has different signature than parent.",
+                                method.name, type_decl.name
+                            ),
+                        );
+                        continue;
+                    }
+                }
+
                 let method_type_id = analyzer.type_table.register_method(
                     receiver_type_id,
                     param_type_ids,
@@ -222,5 +316,18 @@ impl SymbolCollector {
                 }
             }
         }
+    }
+
+    fn find_method_in_parent(
+        analyzer: &SemanticAnalyzer,
+        type_id: TypeId,
+        method_name: &str,
+    ) -> Option<FunctionSignature> {
+        let parent_id = analyzer.type_table.get_struct(type_id)?.parent?;
+        let key = Self::method_symbol_key(parent_id, method_name);
+        if let Some(signature) = analyzer.functions.get(&key) {
+            return Some(signature.clone());
+        }
+        Self::find_method_in_parent(analyzer, parent_id, method_name)
     }
 }

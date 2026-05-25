@@ -1,4 +1,4 @@
-use crate::parser::expression::NewExpr;
+use crate::parser::expression::{NewExpr, TypeDecl, TypeParam};
 
 use super::super::super::LlvmBackend;
 use crate::codegen::llvm::helper::state::{ValueRef, ValueType};
@@ -59,7 +59,7 @@ impl LlvmBackend {
                 .and_then(|annotation| self.value_type_from_annotation_name(&annotation.name))
                 .unwrap_or(value.value_type);
 
-            if !Self::are_compatible_value_types(expected_type, value.value_type) {
+            if !self.are_compatible_value_types(expected_type, value.value_type) {
                 self.semantic_error(format!(
                     "Type '{}' constructor parameter '{}' expects {}, but got {}.",
                     new_expr.type_name,
@@ -85,27 +85,87 @@ impl LlvmBackend {
             self.bind_current_scope(param.name.clone(), info);
         }
 
+        if !self.emit_type_initializers(&type_decl, &object_ptr, &layout, &new_expr.type_name) {
+            self.pop_scope();
+            return None;
+        }
+
+        self.pop_scope();
+
+        Some(ValueRef {
+            value_type: ValueType::Struct(type_id),
+            repr: object_ptr,
+        })
+    }
+
+    fn emit_type_initializers(
+        &mut self,
+        type_decl: &TypeDecl,
+        object_ptr: &str,
+        layout: &crate::codegen::llvm::backend::layout::StructLayout,
+        concrete_type_name: &str,
+    ) -> bool {
+        if let Some(parent_name) = &type_decl.parent_name {
+            let Some(parent_decl) = self.type_decls.get(parent_name).cloned() else {
+                self.semantic_error(format!(
+                    "Type '{}' inherits from '{}', but parent metadata is missing.",
+                    type_decl.name, parent_name
+                ));
+                return false;
+            };
+
+            if parent_decl.params.len() != type_decl.parent_init_exprs.len() {
+                self.semantic_error(format!(
+                    "Type '{}' parent initializer for '{}' expects {} argument(s), but got {}.",
+                    type_decl.name,
+                    parent_name,
+                    parent_decl.params.len(),
+                    type_decl.parent_init_exprs.len()
+                ));
+                return false;
+            }
+
+            let mut parent_values = Vec::with_capacity(type_decl.parent_init_exprs.len());
+            for arg in &type_decl.parent_init_exprs {
+                let Some(value) = self.emit_expr(arg) else {
+                    return false;
+                };
+                parent_values.push(value);
+            }
+
+            self.push_scope();
+            if !self.bind_constructor_params(&parent_decl.params, &parent_values, parent_name) {
+                self.pop_scope();
+                return false;
+            }
+            if !self.emit_type_initializers(&parent_decl, object_ptr, layout, concrete_type_name) {
+                self.pop_scope();
+                return false;
+            }
+            self.pop_scope();
+        }
+
         for attribute in &type_decl.attributes {
             let Some(field_layout) = layout.fields.get(&attribute.name).cloned() else {
                 self.semantic_error(format!(
                     "Type '{}' has no layout entry for attribute '{}'.",
-                    new_expr.type_name, attribute.name
+                    concrete_type_name, attribute.name
                 ));
-                self.pop_scope();
-                return None;
+                return false;
             };
 
-            let value = self.emit_expr(&attribute.value)?;
-            if !Self::are_compatible_value_types(field_layout.value_type, value.value_type) {
+            let Some(value) = self.emit_expr(&attribute.value) else {
+                return false;
+            };
+            if !self.are_compatible_value_types(field_layout.value_type, value.value_type) {
                 self.semantic_error(format!(
                     "Attribute '{}' in type '{}' expects {}, but initializer produced {}.",
                     attribute.name,
-                    new_expr.type_name,
+                    concrete_type_name,
                     field_layout.value_type.display_name(),
                     value.value_type.display_name()
                 ));
-                self.pop_scope();
-                return None;
+                return false;
             }
 
             let Some(stored_repr) = self.value_repr_for_expected_type(field_layout.value_type, &value)
@@ -113,12 +173,11 @@ impl LlvmBackend {
                 self.semantic_error(format!(
                     "Attribute '{}' in type '{}' expects {}, but initializer produced {}.",
                     attribute.name,
-                    new_expr.type_name,
+                    concrete_type_name,
                     field_layout.value_type.display_name(),
                     value.value_type.display_name()
                 ));
-                self.pop_scope();
-                return None;
+                return false;
             };
 
             let field_ptr =
@@ -130,12 +189,47 @@ impl LlvmBackend {
             ));
         }
 
-        self.pop_scope();
+        true
+    }
 
-        Some(ValueRef {
-            value_type: ValueType::Struct(type_id),
-            repr: object_ptr,
-        })
+    fn bind_constructor_params(
+        &mut self,
+        params: &[TypeParam],
+        values: &[ValueRef],
+        type_name: &str,
+    ) -> bool {
+        for (param, value) in params.iter().zip(values.iter()) {
+            let expected_type = param
+                .type_annotation
+                .as_ref()
+                .and_then(|annotation| self.value_type_from_annotation_name(&annotation.name))
+                .unwrap_or(value.value_type);
+
+            if !self.are_compatible_value_types(expected_type, value.value_type) {
+                self.semantic_error(format!(
+                    "Type '{}' constructor parameter '{}' expects {}, but got {}.",
+                    type_name,
+                    param.name,
+                    expected_type.display_name(),
+                    value.value_type.display_name()
+                ));
+                return false;
+            }
+
+            let Some(info) = self.allocate_storage_typed(expected_type, value) else {
+                self.semantic_error(format!(
+                    "Type '{}' constructor parameter '{}' expects {}, but got {}.",
+                    type_name,
+                    param.name,
+                    expected_type.display_name(),
+                    value.value_type.display_name()
+                ));
+                return false;
+            };
+            self.bind_current_scope(param.name.clone(), info);
+        }
+
+        true
     }
 
     fn value_type_from_annotation_name(&self, name: &str) -> Option<ValueType> {

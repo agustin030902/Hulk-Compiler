@@ -50,6 +50,8 @@ enum LogosTokenKind {
     In,
     #[token("null", priority = 3)]
     Null,
+    #[token("inherits", priority = 3)]
+    Inherits,
     #[regex(r"true|false")]
     Boolean,
     #[regex(r"[0-9]+[A-Za-z_][A-Za-z0-9_]*", priority = 2)]
@@ -143,6 +145,7 @@ impl LogosTokenKind {
             LogosTokenKind::Rand => (TokenKind::Rand, lexeme.to_string()),
             LogosTokenKind::In => (TokenKind::In, lexeme.to_string()),
             LogosTokenKind::Null => (TokenKind::Null, lexeme.to_string()),
+            LogosTokenKind::Inherits => (TokenKind::Inherits, lexeme.to_string()),
             LogosTokenKind::Boolean => {
                 let value = lexeme.to_string();
                 (TokenKind::Boolean(value.clone()), value)

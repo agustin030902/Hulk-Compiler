@@ -14,7 +14,7 @@ Si una fase falla, se detiene el pipeline y se genera diagnóstico.
 - Scope léxico en bloques `{ ... }` y `let ... in ...`.
 - Anotaciones explícitas de tipo en `let` y bindings de `let-in`.
 - Anotaciones de tipos en parámetros y retorno de funciones.
-- Tipos nominales de usuario con `type`, instanciación `new` y métodos con `self`.
+- Tipos nominales de usuario con `type`, herencia `inherits`, instanciación `new` y métodos con `self`.
 - `while` como expresión (`Unit`).
 - Funciones globales con recursión.
 - Semántica con inferencia de tipos para parámetros y retorno.
@@ -105,9 +105,31 @@ print(p.describe() @ " norm=" @ p.norm());
 Reglas principales:
 
 - Los tipos se declaran con `type`.
+- Un tipo puede heredar de otro con `inherits Parent(...)`; si no se especifica padre, hereda de `Object`.
+- Los argumentos de `inherits Parent(...)` inicializan el constructor del padre.
 - Los atributos se inicializan en el cuerpo del tipo.
 - Los métodos se declaran dentro del tipo y reciben `self` implícitamente.
 - Los atributos son privados fuera del tipo.
+- La resolución de métodos busca primero en el tipo actual y luego en sus padres.
+
+Ejemplo de herencia:
+
+```hulk
+type Entity(name: String) {
+  name = name;
+  label() => self.name;
+}
+
+type User(name: String, role: String) inherits Entity(name) {
+  role = role;
+  profile() => self.label() @ " [" @ self.role @ "]";
+}
+
+let entity: Entity = new User("Ada", "admin");
+let user = new User("Grace", "operator");
+print(user.profile());
+print(entity.label());
+```
 
 ### Builtins
 
@@ -265,6 +287,12 @@ Este ejemplo combina recursión, `while`, `let-in`, bloques, `:=`, builtins y `p
 - `examples/function_type_annotations_ok.hulk`
 - `examples/function_type_annotations_partial_ok.hulk`
 - `examples/types_point_ok.hulk`
+- `examples/inheritance_simple_ok.hulk`
+- `examples/inheritance_polymorphism_ok.hulk`
+- `examples/tree.hulk`
+- `examples/abb.hulk`
+- `examples/avl.hulk`
+- `examples/avl_inheritance_ok.hulk`
 
 ### Con error (diagnósticos)
 

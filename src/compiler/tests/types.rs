@@ -105,7 +105,7 @@ print(root.tree());
         llvm_ir
     );
     assert!(
-        llvm_ir.contains("norm(i8* %self)"),
+        llvm_ir.contains("_insert(i8* %self"),
         "output should contain method definition with receiver, got:\n{}",
         llvm_ir
     );

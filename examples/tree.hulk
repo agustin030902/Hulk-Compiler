@@ -1,0 +1,21 @@
+type TreeNode(value: Number) {
+    value = value;
+    left = null;
+    right = null;
+
+    isLeaf() => self.left == null && self.right == null;
+    toText() => "[" @ self.value @ "]";
+}
+
+type BinaryTree(root: TreeNode) {
+    root = root;
+
+    describe() => if (self.root == null)
+        "BinaryTree(empty)"
+    else
+        "BinaryTree(root=" @ self.root.toText() @ ")";
+}
+
+let root = new TreeNode(50);
+let tree = new BinaryTree(root);
+print(tree.describe());

@@ -182,14 +182,33 @@ impl LlvmBackend {
     }
 
     pub(super) fn are_compatible_value_types(
+        &self,
         expected: super::helper::state::ValueType,
         actual: super::helper::state::ValueType,
     ) -> bool {
-        expected == actual
-            || (actual == super::helper::state::ValueType::Null
-                && Self::is_nullable_value_type(expected))
-            || (expected == super::helper::state::ValueType::Null
-                && Self::is_nullable_value_type(actual))
+        if expected == actual {
+            return true;
+        }
+
+        if actual == super::helper::state::ValueType::Null
+            && Self::is_nullable_value_type(expected)
+        {
+            return true;
+        }
+
+        if expected == super::helper::state::ValueType::Null
+            && Self::is_nullable_value_type(actual)
+        {
+            return true;
+        }
+
+        match (expected, actual) {
+            (
+                super::helper::state::ValueType::Struct(parent),
+                super::helper::state::ValueType::Struct(child),
+            ) => self.is_subtype_struct(child, parent),
+            _ => false,
+        }
     }
 
     pub(super) fn value_repr_for_expected_type(
@@ -207,7 +226,49 @@ impl LlvmBackend {
             return Some("null".to_string());
         }
 
+        if self.are_compatible_value_types(expected, value_ref.value_type)
+            && expected.llvm_type() == value_ref.value_type.llvm_type()
+        {
+            return Some(value_ref.repr.clone());
+        }
+
         None
+    }
+
+    pub(super) fn is_subtype_struct(&self, child: u32, parent: u32) -> bool {
+        if child == parent {
+            return true;
+        }
+
+        if self
+            .type_ids
+            .get("Object")
+            .is_some_and(|object_id| *object_id == parent)
+        {
+            return true;
+        }
+
+        let mut cursor = self
+            .type_ids
+            .iter()
+            .find_map(|(name, type_id)| (*type_id == child).then_some(name.as_str()))
+            .and_then(|name| self.type_decls.get(name))
+            .and_then(|decl| decl.parent_name.clone());
+
+        while let Some(parent_name) = cursor {
+            let Some(parent_id) = self.type_ids.get(&parent_name).copied() else {
+                return false;
+            };
+            if parent_id == parent {
+                return true;
+            }
+            cursor = self
+                .type_decls
+                .get(&parent_name)
+                .and_then(|decl| decl.parent_name.clone());
+        }
+
+        false
     }
 
     pub(super) fn bind_current_scope(&mut self, name: String, info: VariableInfo) {

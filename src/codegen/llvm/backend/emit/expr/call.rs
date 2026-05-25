@@ -155,7 +155,7 @@ impl LlvmBackend {
             let value = self.emit_expr(arg)?;
             let expected = info.param_types[index];
 
-            if !Self::are_compatible_value_types(expected, value.value_type) {
+            if !self.are_compatible_value_types(expected, value.value_type) {
                 self.semantic_error(format!(
                     "Function '{}' argument #{} expects {}, but got {}.",
                     call.name,
@@ -250,7 +250,7 @@ impl LlvmBackend {
             let value = self.emit_expr(arg)?;
             let expected = info.param_types[index];
 
-            if !Self::are_compatible_value_types(expected, value.value_type) {
+            if !self.are_compatible_value_types(expected, value.value_type) {
                 self.semantic_error(format!(
                     "Method '{}' argument #{} expects {}, but got {}.",
                     call.method_name,

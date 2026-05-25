@@ -51,6 +51,7 @@ pub enum TokenKind {
     If,
     Else,
     Elif,
+    Inherits,
 }
 
 #[derive(Clone, Debug)]

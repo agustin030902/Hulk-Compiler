@@ -1,0 +1,27 @@
+type TreeNode(value: Number) {
+    value = value;
+    valueText() => self.value @ "";
+}
+
+type AvlNode(value: Number, height: Number, left: AvlNode, right: AvlNode) inherits TreeNode(value) {
+    height = height;
+    left = left;
+    right = right;
+
+    balance() => {
+        let leftHeight = if (self.left == null) 0 else self.left.height;
+        let rightHeight = if (self.right == null) 0 else self.right.height;
+        leftHeight - rightHeight
+    };
+
+    summary() => "node=" @ self.valueText() @ " height=" @ self.height @ " balance=" @ self.balance();
+}
+
+let root = new AvlNode(
+    30,
+    3,
+    new AvlNode(20, 2, new AvlNode(10, 1, null, null), null),
+    new AvlNode(40, 1, null, null)
+);
+
+print(root.summary());

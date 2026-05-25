@@ -101,3 +101,45 @@ fn lexes_new_expression_and_method_call_tokens() {
         ]
     );
 }
+
+#[test]
+fn lexes_type_inheritance_tokens() {
+    let source = r#"
+type Dog(name: String) inherits Animal(name) {
+    speak() => "woof";
+}
+"#
+    .to_string();
+    let mut lexer = Lexer::new(source);
+
+    let tokens = lexer.lex();
+    let kinds: Vec<TokenKind> = tokens.into_iter().map(|token| token.kind).collect();
+
+    assert!(!lexer.has_errors());
+    assert_eq!(
+        kinds,
+        vec![
+            TokenKind::Type,
+            TokenKind::Identifier("Dog".to_string()),
+            TokenKind::LeftParen,
+            TokenKind::Identifier("name".to_string()),
+            TokenKind::Colon,
+            TokenKind::Identifier("String".to_string()),
+            TokenKind::RightParen,
+            TokenKind::Inherits,
+            TokenKind::Identifier("Animal".to_string()),
+            TokenKind::LeftParen,
+            TokenKind::Identifier("name".to_string()),
+            TokenKind::RightParen,
+            TokenKind::LeftBrace,
+            TokenKind::Identifier("speak".to_string()),
+            TokenKind::LeftParen,
+            TokenKind::RightParen,
+            TokenKind::Arrow,
+            TokenKind::String("woof".to_string()),
+            TokenKind::Semicolon,
+            TokenKind::RightBrace,
+            TokenKind::EOF,
+        ]
+    );
+}

@@ -169,7 +169,7 @@ impl<'a> TypeChecker<'a> {
         }
 
         if value_type != SemanticType::Unknown && value_type != annotation_type {
-            if Self::types_compatible(annotation_type, value_type) {
+            if self.types_compatible(annotation_type, value_type) {
                 return annotation_type;
             }
             self.analyzer.push_type_error(
@@ -187,10 +187,29 @@ impl<'a> TypeChecker<'a> {
         annotation_type
     }
 
-    pub(super) fn types_compatible(expected: SemanticType, actual: SemanticType) -> bool {
-        expected == actual
-            || (actual == SemanticType::Null && expected.is_nullable())
-            || (expected == SemanticType::Null && actual.is_nullable())
+    pub(super) fn types_compatible(
+        &self,
+        expected: SemanticType,
+        actual: SemanticType,
+    ) -> bool {
+        if expected == actual {
+            return true;
+        }
+
+        if actual == SemanticType::Null && expected.is_nullable() {
+            return true;
+        }
+
+        if expected == SemanticType::Null && actual.is_nullable() {
+            return true;
+        }
+
+        match (expected, actual) {
+            (SemanticType::Struct(parent), SemanticType::Struct(child)) => {
+                self.is_subtype_of(TypeId(child), TypeId(parent))
+            }
+            _ => false,
+        }
     }
 
     pub(in crate::semantic) fn check_type_decl(&mut self, type_decl: &TypeDecl, source: &str) {
@@ -227,6 +246,62 @@ impl<'a> TypeChecker<'a> {
                 .unwrap_or(SemanticType::Unknown);
             self.analyzer
                 .bind_current_scope(param.name.clone(), semantic_type);
+        }
+
+        if let Some(parent_name) = &type_decl.parent_name {
+            let Some(parent_id) = self.analyzer.type_symbols.get(parent_name).copied() else {
+                self.analyzer.pop_scope();
+                return;
+            };
+
+            let parent_params = self
+                .analyzer
+                .type_table
+                .get_struct(parent_id)
+                .map(|info| info.constructor_params.clone())
+                .unwrap_or_default();
+
+            if parent_params.len() != type_decl.parent_init_exprs.len() {
+                if let Some(parent_span) = type_decl.parent_span {
+                    self.analyzer.push_semantic_error(
+                        parent_span,
+                        source,
+                        format!(
+                            "Parent type '{}' constructor expects {} argument(s), but got {}.",
+                            parent_name,
+                            parent_params.len(),
+                            type_decl.parent_init_exprs.len()
+                        ),
+                    );
+                }
+            }
+
+            for (index, arg) in type_decl.parent_init_exprs.iter().enumerate() {
+                let arg_type = self.check_expr(arg, source).unwrap_or(SemanticType::Unknown);
+                let expected_type = parent_params
+                    .get(index)
+                    .map(|(_, type_id)| {
+                        TypeResolver::type_id_to_semantic_type(self.analyzer, *type_id)
+                    })
+                    .unwrap_or(SemanticType::Unknown);
+
+                if expected_type != SemanticType::Unknown
+                    && arg_type != SemanticType::Unknown
+                    && !self.types_compatible(expected_type, arg_type)
+                {
+                    self.analyzer.push_type_error(
+                        arg.span(),
+                        source,
+                        format!(
+                            "Parent type '{}' constructor argument #{} expects {}, but got {}.",
+                            parent_name,
+                            index + 1,
+                            expected_type.display_name(),
+                            arg_type.display_name()
+                        ),
+                    );
+                }
+            }
         }
 
         let mut fields = Vec::with_capacity(type_decl.attributes.len());
@@ -487,11 +562,17 @@ impl<'a> TypeChecker<'a> {
     }
 
     fn lookup_field_type_id(&self, receiver: TypeId, field_name: &str) -> Option<TypeId> {
-        self.analyzer
-            .type_table
-            .get_struct(receiver)
-            .and_then(|info| info.fields.iter().find(|(name, _)| name == field_name))
-            .map(|(_, type_id)| *type_id)
+        let mut cursor = Some(receiver);
+        while let Some(current) = cursor {
+            let Some(info) = self.analyzer.type_table.get_struct(current) else {
+                return None;
+            };
+            if let Some((_, type_id)) = info.fields.iter().find(|(name, _)| name == field_name) {
+                return Some(*type_id);
+            }
+            cursor = info.parent;
+        }
+        None
     }
 
     fn can_access_private_field(&self, receiver: TypeId) -> bool {
@@ -500,5 +581,28 @@ impl<'a> TypeChecker<'a> {
 
     fn is_self_binding(&self, name: &str, scope_index: usize) -> bool {
         name == "self" && self.analyzer.current_self_scope_index == Some(scope_index)
+    }
+
+    fn is_subtype_of(&self, child: TypeId, parent: TypeId) -> bool {
+        if child == parent {
+            return true;
+        }
+
+        let mut cursor = self
+            .analyzer
+            .type_table
+            .get_struct(child)
+            .and_then(|info| info.parent);
+        while let Some(current) = cursor {
+            if current == parent {
+                return true;
+            }
+            cursor = self
+                .analyzer
+                .type_table
+                .get_struct(current)
+                .and_then(|info| info.parent);
+        }
+        false
     }
 }

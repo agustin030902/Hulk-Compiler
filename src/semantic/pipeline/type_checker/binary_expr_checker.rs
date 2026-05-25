@@ -262,10 +262,6 @@ fn is_valid_concat_pair(left: SemanticType, right: SemanticType) -> bool {
         (SemanticType::String, SemanticType::String)
             | (SemanticType::String, SemanticType::Number)
             | (SemanticType::Number, SemanticType::String)
-            | (SemanticType::String, SemanticType::Boolean)
-            | (SemanticType::Boolean, SemanticType::String)
-            //| (SemanticType::String, SemanticType::Number)
-            //| (SemanticType::String, SemanticType::Number)
     )
 }
 

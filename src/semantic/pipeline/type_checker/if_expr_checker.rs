@@ -58,7 +58,7 @@ impl<'a> TypeChecker<'a> {
         }
 
         for (branch_expr, actual_type) in branch_types.iter().copied() {
-            if !Self::types_compatible(expected_type, actual_type) {
+            if !self.types_compatible(expected_type, actual_type) {
                 self.analyzer.push_type_error(
                     branch_expr.span(),
                     source,

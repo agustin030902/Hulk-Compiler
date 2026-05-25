@@ -33,6 +33,7 @@ extern {
         "rand" => TokenKind::Rand,
         "in" => TokenKind::In,
         "null" => TokenKind::Null,
+        "inherits" => TokenKind::Inherits,
         ":=" => TokenKind::DestructiveAssign,
         ":" => TokenKind::Colon,
         "=>" => TokenKind::Arrow,
@@ -86,7 +87,7 @@ TypeDecls: Vec<TypeDecl> = {
 };
 
 TypeDecl: TypeDecl = {
-    <l:@L> "type" <id:IdentifierWithSpan> <params:TypeDeclParams> "{" <members:TypeMembers> "}" <r:@R> => {
+    <l:@L> "type" <id:IdentifierWithSpan> <params:TypeDeclParams> <inheritance:TypeInheritance> "{" <members:TypeMembers> "}" <r:@R> => {
         let mut attributes = Vec::new();
         let mut methods = Vec::new();
 
@@ -97,14 +98,29 @@ TypeDecl: TypeDecl = {
             }
         }
 
+        let (parent_name, parent_span, parent_init_exprs) = inheritance;
+
         TypeDecl {
             name: id.0,
             name_span: id.1,
             params,
+            parent_name,
+            parent_span,
+            parent_init_exprs,
             attributes,
             methods,
             span: Span::new(l, r),
         }
+    },
+};
+
+TypeInheritance: (Option<String>, Option<Span>, Vec<Expr>) = {
+    => (None, None, vec![]),
+    <pl:@L> "inherits" <parent_id:IdentifierWithSpan> "(" <args:CallArgs> ")" <pr:@R> => {
+        (Some(parent_id.0), Some(Span::new(pl, pr)), args)
+    },
+    <pl:@L> "inherits" <parent_id:IdentifierWithSpan> <pr:@R> => {
+        (Some(parent_id.0), Some(Span::new(pl, pr)), vec![])
     },
 };
 

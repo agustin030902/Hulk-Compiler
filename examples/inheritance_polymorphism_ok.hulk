@@ -1,0 +1,14 @@
+type Entity(name: String) {
+    name = name;
+    label() => self.name;
+}
+
+type User(name: String, role: String) inherits Entity(name) {
+    role = role;
+    profile() => self.label() @ " [" @ self.role @ "]";
+}
+
+let entity: Entity = new User("Ada", "admin");
+let user = new User("Grace", "operator");
+print(user.profile());
+print(entity.label());

@@ -20,7 +20,7 @@ impl LlvmBackend {
 
                 let value_ref = self.emit_expr(&assign.value)?;
 
-                if !Self::are_compatible_value_types(existing.value_type, value_ref.value_type) {
+                if !self.are_compatible_value_types(existing.value_type, value_ref.value_type) {
                     self.semantic_error(format!(
                         "Destructive assignment ':=' requires the same type. Variable '{}' is {:?} but expression is {:?}.",
                         name, existing.value_type, value_ref.value_type
@@ -69,7 +69,7 @@ impl LlvmBackend {
                 };
 
                 let value_ref = self.emit_expr(&assign.value)?;
-                if !Self::are_compatible_value_types(field_layout.value_type, value_ref.value_type)
+                if !self.are_compatible_value_types(field_layout.value_type, value_ref.value_type)
                 {
                     self.semantic_error(format!(
                         "Destructive assignment ':=' requires type {}, but expression is {}.",

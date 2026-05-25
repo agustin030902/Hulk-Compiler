@@ -133,6 +133,99 @@ print(leaf.isLeaf());
 }
 
 #[test]
+fn accepts_inheritance_subtyping_and_inherited_methods() {
+    let source = r#"
+type Animal(name: String) {
+    name = name;
+    label() => self.name;
+}
+
+type Dog(name: String, age: Number) inherits Animal(name) {
+    age = age;
+    ageLabel() => self.age @ "";
+}
+
+let animal: Animal = new Dog("Sasha", 4);
+let dog = new Dog("Firu", 2);
+print(dog.label() @ " " @ dog.ageLabel());
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_unknown_parent_type() {
+    let source = r#"
+type Dog(name: String) inherits Animal(name) {
+    name = name;
+}
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.iter().any(|error| {
+            error.category == ErrorCategory::Semantic
+                && error.message == "Parent type 'Animal' not found."
+        }),
+        "expected unknown parent type error, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_override_with_different_signature() {
+    let source = r#"
+type Animal() {
+    speak() => "generic";
+}
+
+type Dog() inherits Animal() {
+    speak(times: Number) => "woof";
+}
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.iter().any(|error| {
+            error.category == ErrorCategory::Semantic
+                && error.message
+                    == "Method 'speak' override in type 'Dog' has different signature than parent."
+        }),
+        "expected invalid override error, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_parent_constructor_argument_type_mismatch() {
+    let source = r#"
+type Animal(name: String) {
+    name = name;
+}
+
+type Dog(age: Number) inherits Animal(age) {
+    age = age;
+}
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.iter().any(|error| {
+            error.category == ErrorCategory::Type
+                && error.message
+                    == "Parent type 'Animal' constructor argument #1 expects String, but got Number."
+        }),
+        "expected parent constructor type error, got: {:?}",
+        errors
+    );
+}
+
+#[test]
 fn rejects_null_for_number_constructor_parameter() {
     let source = r#"
 type Box(value: Number) {

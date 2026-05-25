@@ -330,3 +330,38 @@ print(p3.getX());
         ir
     );
 }
+
+#[test]
+fn generates_ir_for_inherited_fields_and_methods() {
+    let source = r#"
+type Entity(name: String) {
+    name = name;
+    label() => self.name;
+}
+
+type Player(name: String, score: Number) inherits Entity(name) {
+    score = score;
+    describe() => self.label() @ ":" @ self.score;
+}
+
+let player = new Player("Ada", 42);
+print(player.describe());
+"#;
+    let ir = compile_source(source).expect("codegen should succeed");
+
+    assert!(
+        ir.contains("_label(i8* %self)"),
+        "expected inherited parent method definition, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("_describe(i8* %self)"),
+        "expected child method definition, got:\n{}",
+        ir
+    );
+    assert!(
+        ir.contains("call i8* @hulk_type") && ir.contains("_label(i8*"),
+        "expected child method to call inherited method, got:\n{}",
+        ir
+    );
+}

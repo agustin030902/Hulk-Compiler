@@ -101,6 +101,31 @@ type Box(v: Number) {
 }
 
 #[test]
+fn parses_type_declaration_with_inheritance_initializer() {
+    let source = r#"
+type Animal(name: String) {
+    name = name;
+    label() => self.name;
+}
+
+type Dog(name: String, age: Number) inherits Animal(name) {
+    age = age;
+    speak() => "woof";
+}
+"#;
+
+    let program = parse_program(source);
+    let dog = &program.types[1];
+
+    assert_eq!(dog.name, "Dog");
+    assert_eq!(dog.parent_name.as_deref(), Some("Animal"));
+    assert!(dog.parent_span.is_some());
+    assert_eq!(dog.parent_init_exprs.len(), 1);
+    assert_eq!(dog.attributes.len(), 1);
+    assert_eq!(dog.methods.len(), 1);
+}
+
+#[test]
 fn reports_error_for_invalid_destructive_assignment_target() {
     let message = parse_error_message("let x = (a + b) := 1;");
     assert!(message.contains("Invalid assignment target for ':='"));

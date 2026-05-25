@@ -654,7 +654,8 @@ fn classify_highlight_role(tokens: &[Token], idx: usize) -> HighlightRole {
         | TokenKind::In
         | TokenKind::If
         | TokenKind::Else
-        | TokenKind::Elif => HighlightRole::Keyword,
+        | TokenKind::Elif
+        | TokenKind::Inherits => HighlightRole::Keyword,
         TokenKind::Print
         | TokenKind::Sin
         | TokenKind::Cos

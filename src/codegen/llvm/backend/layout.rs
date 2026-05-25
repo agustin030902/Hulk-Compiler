@@ -22,46 +22,84 @@ impl LlvmBackend {
         &mut self,
         analyzer: &SemanticAnalyzer,
     ) -> bool {
-        for (type_name, type_id) in analyzer.type_symbols() {
-            let Some(type_info) = analyzer.type_table().get_struct(*type_id) else {
-                self.semantic_error(format!(
-                    "Type '{}' is registered but has no struct entry.",
-                    type_name
-                ));
+        let entries = analyzer
+            .type_symbols()
+            .iter()
+            .map(|(name, type_id)| (name.clone(), *type_id))
+            .collect::<Vec<_>>();
+
+        for (type_name, type_id) in entries {
+            if !self.ensure_struct_layout(analyzer, &type_name, type_id) {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    fn ensure_struct_layout(
+        &mut self,
+        analyzer: &SemanticAnalyzer,
+        type_name: &str,
+        type_id: crate::semantic::TypeId,
+    ) -> bool {
+        if self.struct_layouts.contains_key(&type_id.0) {
+            return true;
+        }
+
+        let Some(type_info) = analyzer.type_table().get_struct(type_id) else {
+            self.semantic_error(format!(
+                "Type '{}' is registered but has no struct entry.",
+                type_name
+            ));
+            return false;
+        };
+
+        let mut offset = 0usize;
+        let mut max_align = 1usize;
+        let mut fields = HashMap::new();
+
+        if let Some(parent_id) = type_info.parent {
+            let parent_name = analyzer
+                .type_symbols()
+                .iter()
+                .find_map(|(name, id)| (*id == parent_id).then_some(name.clone()))
+                .unwrap_or_else(|| "Object".to_string());
+            if !self.ensure_struct_layout(analyzer, &parent_name, parent_id) {
+                return false;
+            }
+
+            if let Some(parent_layout) = self.struct_layouts.get(&parent_id.0).cloned() {
+                offset = parent_layout.size_bytes;
+                fields.extend(parent_layout.fields);
+            }
+        }
+
+        for (field_name, field_type_id) in &type_info.fields {
+            let semantic_type = self.semantic_type_from_type_id(analyzer, *field_type_id);
+            let Some(value_type) = self.lower_semantic_type(
+                semantic_type,
+                &format!("field '{}' in type '{}'", field_name, type_name),
+            ) else {
                 return false;
             };
 
-            let mut offset = 0usize;
-            let mut max_align = 1usize;
-            let mut fields = HashMap::new();
+            let (size, align) = Self::value_layout(value_type);
+            offset = Self::align_to(offset, align);
+            max_align = max_align.max(align);
 
-            for (field_name, field_type_id) in &type_info.fields {
-                let semantic_type = self.semantic_type_from_type_id(analyzer, *field_type_id);
-                let Some(value_type) = self.lower_semantic_type(
-                    semantic_type,
-                    &format!("field '{}' in type '{}'", field_name, type_name),
-                ) else {
-                    return false;
-                };
-
-                let (size, align) = Self::value_layout(value_type);
-                offset = Self::align_to(offset, align);
-                max_align = max_align.max(align);
-
-                fields.insert(field_name.clone(), FieldLayout { offset, value_type });
-
-                offset += size;
-            }
-
-            let total_size = Self::align_to(offset.max(1), max_align);
-            self.struct_layouts.insert(
-                type_id.0,
-                StructLayout {
-                    size_bytes: total_size,
-                    fields,
-                },
-            );
+            fields.insert(field_name.clone(), FieldLayout { offset, value_type });
+            offset += size;
         }
+
+        let total_size = Self::align_to(offset.max(1), max_align);
+        self.struct_layouts.insert(
+            type_id.0,
+            StructLayout {
+                size_bytes: total_size,
+                fields,
+            },
+        );
 
         true
     }

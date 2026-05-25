@@ -33,10 +33,32 @@ type Node(value: Number, left: Node, right: Node) {
         self.left.inorder() @ " " @ self.value @ " " @ self.right.inorder();
 	};
 
+	show(prefix: String, isLeft: Boolean) => {
+
+        let result = "";
+
+        if (self.right != null) result := result @ 
+			self.right.show(prefix @ (if (isLeft) "│   " else "    "), false) 
+		else  "4";
+
+        result := result @ prefix @ (if (isLeft) "└── " else "┌── ") @ self.value @ "\n";
+
+        if (self.left != null) result := result @ 
+			self.left.show(prefix @ (if (isLeft) "    " else "│   "), true)
+		else "4";
+        result
+
+    };
+
+    tree() => {
+
+        self.show("", true)
+
+    };
+
 }
 
 let root = new Node(8, null, null);
-
 root.insert(3);
 root.insert(10);
 root.insert(1);
@@ -45,6 +67,7 @@ root.insert(14);
 root.insert(4);
 root.insert(7);
 root.insert(13);
-
-
+root.insert(0);
 print("in:   " @ root.inorder());
+print("\n");
+print(root.tree());

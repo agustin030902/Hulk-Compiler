@@ -25,6 +25,7 @@ pub enum TokenKind {
     Add,
     Power,
     Concat,
+    ConcatSpace,
     Minus,
     Multiply,
     Divide,

@@ -159,6 +159,40 @@ fn parses_concat_as_left_associative() {
 }
 
 #[test]
+fn parses_concat_space_operator() {
+    let program = parse_program(r#"print("hello" @@ "world");"#);
+
+    assert_eq!(program.statements.len(), 1);
+    let value = match &program.statements[0] {
+        Statement::Expr { value, .. } => value,
+        Statement::Print { value, .. } => value,
+        _ => panic!("expected print statement"),
+    };
+    let value = unwrap_print_arg(value);
+    let value = unwrap_print_arg(value);
+
+    let Expr::Binary(binary) = value else {
+        panic!("expected binary expression");
+    };
+
+    assert!(matches!(binary.op, BinaryOp::ConcatSpace));
+    assert!(matches!(
+        binary.left.as_ref(),
+        Expr::Literal {
+            value: Literal::String(text),
+            ..
+        } if text == "hello"
+    ));
+    assert!(matches!(
+        binary.right.as_ref(),
+        Expr::Literal {
+            value: Literal::String(text),
+            ..
+        } if text == "world"
+    ));
+}
+
+#[test]
 fn parses_logical_and_comparison_precedence() {
     let program = parse_program(r#"print(5 > 3 && 2 < 8 || !false);"#);
 

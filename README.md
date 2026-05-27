@@ -54,6 +54,7 @@ examples/
 - Operadores binarios:
   - aritméticos: `+ - * / ^`
   - concatenación: `@`
+  - concatenación con espacio intermedio: `@@`
   - comparación: `< > <= >= == !=`
   - lógicos: `&& ||`
 - `if / elif / else`
@@ -75,7 +76,7 @@ let x: Number = 42;
 let y: String = "hola";
 let ok: Boolean = true;
 
-let msg = let base: Number = 10, sufijo: String = " pts" in "score=" @ base @ sufijo;
+let msg = let base: Number = 10, sufijo: String = "pts" in "score=" @ base @@ sufijo;
 ```
 
 Reglas:

@@ -682,6 +682,7 @@ fn classify_highlight_role(tokens: &[Token], idx: usize) -> HighlightRole {
         | TokenKind::Add
         | TokenKind::Power
         | TokenKind::Concat
+        | TokenKind::ConcatSpace
         | TokenKind::Minus
         | TokenKind::Multiply
         | TokenKind::Divide
@@ -1159,6 +1160,7 @@ fn binary_op_symbol(op: &BinaryOp) -> &'static str {
         BinaryOp::Add => "+",
         BinaryOp::Pow => "^",
         BinaryOp::Concat => "@",
+        BinaryOp::ConcatSpace => "@@",
         BinaryOp::Sub => "-",
         BinaryOp::Mul => "*",
         BinaryOp::Div => "/",

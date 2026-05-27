@@ -141,6 +141,7 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::Add => "+".to_string(),
         TokenKind::Power => "^".to_string(),
         TokenKind::Concat => "@".to_string(),
+        TokenKind::ConcatSpace => "@@".to_string(),
         TokenKind::Minus => "-".to_string(),
         TokenKind::Multiply => "*".to_string(),
         TokenKind::Divide => "/".to_string(),

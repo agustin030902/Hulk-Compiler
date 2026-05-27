@@ -1,0 +1,5 @@
+let first = "hello";
+let second = "world";
+let answer = first @@ second @@ 42;
+
+print(answer);

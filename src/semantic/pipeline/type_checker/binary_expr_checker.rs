@@ -94,6 +94,47 @@ impl<'a> TypeChecker<'a> {
                     None
                 }
             }
+            BinaryOp::ConcatSpace => {
+                if left_type == SemanticType::Unknown
+                    && (right_type == SemanticType::Number || right_type == SemanticType::String)
+                {
+                    left_type = TypeConstraintEngine::constrain_expr_type(
+                        self,
+                        &binary.left,
+                        SemanticType::String,
+                        source,
+                    );
+                }
+                if right_type == SemanticType::Unknown
+                    && (left_type == SemanticType::Number || left_type == SemanticType::String)
+                {
+                    right_type = TypeConstraintEngine::constrain_expr_type(
+                        self,
+                        &binary.right,
+                        SemanticType::String,
+                        source,
+                    );
+                }
+
+                if left_type == SemanticType::Unknown || right_type == SemanticType::Unknown {
+                    return Some(SemanticType::Unknown);
+                }
+
+                if is_valid_concat_pair(left_type, right_type) {
+                    Some(SemanticType::String)
+                } else {
+                    self.analyzer.push_type_error(
+                        binary.span,
+                        source,
+                        format!(
+                            "Operator '@@' expects (String, String), (String, Number), or (Number, String), but got {} and {}.",
+                            left_type.display_name(),
+                            right_type.display_name()
+                        ),
+                    );
+                    None
+                }
+            }
             BinaryOp::Less | BinaryOp::Greater | BinaryOp::LessEqual | BinaryOp::GreaterEqual => {
                 if left_type == SemanticType::Unknown {
                     left_type = TypeConstraintEngine::constrain_expr_type(
@@ -242,6 +283,7 @@ fn op_symbol(op: BinaryOp) -> &'static str {
         BinaryOp::Add => "+",
         BinaryOp::Pow => "^",
         BinaryOp::Concat => "@",
+        BinaryOp::ConcatSpace => "@@",
         BinaryOp::Sub => "-",
         BinaryOp::Mul => "*",
         BinaryOp::Div => "/",

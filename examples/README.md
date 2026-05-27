@@ -10,6 +10,11 @@ Recursión numérica con `if/elif/else`.
 - Llamadas recursivas múltiples
 - Concatenación de `String @ Number` para mostrar resultados
 
+### `concat_space_ok.hulk`
+Concatenación con espacio automático.
+- Usa `@@` como equivalente a concatenar el operando izquierdo, un espacio y el operando derecho
+- Mezcla `String @@ String` y `String @@ Number`
+
 ### `recursive_string_countdown.hulk`
 Recursión que retorna `String`.
 - Construye una cadena `"0 -> 1 -> ... -> n"`

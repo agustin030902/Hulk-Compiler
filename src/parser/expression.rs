@@ -291,6 +291,7 @@ pub enum BinaryOp {
     Add,
     Pow,
     Concat,
+    ConcatSpace,
     Sub,
     Mul,
     Div,

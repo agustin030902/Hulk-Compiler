@@ -66,6 +66,8 @@ enum LogosTokenKind {
     Add,
     #[token("^")]
     Power,
+    #[token("@@")]
+    ConcatSpace,
     #[token("@")]
     Concat,
     #[token("-")]
@@ -169,6 +171,7 @@ impl LogosTokenKind {
             LogosTokenKind::Add => (TokenKind::Add, lexeme.to_string()),
             LogosTokenKind::Power => (TokenKind::Power, lexeme.to_string()),
             LogosTokenKind::Concat => (TokenKind::Concat, lexeme.to_string()),
+            LogosTokenKind::ConcatSpace => (TokenKind::ConcatSpace, lexeme.to_string()),
             LogosTokenKind::Minus => (TokenKind::Minus, lexeme.to_string()),
             LogosTokenKind::Multiply => (TokenKind::Multiply, lexeme.to_string()),
             LogosTokenKind::Divide => (TokenKind::Divide, lexeme.to_string()),

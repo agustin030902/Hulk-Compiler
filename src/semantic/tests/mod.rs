@@ -191,6 +191,35 @@ fn rejects_concat_between_boolean_and_string_with_specific_error() {
 }
 
 #[test]
+fn allows_concat_space_between_string_number_and_string() {
+    let source = r#"
+let label = "score" @@ 42;
+let message = label @@ "pts";
+print(message);
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_concat_space_between_number_and_number_with_specific_error() {
+    let source = r#"print(1 @@ 2);"#;
+
+    let errors = analyze_source(source);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].category, ErrorCategory::Type);
+    assert_eq!(
+        errors[0].message,
+        "Operator '@@' expects (String, String), (String, Number), or (Number, String), but got Number and Number."
+    );
+}
+
+#[test]
 fn allows_boolean_comparison_and_logic_expressions() {
     let source = r#"
 let x = 10;

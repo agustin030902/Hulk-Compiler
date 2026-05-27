@@ -85,3 +85,41 @@ fn writes_diagnostics_txt_for_invalid_escape_related_expression() {
         diagnostics
     );
 }
+
+#[test]
+fn writes_llvm_ir_for_concat_space_operator() {
+    let source = r#"
+let name = "Ada";
+let message = "hello" @@ name;
+print(message);
+"#;
+    let output_path = unique_output_path("concat_space_ir");
+
+    let mut compiler = Compiler::new();
+    let report = compiler.compile(
+        source,
+        &CompileOptions {
+            output_path: output_path.clone(),
+        },
+    );
+
+    assert!(
+        report.errors.is_empty(),
+        "expected successful compilation, got errors: {:?}",
+        report.errors
+    );
+    assert_eq!(report.output_kind, Some(OutputKind::LlvmIr));
+
+    let llvm_ir = fs::read_to_string(&output_path)
+        .expect("compiler should write llvm output file on success");
+    assert!(
+        llvm_ir.contains("@.str.space = private unnamed_addr constant [2 x i8] c\" \\00\""),
+        "IR should define the concat-space literal, got:\n{}",
+        llvm_ir
+    );
+    assert!(
+        llvm_ir.contains("@asprintf"),
+        "IR should lower concat-space through string concatenation, got:\n{}",
+        llvm_ir
+    );
+}

@@ -59,6 +59,7 @@ impl LlvmBackend {
             "@.fmt.concat.ns = private unnamed_addr constant [5 x i8] c\"%g%s\\00\"".to_string(),
             "@.fmt.concat.bs = private unnamed_addr constant [5 x i8] c\"%s%d\\00\"".to_string(),
             "@.fmt.concat.sb = private unnamed_addr constant [5 x i8] c\"%d%s\\00\"".to_string(),
+            "@.str.space = private unnamed_addr constant [2 x i8] c\" \\00\"".to_string(),
         ];
 
         out.extend(self.global_lines.clone());

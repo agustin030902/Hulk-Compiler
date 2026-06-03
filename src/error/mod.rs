@@ -30,9 +30,7 @@ impl CompilerError {
             column,
         }
     }
-}
 
-impl CompilerError {
     pub fn exit_code(&self) -> i32 {
         match self.category {
             ErrorCategory::Lexical => 1,
@@ -44,10 +42,19 @@ impl CompilerError {
 
 impl fmt::Display for CompilerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let error_type = match self.category {
+            ErrorCategory::Lexical => "LEXICAL",
+            ErrorCategory::Syntax => "SYNTACTIC",
+            ErrorCategory::Type | ErrorCategory::Semantic => "SEMANTIC",
+        };
+
         write!(
             f,
-            "{:?} error at {}:{}: {}",
-            self.category, self.line, self.column, self.message
+            "({},{}) {}: {}",
+            self.line,
+            self.column,
+            error_type,
+            self.message
         )
     }
 }

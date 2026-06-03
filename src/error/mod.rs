@@ -32,6 +32,16 @@ impl CompilerError {
     }
 }
 
+impl CompilerError {
+    pub fn exit_code(&self) -> i32 {
+        match self.category {
+            ErrorCategory::Lexical => 1,
+            ErrorCategory::Syntax => 2,
+            ErrorCategory::Type | ErrorCategory::Semantic => 3,
+        }
+    }
+}
+
 impl fmt::Display for CompilerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(

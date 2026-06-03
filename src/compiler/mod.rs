@@ -2,6 +2,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
+
 #[cfg(test)]
 mod tests;
 
@@ -21,7 +22,7 @@ pub struct CompileOptions {
 impl Default for CompileOptions {
     fn default() -> Self {
         Self {
-            output_path: PathBuf::from("artifacts/intermediate.txt"),
+            output_path: PathBuf::from("output"),
         }
     }
 }
@@ -59,54 +60,149 @@ impl Compiler {
     pub fn compile(&mut self, source: &str, options: &CompileOptions) -> CompileReport {
         let mut lexer = Lexer::new(source.to_string());
         let tokens = lexer.lex();
+    
         let lexer_errors = lexer.errors().to_vec();
         if !lexer_errors.is_empty() {
-            return finalize_with_diagnostics(tokens, None, lexer_errors, options);
+            return self.finalize_diagnostics(tokens, None, lexer_errors, options);
         }
-
+    
         let mut parser = Parser::new(source);
         let ast = parser.parse_program(tokens.clone());
+    
         let parser_errors = parser.errors().to_vec();
         if !parser_errors.is_empty() {
-            return finalize_with_diagnostics(tokens, ast, parser_errors, options);
+            return self.finalize_diagnostics(tokens, ast, parser_errors, options);
         }
-
-        let Some(program) = ast else {
-            return finalize_with_diagnostics(
-                tokens,
-                None,
-                vec![CompilerError::new(
-                    ErrorCategory::Syntax,
-                    "Program could not be built after parsing.",
-                    1,
-                    1,
-                )],
-                options,
-            );
+    
+        let program = match ast {
+            Some(p) => p,
+            None => {
+                return self.finalize_diagnostics(
+                    tokens,
+                    None,
+                    vec![CompilerError::new(
+                        ErrorCategory::Syntax,
+                        "Program could not be built after parsing.",
+                        1,
+                        1,
+                    )],
+                    options,
+                );
+            }
         };
-
+    
         let semantic_errors = self.semantic_analyzer.analyze(&program, source);
         if !semantic_errors.is_empty() {
-            return finalize_with_diagnostics(tokens, Some(program), semantic_errors, options);
+            return self.finalize_diagnostics(tokens, Some(program), semantic_errors, options);
         }
-
+    
+        // =========================
+        // CODEGEN (AQUÍ ES DONDE VA)
+        // =========================
         match self.llvm_backend.generate(&program) {
-            Ok(llvm_ir) => finalize_with_ir(tokens, program, llvm_ir, options),
+            Ok(llvm_ir) => {
+                // 👇 AQUÍ LO PONES (DEBUG)
+                #[cfg(debug_assertions)]
+                {
+                    eprintln!("================ LLVM IR ================\n{}", llvm_ir);
+                }
+    
+                self.finalize_ir(tokens, program, llvm_ir, options)
+            }
+    
             Err(codegen_errors) => {
-                finalize_with_diagnostics(tokens, Some(program), codegen_errors, options)
+                self.finalize_diagnostics(tokens, Some(program), codegen_errors, options)
             }
         }
     }
-}
 
-fn write_output_file(path: &Path, contents: &str) -> std::io::Result<()> {
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)?;
+    fn emit_output(
+        &self,
+        path: &Path,
+        contents: &str,
+    ) -> Result<PathBuf, CompilerError> {
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent).map_err(|e| {
+                    CompilerError::new(
+                        ErrorCategory::Semantic,
+                        format!("Failed to create output dir: {}", e),
+                        1,
+                        1,
+                    )
+                })?;
+            }
+        }
+
+        fs::write(path, contents).map_err(|e| {
+            CompilerError::new(
+                ErrorCategory::Semantic,
+                format!("Failed to write output file '{}': {}", path.display(), e),
+                1,
+                1,
+            )
+        })?;
+
+        Ok(path.to_path_buf())
+    }
+
+    fn finalize_ir(
+        &self,
+        tokens: Vec<Token>,
+        program: Program,
+        llvm_ir: String,
+        options: &CompileOptions,
+    ) -> CompileReport {
+        let mut errors = Vec::new();
+
+        let output_path = match self.emit_output(&options.output_path, &llvm_ir) {
+            Ok(path) => Some(path),
+            Err(e) => {
+                errors.push(e);
+                None
+            }
+        };
+
+        CompileReport {
+            tokens,
+            ast: Some(program),
+            llvm_ir: Some(llvm_ir),
+            output_path,
+            output_kind: if errors.is_empty() {
+                Some(OutputKind::LlvmIr)
+            } else {
+                Some(OutputKind::Diagnostics)
+            },
+            errors,
         }
     }
 
-    fs::write(path, contents)
+    fn finalize_diagnostics(
+        &self,
+        tokens: Vec<Token>,
+        ast: Option<Program>,
+        mut errors: Vec<CompilerError>,
+        options: &CompileOptions,
+    ) -> CompileReport {
+        let diagnostics = format_diagnostics_report(&errors);
+
+        let output_path = match self.emit_output(&options.output_path, &diagnostics) {
+            Ok(path) => Some(path),
+            Err(e) => {
+                errors.push(e);
+                None
+            }
+        };
+
+        CompileReport {
+            tokens,
+            ast,
+            llvm_ir: None,
+            output_path,
+            output_kind: Some(OutputKind::Diagnostics),
+            errors,
+        }
+    }
 }
 
 fn format_diagnostics_report(errors: &[CompilerError]) -> String {
@@ -138,77 +234,5 @@ fn phase_for_category(category: &ErrorCategory) -> &'static str {
         ErrorCategory::Lexical => "Lexer",
         ErrorCategory::Syntax => "Parser",
         ErrorCategory::Type | ErrorCategory::Semantic => "Semantic",
-    }
-}
-
-fn finalize_with_ir(
-    tokens: Vec<Token>,
-    program: Program,
-    llvm_ir: String,
-    options: &CompileOptions,
-) -> CompileReport {
-    let mut errors = Vec::new();
-    let output_path = match write_output_file(&options.output_path, &llvm_ir) {
-        Ok(()) => Some(options.output_path.clone()),
-        Err(io_error) => {
-            errors.push(CompilerError::new(
-                ErrorCategory::Semantic,
-                format!(
-                    "Failed to write output file '{}': {}",
-                    options.output_path.display(),
-                    io_error
-                ),
-                1,
-                1,
-            ));
-            None
-        }
-    };
-
-    CompileReport {
-        tokens,
-        ast: Some(program),
-        llvm_ir: Some(llvm_ir),
-        output_path,
-        output_kind: if errors.is_empty() {
-            Some(OutputKind::LlvmIr)
-        } else {
-            Some(OutputKind::Diagnostics)
-        },
-        errors,
-    }
-}
-
-fn finalize_with_diagnostics(
-    tokens: Vec<Token>,
-    ast: Option<Program>,
-    mut errors: Vec<CompilerError>,
-    options: &CompileOptions,
-) -> CompileReport {
-    let diagnostics = format_diagnostics_report(&errors);
-    let output_path = match write_output_file(&options.output_path, &diagnostics) {
-        Ok(()) => Some(options.output_path.clone()),
-        Err(io_error) => {
-            errors.push(CompilerError::new(
-                ErrorCategory::Semantic,
-                format!(
-                    "Failed to write output file '{}': {}",
-                    options.output_path.display(),
-                    io_error
-                ),
-                1,
-                1,
-            ));
-            None
-        }
-    };
-
-    CompileReport {
-        tokens,
-        ast,
-        llvm_ir: None,
-        output_path,
-        output_kind: Some(OutputKind::Diagnostics),
-        errors,
     }
 }

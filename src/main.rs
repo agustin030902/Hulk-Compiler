@@ -17,6 +17,10 @@ fn main() {
         std::process::exit(1);
     }
 
+    // Eliminar artefactos de compilaciones anteriores
+    let _ = fs::remove_file("output");
+    let _ = fs::remove_file("temp.ll");
+
     let input_path = &args[1];
 
     let source = match fs::read_to_string(input_path) {
@@ -39,43 +43,49 @@ fn main() {
     // ERRORES
     // =========================
     if !report.errors.is_empty() {
-        for err in &report.errors {
-            eprintln!("{}", err);
+        for error in &report.errors {
+            eprintln!("{}", error);
         }
-        std::process::exit(report.errors[0].exit_code());
+    
+        let exit_code = report
+            .errors
+            .iter()
+            .map(|e| e.exit_code())
+            .min()
+            .unwrap();
+    
+        std::process::exit(exit_code);
     }
 
     // =========================
-    // CODEGEN + EXECUTE
+    // GENERACIÓN DE CÓDIGO
     // =========================
-    if let Some(ir) = report.llvm_ir.clone() {
-        use std::fs;
-        use std::process::Command;
-
-        // 1. escribir LLVM IR
-        fs::write("output.ll", &ir).expect("failed to write output.ll");
-
-        // 2. compilar con clang
-        let status = Command::new("clang")
-            .args(["output.ll", "-o", "output"])
-            .status()
-            .expect("failed to run clang");
-
-        if !status.success() {
-            eprintln!("LLVM compilation failed");
-            std::process::exit(1);
+    let ir = match report.llvm_ir {
+        Some(ir) => ir,
+        None => {
+            eprintln!("(0,0) SEMANTIC: no LLVM IR generated");
+            std::process::exit(3);
         }
+    };
 
-        // 3. ejecutar binario
-        let run_status = Command::new("./output")
-            .status()
-            .expect("failed to execute program");
+    // Archivo temporal con el LLVM IR
+    fs::write("temp.ll", ir)
+        .expect("failed to write temporary LLVM IR");
 
-        if !run_status.success() {
-            eprintln!("Runtime error");
-            std::process::exit(1);
-        }
+    // Generar ejecutable final requerido por el contrato
+    let status = Command::new("clang")
+        .args(["temp.ll", "-o", "output"])
+        .status()
+        .expect("failed to run clang");
+
+    // Limpiar archivo temporal
+    let _ = fs::remove_file("temp.ll");
+
+    if !status.success() {
+        eprintln!("(0,0) SEMANTIC: LLVM compilation failed");
+        std::process::exit(3);
     }
 
+    // Compilación exitosa
     std::process::exit(0);
 }

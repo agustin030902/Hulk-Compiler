@@ -45,10 +45,10 @@ impl LlvmBackend {
                 }
 
                 let intrinsic = match function {
-                    BuiltinFunction::Sin => "llvm.sin.f64",
-                    BuiltinFunction::Cos => "llvm.cos.f64",
-                    BuiltinFunction::Sqrt => "llvm.sqrt.f64",
-                    BuiltinFunction::Exp => "llvm.exp.f64",
+                    BuiltinFunction::Sin => "sin",
+                    BuiltinFunction::Cos => "cos",
+                    BuiltinFunction::Sqrt => "sqrt",
+                    BuiltinFunction::Exp => "exp",
                     BuiltinFunction::Log => unreachable!("log handled in dedicated branch"),
                     BuiltinFunction::Rand => unreachable!("rand handled in dedicated branch"),
                     BuiltinFunction::Print => unreachable!("print handled in dedicated branch"),

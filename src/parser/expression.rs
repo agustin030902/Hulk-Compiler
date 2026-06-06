@@ -41,6 +41,7 @@ pub struct TypeParam {
 pub struct TypeAttribute {
     pub name: String,
     pub name_span: Span,
+    pub type_annotation: Option<TypeAnnotation>,
     pub value: Expr,
     pub span: Span,
 }

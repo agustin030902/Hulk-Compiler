@@ -81,6 +81,7 @@ fn main() {
     .args([
         "-Wno-override-module",
         "temp.ll",
+        "-lm",
         "-o",
         "output",
     ])

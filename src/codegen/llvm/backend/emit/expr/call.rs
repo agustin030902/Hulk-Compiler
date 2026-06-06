@@ -80,14 +80,14 @@ impl LlvmBackend {
 
                 let ln_base = self.next_temp();
                 self.emit_body(format!(
-                    "{ln_base} = call double @llvm.log.f64(double {})",
+                    "{ln_base} = call double @log(double {})",
                     base.repr
                 ));
 
                 let ln_value = self.next_temp();
                 self.emit_body(format!(
-                    "{ln_value} = call double @llvm.log.f64(double {})",
-                    value.repr
+                    "{ln_base} = call double @log(double {})",
+                    base.repr
                 ));
 
                 let result = self.next_temp();

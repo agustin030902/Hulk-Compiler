@@ -25,7 +25,7 @@ impl LlvmBackend {
 
                 let result = self.next_temp();
                 self.emit_body(format!(
-                    "{result} = call double @llvm.pow.f64(double {}, double {})",
+                    "{result} = call double @pow(double {}, double {})",
                     left.repr, right.repr
                 ));
 

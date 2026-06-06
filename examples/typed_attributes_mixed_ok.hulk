@@ -1,0 +1,12 @@
+type Counter(start: Number) {
+    n: Number = start;
+    label: String = "count";
+
+    getN(): Number => self.n;
+    getLabel(): String => self.label;
+}
+
+let c = new Counter(10) in {
+    if (c.getN() == 10) print("ok") else print("fail");
+    if (c.getLabel() == "count") print("ok") else print("fail");
+};

@@ -323,9 +323,39 @@ impl<'a> TypeChecker<'a> {
             let value_type = self
                 .check_expr(&attribute.value, source)
                 .unwrap_or(SemanticType::Unknown);
+
+            let annotated_type = attribute
+                .type_annotation
+                .as_ref()
+                .and_then(|annotation| {
+                    TypeResolver::resolve_annotation_type(self.analyzer, annotation, source)
+                });
+
+            let field_type = match annotated_type {
+                Some(annotation_type) => {
+                    if value_type != SemanticType::Unknown
+                        && value_type != annotation_type
+                    {
+                        self.analyzer.push_type_error(
+                            attribute.type_annotation.as_ref().unwrap().span,
+                            source,
+                            format!(
+                                "Type annotation for attribute '{}' in type '{}' expects {}, but initializer is {}.",
+                                attribute.name,
+                                type_decl.name,
+                                annotation_type.display_name(),
+                                value_type.display_name()
+                            ),
+                        );
+                    }
+                    annotation_type
+                }
+                None => value_type,
+            };
+
             fields.push((
                 attribute.name.clone(),
-                TypeResolver::semantic_type_to_type_id(self.analyzer, value_type),
+                TypeResolver::semantic_type_to_type_id(self.analyzer, field_type),
             ));
         }
 

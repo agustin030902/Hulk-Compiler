@@ -55,6 +55,10 @@ impl LlvmBackend {
             return false;
         };
 
+        if type_info.is_protocol {
+            return true;
+        }
+
         let mut offset = 0usize;
         let mut max_align = 1usize;
         let mut fields = HashMap::new();

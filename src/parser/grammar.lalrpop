@@ -155,9 +155,10 @@ TypeMembers: Vec<TypeMemberDecl> = {
 };
 
 TypeMember: TypeMemberDecl = {
-    <l:@L> <id:IdentifierWithSpan> "=" <value:Expr> ";" <r:@R> => TypeMemberDecl::Attribute(TypeAttribute {
+    <l:@L> <id:IdentifierWithSpan> <annotation:OptionalTypeAnnotation> "=" <value:Expr> ";" <r:@R> => TypeMemberDecl::Attribute(TypeAttribute {
         name: id.0,
         name_span: id.1,
+        type_annotation: annotation,
         value,
         span: Span::new(l, r),
     }),

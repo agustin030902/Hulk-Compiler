@@ -1,0 +1,12 @@
+protocol Serializable {
+    toString(): String;
+}
+
+type Person {
+    name = "anon";
+
+    toString(): String => self.name;
+    wrong(): Number => 1;
+}
+
+let p: Serializable = new Person() in print(p.wrong());

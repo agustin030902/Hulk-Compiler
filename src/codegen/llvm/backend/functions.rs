@@ -33,6 +33,12 @@ impl LlvmBackend {
             .map(|(name, type_id)| (name.clone(), type_id.0))
             .collect();
 
+        self.protocol_real_types = analyzer
+            .protocol_real_types()
+            .iter()
+            .map(|(name, type_id)| (name.clone(), type_id.0))
+            .collect();
+
         if !self.load_struct_layouts(&analyzer) {
             return false;
         }

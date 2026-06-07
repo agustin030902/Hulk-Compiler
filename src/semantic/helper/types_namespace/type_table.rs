@@ -35,6 +35,7 @@ impl TypeTable {
             fields: Vec::new(),
             methods: Vec::new(),
             parent: None,
+            is_protocol: false,
         }));
 
         Self {

@@ -13,6 +13,7 @@ impl Span {
 #[derive(Debug)]
 pub struct Program {
     pub types: Vec<TypeDecl>,
+    pub protocols: Vec<ProtocolDecl>,
     pub functions: Vec<FunctionDecl>,
     pub statements: Vec<Statement>,
 }
@@ -53,6 +54,25 @@ pub struct MethodDecl {
     pub params: Vec<FunctionParam>,
     pub return_type_annotation: Option<TypeAnnotation>,
     pub body: Expr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProtocolDecl {
+    pub name: String,
+    pub name_span: Span,
+    pub parent_name: Option<String>,
+    pub parent_span: Option<Span>,
+    pub methods: Vec<ProtocolMethodDecl>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProtocolMethodDecl {
+    pub name: String,
+    pub name_span: Span,
+    pub params: Vec<FunctionParam>,
+    pub return_type_annotation: TypeAnnotation,
     pub span: Span,
 }
 

@@ -208,7 +208,7 @@ impl LlvmBackend {
         &mut self,
         call: &MethodCallExpr,
     ) -> Option<ValueRef> {
-        let receiver = self.emit_expr(&call.receiver)?;
+        let mut receiver = self.emit_expr(&call.receiver)?;
         let ValueType::Struct(type_id) = receiver.value_type else {
             self.semantic_error(format!(
                 "Method call expects a struct instance receiver, but got {}.",
@@ -217,7 +217,20 @@ impl LlvmBackend {
             return None;
         };
 
-        let Some(method_key) = self.lookup_method_key(type_id, &call.method_name).cloned() else {
+        if let Expr::Variable { name, .. } = call.receiver.as_ref()
+            && let Some(&real_id) = self.protocol_real_types.get(name)
+            && real_id != type_id
+        {
+            receiver.value_type = ValueType::Struct(real_id);
+        }
+
+        let effective_type_id = if let ValueType::Struct(t) = receiver.value_type {
+            t
+        } else {
+            type_id
+        };
+
+        let Some(method_key) = self.lookup_method_key(effective_type_id, &call.method_name).cloned() else {
             self.semantic_error(format!(
                 "Method '{}' is not declared for this type.",
                 call.method_name

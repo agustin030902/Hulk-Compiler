@@ -1,0 +1,14 @@
+protocol Showable {
+    show(): String;
+}
+
+protocol Showable {
+    display(): String;
+}
+
+type A {
+    show(): String => "A";
+    display(): String => "A";
+}
+
+let a: Showable = new A() in print(a.show());

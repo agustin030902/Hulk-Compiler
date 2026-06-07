@@ -3,8 +3,8 @@ use crate::parser::expression::{
     AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction,
     DestructiveAssignExpr, ElifBranch, Expr, FunctionCallExpr, FunctionDecl, FunctionParam, IfExpr,
     LetBinding, LetInExpr, Literal, MemberAccessExpr, MethodCallExpr, MethodDecl, NewExpr, Program,
-    Span, Statement, TypeAnnotation, TypeAttribute, TypeDecl, TypeMemberDecl, TypeParam, UnaryExpr,
-    UnaryOp, WhileExpr,
+    ProtocolDecl, ProtocolMethodDecl, Span, Statement, TypeAnnotation, TypeAttribute, TypeDecl,
+    TypeMemberDecl, TypeParam, UnaryExpr, UnaryOp, WhileExpr,
 };
 
 grammar;
@@ -17,6 +17,8 @@ extern {
         "let" => TokenKind::Let,
         "function" => TokenKind::Function,
         "type" => TokenKind::Type,
+        "protocol" => TokenKind::Protocol,
+        "extends" => TokenKind::Extends,
         "new" => TokenKind::New,
         "while" => TokenKind::While,
         "if" => TokenKind::If,
@@ -71,10 +73,65 @@ extern {
 }
 
 pub Program: Program = {
-    <types:TypeDecls> <functions:FunctionDecls> <statements:Statements> "eof" => Program {
+    <protocols:ProtocolDecls> <types:TypeDecls> <functions:FunctionDecls> <statements:Statements> "eof" => Program {
         types,
+        protocols,
         functions,
         statements,
+    },
+};
+
+ProtocolDecls: Vec<ProtocolDecl> = {
+    => vec![],
+    <first:ProtocolDecl> <rest:ProtocolDecls> => {
+        let mut protocols = vec![first];
+        protocols.extend(rest);
+        protocols
+    },
+};
+
+ProtocolDecl: ProtocolDecl = {
+    <l:@L> "protocol" <id:IdentifierWithSpan> <inheritance:ProtocolInheritance> "{" <methods:ProtocolMembers> "}" <r:@R> => {
+        let (parent_name, parent_span) = inheritance;
+        ProtocolDecl {
+            name: id.0,
+            name_span: id.1,
+            parent_name,
+            parent_span,
+            methods,
+            span: Span::new(l, r),
+        }
+    },
+};
+
+ProtocolInheritance: (Option<String>, Option<Span>) = {
+    => (None, None),
+    <pl:@L> "extends" <parent_id:IdentifierWithSpan> <pr:@R> => (Some(parent_id.0), Some(Span::new(pl, pr))),
+};
+
+ProtocolMembers: Vec<ProtocolMethodDecl> = {
+    => vec![],
+    <first:ProtocolMember> <rest:ProtocolMembers> => {
+        let mut members = vec![first];
+        members.extend(rest);
+        members
+    },
+};
+
+ProtocolMember: ProtocolMethodDecl = {
+    <l:@L> <id:IdentifierWithSpan> "(" <params:FunctionParams> ")" ":" <return_annotation:RequiredTypeAnnotation> ";" <r:@R> => ProtocolMethodDecl {
+        name: id.0,
+        name_span: id.1,
+        params,
+        return_type_annotation: return_annotation,
+        span: Span::new(l, r),
+    },
+};
+
+RequiredTypeAnnotation: TypeAnnotation = {
+    <l:@L> <name:"identifier"> <r:@R> => TypeAnnotation {
+        name,
+        span: Span::new(l, r),
     },
 };
 

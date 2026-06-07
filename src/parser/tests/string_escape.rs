@@ -54,6 +54,8 @@ fn token(kind: TokenKind, start: usize, end: usize) -> Token {
         TokenKind::Let => "let".to_string(),
         TokenKind::Function => "function".to_string(),
         TokenKind::Type => "type".to_string(),
+        TokenKind::Protocol => "protocol".to_string(),
+        TokenKind::Extends => "extends".to_string(),
         TokenKind::New => "new".to_string(),
         TokenKind::While => "while".to_string(),
         TokenKind::If => "if".to_string(),

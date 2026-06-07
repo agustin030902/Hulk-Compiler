@@ -1,0 +1,28 @@
+protocol Walker {
+    walk(): Animal;
+    greet(other: Animal): String;
+}
+
+type Animal {
+    name = "animal";
+    speak(): String => "...";
+}
+
+type Dog inherits Animal {
+    speak(): String => "woof";
+}
+
+type Cat inherits Animal {
+    speak(): String => "meow";
+}
+
+type DogWalker {
+    name = "dw";
+    walk(): Dog => new Dog();
+    greet(other: Animal): String => "hi " @ other.speak();
+}
+
+let w: Walker = new DogWalker() in {
+    print(w.walk().speak());
+    print(w.greet(new Cat()));
+};

@@ -1,0 +1,9 @@
+protocol Hashable {
+    hash(): Number;
+}
+
+type Person {
+    name = "p";
+}
+
+let p: Hashable = new Person() in print(p.hash());

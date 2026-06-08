@@ -75,6 +75,8 @@ fn token(kind: TokenKind, start: usize, end: usize) -> Token {
         TokenKind::In => "in".to_string(),
         TokenKind::Null => "null".to_string(),
         TokenKind::Inherits => "inherits".to_string(),
+        TokenKind::Is => "is".to_string(),
+        TokenKind::As => "as".to_string(),
         TokenKind::Assign => "=".to_string(),
         TokenKind::Arrow => "=>".to_string(),
         TokenKind::DestructiveAssign => ":=".to_string(),

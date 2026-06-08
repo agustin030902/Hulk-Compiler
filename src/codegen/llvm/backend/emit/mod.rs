@@ -11,6 +11,8 @@ use crate::codegen::llvm::helper::state::ValueRef;
 
 impl LlvmBackend {
     pub(in crate::codegen::llvm) fn emit_program(&mut self, program: &Program) {
+        self.emit_type_hierarchy_globals();
+
         let mut emitted_types: Vec<String> = Vec::new();
         for type_decl in &program.types {
             emitted_types.push(type_decl.name.clone());

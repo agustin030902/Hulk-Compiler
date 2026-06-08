@@ -50,6 +50,18 @@ impl LlvmBackend {
             layout.size_bytes
         ));
 
+        let tag_ptr = self.next_temp();
+        self.emit_body(format!(
+            "{tag_ptr} = getelementptr i8, i8* {object_ptr}, i64 0"
+        ));
+        let tag_ptr_i64 = self.next_temp();
+        self.emit_body(format!(
+            "{tag_ptr_i64} = bitcast i8* {tag_ptr} to i64*"
+        ));
+        self.emit_body(format!(
+            "store i64 {type_id}, i64* {tag_ptr_i64}"
+        ));
+
         self.push_scope();
 
         for (param, value) in type_decl.params.iter().zip(ctor_values.iter()) {

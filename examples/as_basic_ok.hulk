@@ -1,0 +1,7 @@
+type Animal { value: Number = 0; }
+type Bird inherits Animal { }
+type Dog inherits Animal { }
+
+let x = new Bird();
+let y = x as Animal;
+print(y is Animal);

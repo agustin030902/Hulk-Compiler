@@ -1,0 +1,11 @@
+type Animal { name: String = "unknown"; }
+type Bird inherits Animal { }
+type Dog inherits Animal { }
+
+let x = new Bird();
+let y = new Dog();
+
+print(x is Animal);
+print(y is Animal);
+print(x is Bird);
+print(x is Dog);

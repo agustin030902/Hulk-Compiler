@@ -653,6 +653,8 @@ fn classify_highlight_role(tokens: &[Token], idx: usize) -> HighlightRole {
         | TokenKind::Extends
         | TokenKind::New
         | TokenKind::While
+        | TokenKind::For
+        | TokenKind::Range
         | TokenKind::In
         | TokenKind::If
         | TokenKind::Else

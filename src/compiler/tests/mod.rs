@@ -1,4 +1,5 @@
 mod destructive_assign;
+mod for_expr;
 mod let_in;
 mod print_expr;
 mod rand_expression;

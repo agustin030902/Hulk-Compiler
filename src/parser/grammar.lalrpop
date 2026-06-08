@@ -21,6 +21,8 @@ extern {
         "extends" => TokenKind::Extends,
         "new" => TokenKind::New,
         "while" => TokenKind::While,
+        "for" => TokenKind::For,
+        "range" => TokenKind::Range,
         "if" => TokenKind::If,
         "elif" => TokenKind::Elif,
         "else" => TokenKind::Else,
@@ -327,6 +329,7 @@ Statement: Statement = {
         value,
         span: Span::new(l, r),
     },
+    ForStatement,
     <l:@L> <id:IdentifierWithSpan> "=" <value:Expr> <r:@R> => Statement::Assign {
         name: id.0,
         name_span: id.1,
@@ -336,6 +339,74 @@ Statement: Statement = {
     <l:@L> <value:Expr> <r:@R> => Statement::Expr {
         value,
         span: Span::new(l, r),
+    },
+};
+
+ForStatement: Statement = {
+    <l:@L> "for" "(" <id:IdentifierWithSpan> "in" <iter:Expr> ")" <body:BlockExpr> <r:@R> =>? {
+        let Expr::Block(body_block) = body else {
+            return Err(lalrpop_util::ParseError::User {
+                error: "for body must be a block".to_string(),
+            });
+        };
+        let zero = Span::new(0, 0);
+        let iter_var_name = "__hulk_iter__".to_string();
+        let iter_ref = Expr::Variable {
+            name: iter_var_name.clone(),
+            span: zero,
+        };
+        let condition = Expr::MethodCall(MethodCallExpr {
+            receiver: Box::new(iter_ref.clone()),
+            method_name: "next".to_string(),
+            method_name_span: zero,
+            args: Vec::new(),
+            span: zero,
+        });
+        let current_value = Expr::MethodCall(MethodCallExpr {
+            receiver: Box::new(iter_ref),
+            method_name: "current".to_string(),
+            method_name_span: zero,
+            args: Vec::new(),
+            span: zero,
+        });
+        let inner_binding = LetBinding {
+            name: id.0,
+            type_annotation: None,
+            value: current_value,
+            span: zero,
+        };
+        let inner_let_in = Expr::LetIn(LetInExpr {
+            bindings: vec![inner_binding],
+            body: Box::new(Expr::Block(body_block)),
+            span: zero,
+        });
+        let while_body = BlockExpr {
+            statements: vec![Statement::Expr {
+                value: inner_let_in,
+                span: zero,
+            }],
+            span: zero,
+        };
+        let while_loop = Expr::While(WhileExpr {
+            condition: Box::new(condition),
+            body: while_body,
+            span: zero,
+        });
+        let outer_binding = LetBinding {
+            name: iter_var_name,
+            type_annotation: None,
+            value: iter,
+            span: zero,
+        };
+        let let_in = Expr::LetIn(LetInExpr {
+            bindings: vec![outer_binding],
+            body: Box::new(while_loop),
+            span: zero,
+        });
+        Ok(Statement::Expr {
+            value: let_in,
+            span: Span::new(l, r),
+        })
     },
 };
 
@@ -682,6 +753,12 @@ BuiltinCallExpr: Expr = {
     <l:@L> "rand" "(" ")" <r:@R> => Expr::BuiltinCall(BuiltinCallExpr {
         function: BuiltinFunction::Rand,
         args: vec![],
+        span: Span::new(l, r),
+    }),
+    <l:@L> "range" "(" <min:Expr> "," <max:Expr> ")" <r:@R> => Expr::New(NewExpr {
+        type_name: "Range".to_string(),
+        type_name_span: Span::new(l, r),
+        args: vec![min, max],
         span: Span::new(l, r),
     }),
 };

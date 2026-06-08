@@ -102,7 +102,7 @@ print(f(1));
         "expected redeclaration error, got: {:?}",
         errors
     );
-    assert_eq!(analyzer.function_symbols().len(), 1);
+    assert_eq!(analyzer.function_symbols().len(), 5);
 }
 
 #[test]

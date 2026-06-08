@@ -58,6 +58,8 @@ fn token(kind: TokenKind, start: usize, end: usize) -> Token {
         TokenKind::Extends => "extends".to_string(),
         TokenKind::New => "new".to_string(),
         TokenKind::While => "while".to_string(),
+        TokenKind::For => "for".to_string(),
+        TokenKind::Range => "range".to_string(),
         TokenKind::If => "if".to_string(),
         TokenKind::Elif => "elif".to_string(),
         TokenKind::Else => "else".to_string(),

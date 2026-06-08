@@ -1,6 +1,7 @@
 mod analyzer;
+pub mod builtins;
 mod helper;
-mod pipeline;
+pub(in crate::semantic) mod pipeline;
 #[cfg(test)]
 mod tests;
 

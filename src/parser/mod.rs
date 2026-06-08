@@ -126,6 +126,8 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::Extends => "extends".to_string(),
         TokenKind::New => "new".to_string(),
         TokenKind::While => "while".to_string(),
+        TokenKind::For => "for".to_string(),
+        TokenKind::Range => "range".to_string(),
         TokenKind::Print => "print".to_string(),
         TokenKind::Pi => "PI".to_string(),
         TokenKind::E => "E".to_string(),

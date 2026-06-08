@@ -144,6 +144,8 @@ pub enum Expr {
     Block(BlockExpr),
     While(WhileExpr),
     If(IfExpr),
+    Is(IsExpr),
+    As(AsExpr),
     Literal { value: Literal, span: Span },
     Variable { name: String, span: Span },
 }
@@ -163,6 +165,8 @@ impl Expr {
             Expr::Block(block) => block.span,
             Expr::While(while_expr) => while_expr.span,
             Expr::If(if_expr) => if_expr.span,
+            Expr::Is(is_expr) => is_expr.span,
+            Expr::As(as_expr) => as_expr.span,
             Expr::Literal { span, .. } => *span,
             Expr::Variable { span, .. } => *span,
         }
@@ -289,6 +293,22 @@ pub struct IfExpr {
     pub then_branch: Box<Expr>,
     pub elif_branches: Vec<ElifBranch>,
     pub else_branch: Box<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct IsExpr {
+    pub expr: Box<Expr>,
+    pub target_type: String,
+    pub target_type_span: Span,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct AsExpr {
+    pub expr: Box<Expr>,
+    pub target_type: String,
+    pub target_type_span: Span,
     pub span: Span,
 }
 

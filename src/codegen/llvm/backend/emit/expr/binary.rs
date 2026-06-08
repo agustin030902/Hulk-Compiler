@@ -134,8 +134,8 @@ impl LlvmBackend {
                     } else {
                         "!="
                     },
-                    left.value_type.display_name(),
-                    right.value_type.display_name()
+                    self.type_name_for_value_type(left.value_type),
+                    self.type_name_for_value_type(right.value_type)
                 ));
                 return None;
             }
@@ -308,8 +308,8 @@ impl LlvmBackend {
                     "Operator '@' expects (String, String), (String, Number), \
                      (Number, String), (Boolean, String), or (String, Boolean), \
                      but got {} and {} in code generation.",
-                    left.value_type.display_name(),
-                    right.value_type.display_name()
+                    self.type_name_for_value_type(left.value_type),
+                    self.type_name_for_value_type(right.value_type)
                 ));
                 return None;
             }

@@ -40,7 +40,7 @@ impl<'a> TypeChecker<'a> {
                 source,
                 format!(
                     "Function 'print' cannot print values of type {}.",
-                    arg_type.display_name()
+                    arg_type.display_name_with_table(&self.analyzer.type_table)
                 ),
             );
             return None;
@@ -105,7 +105,7 @@ impl<'a> TypeChecker<'a> {
                         format!(
                             "Function '{}' expects Number, but got {}.",
                             function.name(),
-                            arg_type.display_name()
+                            arg_type.display_name_with_table(&self.analyzer.type_table)
                         ),
                     );
                     None
@@ -151,8 +151,8 @@ impl<'a> TypeChecker<'a> {
                         source,
                         format!(
                             "Function 'log' expects (Number, Number), but got {} and {}.",
-                            left_type.display_name(),
-                            right_type.display_name()
+                            left_type.display_name_with_table(&self.analyzer.type_table),
+                            right_type.display_name_with_table(&self.analyzer.type_table)
                         ),
                     );
                     None

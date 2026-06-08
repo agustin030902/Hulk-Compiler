@@ -192,8 +192,8 @@ impl ProtocolChecker {
                         "Type does not conform to protocol: method '{}' argument #{} has incompatible variance: expected {} (contravariant) in protocol, got {}.",
                         method_name,
                         index + 1,
-                        proto_t.display_name(),
-                        impl_t.display_name()
+                        proto_t.display_name_with_table(&analyzer.type_table),
+                        impl_t.display_name_with_table(&analyzer.type_table)
                     ),
                 );
                 return None;
@@ -208,8 +208,8 @@ impl ProtocolChecker {
                 format!(
                     "Type does not conform to protocol: method '{}' return type is incompatible (covariant): expected {} in protocol, got {}.",
                     method_name,
-                    protocol_signature.return_type.display_name(),
-                    impl_signature.return_type.display_name()
+                    protocol_signature.return_type.display_name_with_table(&analyzer.type_table),
+                    impl_signature.return_type.display_name_with_table(&analyzer.type_table)
                 ),
             );
             return None;

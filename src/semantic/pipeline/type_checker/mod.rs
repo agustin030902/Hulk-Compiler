@@ -189,8 +189,8 @@ impl<'a> TypeChecker<'a> {
                     format!(
                         "Type annotation for variable '{}' expects {}, but initializer is {}.",
                         variable_name,
-                        annotation_type.display_name(),
-                        value_type.display_name()
+                        annotation_type.display_name_with_table(&self.analyzer.type_table),
+                        value_type.display_name_with_table(&self.analyzer.type_table)
                     ),
                 );
             }
@@ -209,8 +209,8 @@ impl<'a> TypeChecker<'a> {
                     format!(
                         "Type annotation for variable '{}' expects {}, but initializer is {}.",
                         variable_name,
-                        annotation_type.display_name(),
-                        value_type.display_name()
+                        annotation_type.display_name_with_table(&self.analyzer.type_table),
+                        value_type.display_name_with_table(&self.analyzer.type_table)
                     ),
                 );
             }
@@ -248,7 +248,7 @@ impl<'a> TypeChecker<'a> {
                     .get_struct(annotation_id)
                     .map(|info| info.name.clone())
                     .unwrap_or_default(),
-                value_type.display_name()
+                value_type.display_name_with_table(&self.analyzer.type_table)
             ),
         );
         annotation_type
@@ -439,22 +439,22 @@ impl<'a> TypeChecker<'a> {
                     })
                     .unwrap_or(SemanticType::Unknown);
 
-                if expected_type != SemanticType::Unknown
-                    && arg_type != SemanticType::Unknown
-                    && !self.types_compatible(expected_type, arg_type)
-                {
-                    self.analyzer.push_type_error(
-                        arg.span(),
-                        source,
-                        format!(
-                            "Parent type '{}' constructor argument #{} expects {}, but got {}.",
-                            parent_name,
-                            index + 1,
-                            expected_type.display_name(),
-                            arg_type.display_name()
-                        ),
-                    );
-                }
+                    if expected_type != SemanticType::Unknown
+                        && arg_type != SemanticType::Unknown
+                        && !self.types_compatible(expected_type, arg_type)
+                    {
+                        self.analyzer.push_type_error(
+                            arg.span(),
+                            source,
+                            format!(
+                                "Parent type '{}' constructor argument #{} expects {}, but got {}.",
+                                parent_name,
+                                index + 1,
+                                expected_type.display_name_with_table(&self.analyzer.type_table),
+                                arg_type.display_name_with_table(&self.analyzer.type_table)
+                            ),
+                        );
+                    }
             }
         }
 
@@ -497,8 +497,8 @@ impl<'a> TypeChecker<'a> {
                                 "Type annotation for attribute '{}' in type '{}' expects {}, but initializer is {}.",
                                 attribute.name,
                                 type_decl.name,
-                                annotation_type.display_name(),
-                                value_type.display_name()
+                                annotation_type.display_name_with_table(&self.analyzer.type_table),
+                                value_type.display_name_with_table(&self.analyzer.type_table)
                             ),
                         );
                     }

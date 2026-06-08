@@ -63,8 +63,8 @@
 //             if elif_value.value_type != result_type {
 //                 self.semantic_error(format!(
 //                     "Elif branch returns {} but expected {}",
-//                     elif_value.value_type.display_name(),
-//                     result_type.display_name()
+//                     self.type_name_for_value_type(elif_value.value_type),
+//                     self.type_name_for_value_type(result_type)
 //                 ));
 //                 return None;
 //             }
@@ -80,8 +80,8 @@
 //         if else_value.value_type != result_type {
 //             self.semantic_error(format!(
 //                 "Else branch returns {} but expected {}",
-//                 else_value.value_type.display_name(),
-//                 result_type.display_name()
+//                 self.type_name_for_value_type(else_value.value_type),
+//                 self.type_name_for_value_type(result_type)
 //             ));
 //             return None;
 //         }
@@ -207,8 +207,8 @@ impl LlvmBackend {
                 if elif_value.value_type != result_type {
                     self.semantic_error(format!(
                         "Elif branch returns {} but expected {}",
-                        elif_value.value_type.display_name(),
-                        result_type.display_name()
+                        self.type_name_for_value_type(elif_value.value_type),
+                        self.type_name_for_value_type(result_type)
                     ));
                     return None;
                 }
@@ -242,8 +242,8 @@ impl LlvmBackend {
             if else_value.value_type != result_type {
                 self.semantic_error(format!(
                     "Else branch returns {} but expected {}",
-                    else_value.value_type.display_name(),
-                    result_type.display_name()
+                    self.type_name_for_value_type(else_value.value_type),
+                    self.type_name_for_value_type(result_type)
                 ));
                 return None;
             }

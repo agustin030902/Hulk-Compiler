@@ -12,7 +12,7 @@ impl LlvmBackend {
         let ValueType::Struct(type_id) = object.value_type else {
             self.semantic_error(format!(
                 "Member access expects a struct instance, but got {}.",
-                object.value_type.display_name()
+                self.type_name_for_value_type(object.value_type)
             ));
             return None;
         };

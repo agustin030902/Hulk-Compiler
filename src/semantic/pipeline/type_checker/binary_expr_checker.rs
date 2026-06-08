@@ -46,8 +46,8 @@ impl<'a> TypeChecker<'a> {
                         format!(
                             "Operator '{}' expects Number and Number, but got {} and {}.",
                             op_name,
-                            left_type.display_name(),
-                            right_type.display_name()
+                            left_type.display_name_with_table(&self.analyzer.type_table),
+                            right_type.display_name_with_table(&self.analyzer.type_table)
                         ),
                     );
                     None
@@ -87,8 +87,8 @@ impl<'a> TypeChecker<'a> {
                         source,
                         format!(
                             "Operator '@' expects (String, String), (String, Number), or (Number, String), but got {} and {}.",
-                            left_type.display_name(),
-                            right_type.display_name()
+                            left_type.display_name_with_table(&self.analyzer.type_table),
+                            right_type.display_name_with_table(&self.analyzer.type_table)
                         ),
                     );
                     None
@@ -128,8 +128,8 @@ impl<'a> TypeChecker<'a> {
                         source,
                         format!(
                             "Operator '@@' expects (String, String), (String, Number), or (Number, String), but got {} and {}.",
-                            left_type.display_name(),
-                            right_type.display_name()
+                            left_type.display_name_with_table(&self.analyzer.type_table),
+                            right_type.display_name_with_table(&self.analyzer.type_table)
                         ),
                     );
                     None
@@ -166,8 +166,8 @@ impl<'a> TypeChecker<'a> {
                         format!(
                             "Comparison operator '{}' expects Number and Number, but got {} and {}.",
                             op_symbol(binary.op.clone()),
-                            left_type.display_name(),
-                            right_type.display_name()
+                            left_type.display_name_with_table(&self.analyzer.type_table),
+                            right_type.display_name_with_table(&self.analyzer.type_table)
                         ),
                     );
                     None
@@ -206,8 +206,8 @@ impl<'a> TypeChecker<'a> {
                         format!(
                             "Operator '{}' compares 'Null' only with nullable operands, but got {} and {}.",
                             op_symbol(binary.op.clone()),
-                            left_type.display_name(),
-                            right_type.display_name()
+                            left_type.display_name_with_table(&self.analyzer.type_table),
+                            right_type.display_name_with_table(&self.analyzer.type_table)
                         ),
                     );
                     return None;
@@ -220,8 +220,8 @@ impl<'a> TypeChecker<'a> {
                         format!(
                             "Operator '{}' expects operands of the same type, but got {} and {}.",
                             op_symbol(binary.op.clone()),
-                            left_type.display_name(),
-                            right_type.display_name()
+                            left_type.display_name_with_table(&self.analyzer.type_table),
+                            right_type.display_name_with_table(&self.analyzer.type_table)
                         ),
                     );
                     return None;

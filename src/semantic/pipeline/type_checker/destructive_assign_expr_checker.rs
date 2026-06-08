@@ -70,7 +70,7 @@ impl<'a> TypeChecker<'a> {
                         source,
                         format!(
                             "Member assignment expects a struct instance, but got {}.",
-                            receiver_type.display_name()
+                            receiver_type.display_name_with_table(&self.analyzer.type_table)
                         ),
                     );
                     return None;
@@ -120,8 +120,8 @@ impl<'a> TypeChecker<'a> {
                         source,
                         format!(
                             "Destructive assignment ':=' requires type {}, but expression is {}.",
-                            expected_type.display_name(),
-                            value_type.display_name()
+                            expected_type.display_name_with_table(&self.analyzer.type_table),
+                            value_type.display_name_with_table(&self.analyzer.type_table)
                         ),
                     );
                     return None;

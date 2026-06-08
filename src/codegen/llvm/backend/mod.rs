@@ -11,7 +11,7 @@ use crate::{
     parser::expression::{Program, TypeDecl},
 };
 
-use super::helper::state::{ValueRef, VariableInfo};
+use super::helper::state::{ValueRef, ValueType, VariableInfo};
 use functions::FunctionInfo;
 use layout::StructLayout;
 
@@ -97,6 +97,19 @@ impl LlvmBackend {
     pub(super) fn semantic_error(&mut self, message: impl Into<String>) {
         self.errors
             .push(CompilerError::new(ErrorCategory::Semantic, message, 1, 1));
+    }
+
+    pub(super) fn type_name_for_value_type(&self, vt: ValueType) -> String {
+        match vt {
+            ValueType::Struct(id) => {
+                self.type_ids
+                    .iter()
+                    .find(|(_, tid)| **tid == id)
+                    .map(|(name, _)| name.clone())
+                    .unwrap_or_else(|| "Struct".to_string())
+            }
+            _ => vt.display_name().to_string(),
+        }
     }
 
     pub(super) fn push_scope(&mut self) {

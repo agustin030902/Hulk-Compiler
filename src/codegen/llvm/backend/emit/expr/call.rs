@@ -160,8 +160,8 @@ impl LlvmBackend {
                     "Function '{}' argument #{} expects {}, but got {}.",
                     call.name,
                     index + 1,
-                    expected.display_name(),
-                    value.value_type.display_name()
+                    self.type_name_for_value_type(expected),
+                    self.type_name_for_value_type(value.value_type)
                 ));
                 return None;
             }
@@ -171,8 +171,8 @@ impl LlvmBackend {
                     "Function '{}' argument #{} expects {}, but got {}.",
                     call.name,
                     index + 1,
-                    expected.display_name(),
-                    value.value_type.display_name()
+                    self.type_name_for_value_type(expected),
+                    self.type_name_for_value_type(value.value_type)
                 ));
                 return None;
             };
@@ -212,7 +212,7 @@ impl LlvmBackend {
         let ValueType::Struct(type_id) = receiver.value_type else {
             self.semantic_error(format!(
                 "Method call expects a struct instance receiver, but got {}.",
-                receiver.value_type.display_name()
+                self.type_name_for_value_type(receiver.value_type)
             ));
             return None;
         };
@@ -268,8 +268,8 @@ impl LlvmBackend {
                     "Method '{}' argument #{} expects {}, but got {}.",
                     call.method_name,
                     index + 1,
-                    expected.display_name(),
-                    value.value_type.display_name()
+                    self.type_name_for_value_type(expected),
+                    self.type_name_for_value_type(value.value_type)
                 ));
                 return None;
             }
@@ -279,8 +279,8 @@ impl LlvmBackend {
                     "Method '{}' argument #{} expects {}, but got {}.",
                     call.method_name,
                     index + 1,
-                    expected.display_name(),
-                    value.value_type.display_name()
+                    self.type_name_for_value_type(expected),
+                    self.type_name_for_value_type(value.value_type)
                 ));
                 return None;
             };

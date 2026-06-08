@@ -89,8 +89,8 @@ impl LlvmBackend {
                 "Method '{}.{}' returns {} but inferred signature expects {}.",
                 type_decl.name,
                 method.name,
-                result.value_type.display_name(),
-                info.return_type.display_name()
+                self.type_name_for_value_type(result.value_type),
+                self.type_name_for_value_type(info.return_type)
             ));
             self.scopes = saved_scopes;
             self.body_lines = saved_body;

@@ -22,9 +22,9 @@ use eframe::egui::{
 use error::CompilerError;
 use lexer::{Lexer, Token, TokenKind};
 use parser::expression::{
-    AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, DestructiveAssignExpr, Expr,
-    FunctionCallExpr, FunctionDecl, IfExpr, LetInExpr, Literal, MemberAccessExpr, MethodCallExpr,
-    NewExpr, Program, Span, Statement, UnaryExpr, UnaryOp, WhileExpr,
+    AssignTarget, AsExpr, BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, DestructiveAssignExpr,
+    Expr, FunctionCallExpr, FunctionDecl, IfExpr, IsExpr, LetInExpr, Literal, MemberAccessExpr,
+    MethodCallExpr, NewExpr, Program, Span, Statement, UnaryExpr, UnaryOp, WhileExpr,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -659,7 +659,9 @@ fn classify_highlight_role(tokens: &[Token], idx: usize) -> HighlightRole {
         | TokenKind::If
         | TokenKind::Else
         | TokenKind::Elif
-        | TokenKind::Inherits => HighlightRole::Keyword,
+        | TokenKind::Inherits
+        | TokenKind::Is
+        | TokenKind::As => HighlightRole::Keyword,
         TokenKind::Print
         | TokenKind::Sin
         | TokenKind::Cos
@@ -888,6 +890,8 @@ fn render_expr_tree(ui: &mut egui::Ui, expr: &Expr, label: &str, query: &str) {
         Expr::Block(block) => render_block_tree(ui, block, label, query),
         Expr::While(while_expr) => render_while_tree(ui, while_expr, label, query),
         Expr::If(if_expr) => render_if_tree(ui, if_expr, label, query),
+        Expr::Is(is_expr) => render_is_tree(ui, is_expr, label, query),
+        Expr::As(as_expr) => render_as_tree(ui, as_expr, label, query),
     }
 }
 
@@ -1146,6 +1150,36 @@ fn render_if_tree(ui: &mut egui::Ui, if_expr: &IfExpr, label: &str, query: &str)
         }
 
         render_expr_tree(ui, &if_expr.else_branch, "else", query);
+    });
+}
+
+fn render_is_tree(ui: &mut egui::Ui, is_expr: &IsExpr, label: &str, query: &str) {
+    CollapsingHeader::new(match_rich_text(
+        format!(
+            "{label}: Is '{}' [{}]",
+            is_expr.target_type,
+            span_text(is_expr.span),
+        ),
+        query,
+    ))
+    .default_open(true)
+    .show(ui, |ui| {
+        render_expr_tree(ui, &is_expr.expr, "expr", query);
+    });
+}
+
+fn render_as_tree(ui: &mut egui::Ui, as_expr: &AsExpr, label: &str, query: &str) {
+    CollapsingHeader::new(match_rich_text(
+        format!(
+            "{label}: As '{}' [{}]",
+            as_expr.target_type,
+            span_text(as_expr.span),
+        ),
+        query,
+    ))
+    .default_open(true)
+    .show(ui, |ui| {
+        render_expr_tree(ui, &as_expr.expr, "expr", query);
     });
 }
 

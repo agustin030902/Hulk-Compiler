@@ -1,10 +1,10 @@
 use crate::lexer::TokenKind;
 use crate::parser::expression::{
-    AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction,
+    AsExpr, AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction,
     DestructiveAssignExpr, ElifBranch, Expr, FunctionCallExpr, FunctionDecl, FunctionParam, IfExpr,
-    LetBinding, LetInExpr, Literal, MemberAccessExpr, MethodCallExpr, MethodDecl, NewExpr, Program,
-    ProtocolDecl, ProtocolMethodDecl, Span, Statement, TypeAnnotation, TypeAttribute, TypeDecl,
-    TypeMemberDecl, TypeParam, UnaryExpr, UnaryOp, WhileExpr,
+    IsExpr, LetBinding, LetInExpr, Literal, MemberAccessExpr, MethodCallExpr, MethodDecl, NewExpr,
+    Program, ProtocolDecl, ProtocolMethodDecl, Span, Statement, TypeAnnotation, TypeAttribute,
+    TypeDecl, TypeMemberDecl, TypeParam, UnaryExpr, UnaryOp, WhileExpr,
 };
 
 grammar;
@@ -38,6 +38,8 @@ extern {
         "in" => TokenKind::In,
         "null" => TokenKind::Null,
         "inherits" => TokenKind::Inherits,
+        "is" => TokenKind::Is,
+        "as" => TokenKind::As,
         ":=" => TokenKind::DestructiveAssign,
         ":" => TokenKind::Colon,
         "=>" => TokenKind::Arrow,
@@ -510,16 +512,32 @@ LogicalAnd: Expr = {
 };
 
 Equality: Expr = {
-    <l:@L> <left:Equality> "==" <right:Comparison> <r:@R> => Expr::Binary(BinaryExpr {
+    <l:@L> <left:Equality> "==" <right:AsExpr> <r:@R> => Expr::Binary(BinaryExpr {
         left: Box::new(left),
         op: BinaryOp::Equal,
         right: Box::new(right),
         span: Span::new(l, r),
     }),
-    <l:@L> <left:Equality> "!=" <right:Comparison> <r:@R> => Expr::Binary(BinaryExpr {
+    <l:@L> <left:Equality> "!=" <right:AsExpr> <r:@R> => Expr::Binary(BinaryExpr {
         left: Box::new(left),
         op: BinaryOp::NotEqual,
         right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Equality> "is" <target:IdentifierWithSpan> <r:@R> => Expr::Is(IsExpr {
+        expr: Box::new(left),
+        target_type: target.0,
+        target_type_span: target.1,
+        span: Span::new(l, r),
+    }),
+    AsExpr,
+};
+
+AsExpr: Expr = {
+    <l:@L> <expr:Comparison> "as" <target:IdentifierWithSpan> <r:@R> => Expr::As(AsExpr {
+        expr: Box::new(expr),
+        target_type: target.0,
+        target_type_span: target.1,
         span: Span::new(l, r),
     }),
     Comparison,

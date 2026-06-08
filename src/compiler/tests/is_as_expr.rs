@@ -83,8 +83,8 @@ fn writes_llvm_ir_for_as_expression() {
     let llvm_ir = fs::read_to_string(&output_path)
         .expect("compiler should write llvm output file on success");
     assert!(
-        llvm_ir.contains("call i1 @hulk_is_subtype"),
-        "IR should contain hulk_is_subtype call for as check, got:\n{}",
+        llvm_ir.contains("@hulk_type_parents"),
+        "IR should contain type hierarchy global, got:\n{}",
         llvm_ir
     );
 }

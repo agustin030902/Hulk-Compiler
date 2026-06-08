@@ -350,7 +350,16 @@ impl ProtocolChecker {
                     .is_some_and(|(info_a, info_b)| !info_a.is_protocol && !info_b.is_protocol)
                     && Self::is_subtype(analyzer, b_id, a_id)
             }
-            _ => false,
+            (SemanticType::Struct(_), _) => false,
+            _ => {
+                if left == right {
+                    return true;
+                }
+                if let SemanticType::Struct(b) = right {
+                    return b == analyzer.type_table.object.0;
+                }
+                false
+            }
         }
     }
 

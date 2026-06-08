@@ -4,7 +4,7 @@ use super::super::{
     analyzer::SemanticAnalyzer,
     helper::{FunctionSignature, FunctionSymbol, SemanticType, StructTypeInfo, TypeId},
 };
-use super::TypeResolver;
+use super::{ProtocolChecker, TypeResolver};
 
 pub(in crate::semantic) struct SymbolCollector;
 
@@ -520,38 +520,6 @@ impl SymbolCollector {
                     );
                 }
 
-                if let Some(parent_signature) = Self::find_protocol_method_in_parent(
-                    analyzer,
-                    receiver_type_id,
-                    &method.name,
-                ) {
-                    let params_compatible = param_types
-                        .iter()
-                        .zip(parent_signature.param_types.iter())
-                        .all(|(p_t, pp_t)| Self::variance_param_compatible(*p_t, *pp_t, analyzer));
-                    let arity_matches = param_types.len() == parent_signature.param_types.len();
-                    let return_compatible = Self::variance_return_compatible(
-                        return_type,
-                        parent_signature.return_type,
-                        analyzer,
-                    );
-
-                    if !arity_matches
-                        || !params_compatible
-                        || !return_compatible
-                    {
-                        analyzer.push_semantic_error(
-                            method.name_span,
-                            source,
-                            format!(
-                                "Method '{}' override in protocol '{}' does not respect variance constraints of parent protocol.",
-                                method.name, protocol_decl.name
-                            ),
-                        );
-                        continue;
-                    }
-                }
-
                 let param_type_ids = param_types
                     .iter()
                     .copied()
@@ -590,97 +558,8 @@ impl SymbolCollector {
                 }
             }
         }
-    }
 
-    fn find_protocol_method_in_parent(
-        analyzer: &SemanticAnalyzer,
-        type_id: TypeId,
-        method_name: &str,
-    ) -> Option<FunctionSignature> {
-        let parent_id = analyzer.type_table.get_struct(type_id)?.parent?;
-        if !analyzer
-            .type_table
-            .get_struct(parent_id)
-            .is_some_and(|info| info.is_protocol)
-        {
-            return None;
-        }
-        let key = Self::method_symbol_key(parent_id, method_name);
-        if let Some(signature) = analyzer.functions.get(&key) {
-            return Some(signature.clone());
-        }
-        Self::find_protocol_method_in_parent(analyzer, parent_id, method_name)
-    }
-
-    fn variance_param_compatible(
-        impl_type: SemanticType,
-        protocol_type: SemanticType,
-        analyzer: &SemanticAnalyzer,
-    ) -> bool {
-        Self::variance_compatible(impl_type, protocol_type, true, analyzer)
-    }
-
-    fn variance_return_compatible(
-        impl_type: SemanticType,
-        protocol_type: SemanticType,
-        analyzer: &SemanticAnalyzer,
-    ) -> bool {
-        Self::variance_compatible(impl_type, protocol_type, false, analyzer)
-    }
-
-    fn variance_compatible(
-        impl_type: SemanticType,
-        protocol_type: SemanticType,
-        contravariant: bool,
-        analyzer: &SemanticAnalyzer,
-    ) -> bool {
-        if impl_type == SemanticType::Unknown || protocol_type == SemanticType::Unknown {
-            return true;
-        }
-        if impl_type == protocol_type {
-            return true;
-        }
-        let (left, right) = if contravariant {
-            (protocol_type, impl_type)
-        } else {
-            (impl_type, protocol_type)
-        };
-        match (left, right) {
-            (SemanticType::Struct(a), SemanticType::Struct(b)) => {
-                let a_id = TypeId(a);
-                let b_id = TypeId(b);
-                analyzer
-                    .type_table
-                    .get_struct(a_id)
-                    .zip(analyzer.type_table.get_struct(b_id))
-                    .is_some_and(|(info_a, info_b)| !info_a.is_protocol && !info_b.is_protocol)
-                    && Self::is_subtype(analyzer, b_id, a_id)
-            }
-            _ => false,
-        }
-    }
-
-    fn is_subtype(analyzer: &SemanticAnalyzer, child: TypeId, parent: TypeId) -> bool {
-        if child == parent {
-            return true;
-        }
-        if parent == analyzer.type_table.object {
-            return true;
-        }
-        let mut cursor = analyzer
-            .type_table
-            .get_struct(child)
-            .and_then(|info| info.parent);
-        while let Some(current) = cursor {
-            if current == parent {
-                return true;
-            }
-            cursor = analyzer
-                .type_table
-                .get_struct(current)
-                .and_then(|info| info.parent);
-        }
-        false
+        ProtocolChecker::check_protocol_variance(analyzer, protocol_decls, source);
     }
 
     fn find_method_in_parent(

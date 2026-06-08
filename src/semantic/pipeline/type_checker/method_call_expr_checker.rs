@@ -22,7 +22,7 @@ impl<'a> TypeChecker<'a> {
         let receiver_id = TypeId(receiver_raw);
 
         if SymbolCollector::is_protocol(self.analyzer, receiver_id) {
-            let protocol_methods = self.collect_inherited_protocol_methods(receiver_id, receiver_id);
+            let protocol_methods = ProtocolChecker::collect_inherited_protocol_methods(self.analyzer, receiver_id, receiver_id);
             let Some(protocol_signature) = protocol_methods
                 .iter()
                 .find(|m| m.name == call.method_name)
@@ -178,5 +178,27 @@ impl<'a> TypeChecker<'a> {
             .get(&method_key)
             .map(|entry| entry.return_type)
             .or(Some(SemanticType::Unknown))
+    }
+
+    fn resolve_method_symbol_key_in_structs(
+        &self,
+        receiver: TypeId,
+        method_name: &str,
+    ) -> Option<String> {
+        let mut cursor = Some(receiver);
+        while let Some(current) = cursor {
+            if let Some(info) = self.analyzer.type_table.get_struct(current) {
+                if info.methods.iter().any(|(name, _)| name == method_name) {
+                    let key = SymbolCollector::method_symbol_key(current, method_name);
+                    if self.analyzer.function_symbols.contains_key(&key) {
+                        return Some(key);
+                    }
+                }
+                cursor = info.parent;
+            } else {
+                return None;
+            }
+        }
+        None
     }
 }

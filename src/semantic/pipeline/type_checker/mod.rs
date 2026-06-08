@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
 use crate::parser::expression::{
-    AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinFunction, DestructiveAssignExpr,
-    ElifBranch, Expr, FunctionCallExpr, FunctionDecl, IfExpr, LetInExpr, Literal, MethodCallExpr,
-    MethodDecl, NewExpr, Program, ProtocolDecl, Span, Statement, TypeDecl, UnaryExpr, UnaryOp,
-    WhileExpr,
+    AsExpr, AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinFunction, DestructiveAssignExpr,
+    ElifBranch, Expr, FunctionCallExpr, FunctionDecl, IfExpr, IsExpr, LetInExpr, Literal,
+    MethodCallExpr, MethodDecl, NewExpr, Program, ProtocolDecl, Span, Statement, TypeDecl,
+    UnaryExpr, UnaryOp, WhileExpr,
 };
 
 use super::super::{
@@ -156,6 +156,8 @@ impl<'a> TypeChecker<'a> {
             Expr::MemberAccess(access) => self.check_member_access(access, source),
             Expr::New(new_expr) => self.check_new_expr(new_expr, source),
             Expr::Binary(binary) => self.check_binary_expr(binary, source),
+            Expr::Is(is_expr) => self.check_is_expr(is_expr, source),
+            Expr::As(as_expr) => self.check_as_expr(as_expr, source),
         }
     }
 
@@ -794,5 +796,41 @@ impl<'a> TypeChecker<'a> {
                 .and_then(|info| info.parent);
         }
         false
+    }
+
+    fn check_is_expr(&mut self, is_expr: &IsExpr, source: &str) -> Option<SemanticType> {
+        let _expr_type = self.check_expr(&is_expr.expr, source)?;
+        if TypeResolver::resolve_named_type(self.analyzer, &is_expr.target_type).is_none() {
+            self.analyzer.push_semantic_error(
+                is_expr.target_type_span,
+                source,
+                format!(
+                    "Unknown type '{}' in 'is' expression. Expected one of: {}.",
+                    is_expr.target_type,
+                    TypeResolver::known_annotation_names(self.analyzer)
+                ),
+            );
+        }
+        Some(SemanticType::Boolean)
+    }
+
+    fn check_as_expr(&mut self, as_expr: &AsExpr, source: &str) -> Option<SemanticType> {
+        let _expr_type = self.check_expr(&as_expr.expr, source)?;
+        if let Some(semantic_type) =
+            TypeResolver::resolve_named_type(self.analyzer, &as_expr.target_type)
+        {
+            Some(semantic_type)
+        } else {
+            self.analyzer.push_semantic_error(
+                as_expr.target_type_span,
+                source,
+                format!(
+                    "Unknown type '{}' in 'as' expression. Expected one of: {}.",
+                    as_expr.target_type,
+                    TypeResolver::known_annotation_names(self.analyzer)
+                ),
+            );
+            Some(SemanticType::Unknown)
+        }
     }
 }

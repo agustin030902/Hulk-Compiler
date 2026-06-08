@@ -6,6 +6,7 @@ use crate::{
 };
 
 use super::{
+    builtins,
     helper::{FunctionSignature, FunctionSymbol, ScopeStack, SemanticType, TypeId, TypeTable},
     pipeline::{SignatureInferencePass, SymbolCollector, TypeChecker},
 };
@@ -81,6 +82,8 @@ impl SemanticAnalyzer {
         self.type_table = TypeTable::new();
         self.type_symbols
             .insert("Object".to_string(), self.type_table.object);
+        builtins::register_builtin_iterable(self);
+        builtins::register_builtin_range(self);
         self.errors.clear();
         self.current_method_receiver = None;
         self.current_self_scope_index = None;

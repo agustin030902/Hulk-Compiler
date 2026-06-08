@@ -26,6 +26,10 @@ enum LogosTokenKind {
     New,
     #[token("while", priority = 3)]
     While,
+    #[token("for", priority = 3)]
+    For,
+    #[token("range", priority = 3)]
+    Range,
     #[token("if", priority = 3)]
     If,
     #[token("elif", priority = 3)]
@@ -139,6 +143,8 @@ impl LogosTokenKind {
             LogosTokenKind::Extends => (TokenKind::Extends, lexeme.to_string()),
             LogosTokenKind::New => (TokenKind::New, lexeme.to_string()),
             LogosTokenKind::While => (TokenKind::While, lexeme.to_string()),
+            LogosTokenKind::For => (TokenKind::For, lexeme.to_string()),
+            LogosTokenKind::Range => (TokenKind::Range, lexeme.to_string()),
             LogosTokenKind::If => (TokenKind::If, lexeme.to_string()),
             LogosTokenKind::Elif => (TokenKind::Elif, lexeme.to_string()),
             LogosTokenKind::Else => (TokenKind::Else, lexeme.to_string()),

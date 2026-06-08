@@ -11,6 +11,8 @@ pub struct TypeTable {
     pub null: TypeId,
     pub unknown: TypeId,
     pub object: TypeId,
+    pub iterable: TypeId,
+    pub range: TypeId,
 }
 
 impl TypeTable {
@@ -38,6 +40,24 @@ impl TypeTable {
             is_protocol: false,
         }));
 
+        let iterable = push(TypeInfo::Type(StructTypeInfo {
+            name: "Iterable".to_string(),
+            constructor_params: Vec::new(),
+            fields: Vec::new(),
+            methods: Vec::new(),
+            parent: None,
+            is_protocol: true,
+        }));
+
+        let range = push(TypeInfo::Type(StructTypeInfo {
+            name: "Range".to_string(),
+            constructor_params: Vec::new(),
+            fields: Vec::new(),
+            methods: Vec::new(),
+            parent: Some(object),
+            is_protocol: false,
+        }));
+
         Self {
             types,
             number,
@@ -47,6 +67,8 @@ impl TypeTable {
             null,
             unknown,
             object,
+            iterable,
+            range,
         }
     }
 

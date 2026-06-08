@@ -11,6 +11,8 @@ pub enum TokenKind {
     Extends,
     New,
     While,
+    For,
+    Range,
     Print,
     Pi,
     E,

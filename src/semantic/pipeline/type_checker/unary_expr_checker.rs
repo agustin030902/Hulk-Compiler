@@ -31,7 +31,7 @@ impl<'a> TypeChecker<'a> {
                         source,
                         format!(
                             "Unary '-' expects Number, but got {}.",
-                            expr_type.display_name()
+                            expr_type.display_name_with_table(&self.analyzer.type_table)
                         ),
                     );
                     None
@@ -59,7 +59,7 @@ impl<'a> TypeChecker<'a> {
                         source,
                         format!(
                             "Unary '!' expects Boolean, but got {}.",
-                            expr_type.display_name()
+                            expr_type.display_name_with_table(&self.analyzer.type_table)
                         ),
                     );
                     None

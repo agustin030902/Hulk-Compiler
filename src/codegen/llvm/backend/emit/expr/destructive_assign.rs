@@ -55,7 +55,7 @@ impl LlvmBackend {
                 let ValueType::Struct(type_id) = object_ref.value_type else {
                     self.semantic_error(format!(
                         "Member assignment expects a struct instance, but got {}.",
-                        object_ref.value_type.display_name()
+                        self.type_name_for_value_type(object_ref.value_type)
                     ));
                     return None;
                 };
@@ -73,8 +73,8 @@ impl LlvmBackend {
                 {
                     self.semantic_error(format!(
                         "Destructive assignment ':=' requires type {}, but expression is {}.",
-                        field_layout.value_type.display_name(),
-                        value_ref.value_type.display_name()
+                        self.type_name_for_value_type(field_layout.value_type),
+                        self.type_name_for_value_type(value_ref.value_type)
                     ));
                     return None;
                 }
@@ -84,8 +84,8 @@ impl LlvmBackend {
                 else {
                     self.semantic_error(format!(
                         "Destructive assignment ':=' requires type {}, but expression is {}.",
-                        field_layout.value_type.display_name(),
-                        value_ref.value_type.display_name()
+                        self.type_name_for_value_type(field_layout.value_type),
+                        self.type_name_for_value_type(value_ref.value_type)
                     ));
                     return None;
                 };

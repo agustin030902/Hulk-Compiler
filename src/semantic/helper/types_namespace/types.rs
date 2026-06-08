@@ -1,3 +1,5 @@
+use super::TypeTable;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SemanticType {
     Number,
@@ -21,6 +23,37 @@ impl SemanticType {
             SemanticType::Function(_) => "Function",
             SemanticType::Struct(_) => "Struct",
             SemanticType::Unknown => "Unknown",
+        }
+    }
+
+    pub(in crate::semantic) fn display_name_with_table(self, table: &TypeTable) -> String {
+        match self {
+            SemanticType::Number => "Number".to_string(),
+            SemanticType::Boolean => "Boolean".to_string(),
+            SemanticType::String => "String".to_string(),
+            SemanticType::Unit => "Unit".to_string(),
+            SemanticType::Null => "Null".to_string(),
+            SemanticType::Unknown => "Unknown".to_string(),
+            SemanticType::Struct(id) => {
+                let type_id = super::TypeId(id);
+                table
+                    .get_struct(type_id)
+                    .map(|info| info.name.clone())
+                    .unwrap_or_else(|| "Struct".to_string())
+            }
+            SemanticType::Function(id) => {
+                let type_id = super::TypeId(id);
+                table
+                    .get_function(type_id)
+                    .map(|info| {
+                        if info.is_method() {
+                            "Method".to_string()
+                        } else {
+                            "Function".to_string()
+                        }
+                    })
+                    .unwrap_or_else(|| "Function".to_string())
+            }
         }
     }
 

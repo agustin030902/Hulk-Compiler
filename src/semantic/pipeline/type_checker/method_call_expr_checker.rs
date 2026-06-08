@@ -13,7 +13,7 @@ impl<'a> TypeChecker<'a> {
                 source,
                 format!(
                     "Method call expects a struct instance receiver, but got {}.",
-                    receiver_type.display_name()
+                    receiver_type.display_name_with_table(&self.analyzer.type_table)
                 ),
             );
             return None;
@@ -161,8 +161,8 @@ impl<'a> TypeChecker<'a> {
                         "Method '{}' argument #{} expects {}, but got {}.",
                         call.method_name,
                         index + 1,
-                        expected_type.display_name(),
-                        arg_type.display_name()
+                        expected_type.display_name_with_table(&self.analyzer.type_table),
+                        arg_type.display_name_with_table(&self.analyzer.type_table)
                     ),
                 );
                 valid_call = false;

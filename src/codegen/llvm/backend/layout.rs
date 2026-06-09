@@ -5,6 +5,8 @@ use crate::semantic::SemanticAnalyzer;
 use super::LlvmBackend;
 use crate::codegen::llvm::helper::state::ValueType;
 
+pub const TYPE_TAG_SIZE: usize = 8;
+
 #[derive(Debug, Clone)]
 pub(in crate::codegen::llvm) struct FieldLayout {
     pub(in crate::codegen::llvm) offset: usize,
@@ -55,8 +57,12 @@ impl LlvmBackend {
             return false;
         };
 
-        let mut offset = 0usize;
-        let mut max_align = 1usize;
+        if type_info.is_protocol {
+            return true;
+        }
+
+        let mut offset = TYPE_TAG_SIZE;
+        let mut max_align = 8usize;
         let mut fields = HashMap::new();
 
         if let Some(parent_id) = type_info.parent {

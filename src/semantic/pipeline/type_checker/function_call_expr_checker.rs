@@ -91,8 +91,8 @@ impl<'a> TypeChecker<'a> {
                         "Function '{}' argument #{} expects {}, but got {}.",
                         call.name,
                         index + 1,
-                        expected_type.display_name(),
-                        arg_type.display_name()
+                        expected_type.display_name_with_table(&self.analyzer.type_table),
+                        arg_type.display_name_with_table(&self.analyzer.type_table)
                     ),
                 );
                 valid_call = false;

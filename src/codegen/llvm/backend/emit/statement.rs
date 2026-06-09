@@ -105,7 +105,7 @@ impl LlvmBackend {
             ValueType::Null | ValueType::Function | ValueType::Struct(_) => {
                 self.semantic_error(format!(
                     "Function 'print' cannot print values of type {}.",
-                    value_ref.value_type.display_name()
+                    self.type_name_for_value_type(value_ref.value_type)
                 ));
             }
         }

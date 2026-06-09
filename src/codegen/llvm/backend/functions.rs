@@ -1,4 +1,7 @@
-use crate::{parser::expression::Program, semantic::SemanticAnalyzer};
+use crate::{
+    parser::expression::Program,
+    semantic::{builtins, SemanticAnalyzer},
+};
 
 use super::LlvmBackend;
 
@@ -20,15 +23,30 @@ impl LlvmBackend {
             return false;
         }
 
-        self.type_decls = program
-            .types
-            .iter()
-            .cloned()
-            .map(|type_decl| (type_decl.name.clone(), type_decl))
-            .collect();
+        let mut type_decls_map: std::collections::HashMap<String, crate::parser::expression::TypeDecl> =
+            program
+                .types
+                .iter()
+                .cloned()
+                .map(|type_decl| (type_decl.name.clone(), type_decl))
+                .collect();
+        type_decls_map
+            .entry("Object".to_string())
+            .or_insert_with(builtins::build_object_type_decl);
+        type_decls_map
+            .entry(builtins::RANGE_NAME.to_string())
+            .or_insert_with(builtins::build_range_type_decl);
+
+        self.type_decls = type_decls_map;
 
         self.type_ids = analyzer
             .type_symbols()
+            .iter()
+            .map(|(name, type_id)| (name.clone(), type_id.0))
+            .collect();
+
+        self.protocol_real_types = analyzer
+            .protocol_real_types()
             .iter()
             .map(|(name, type_id)| (name.clone(), type_id.0))
             .collect();

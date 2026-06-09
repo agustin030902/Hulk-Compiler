@@ -18,10 +18,18 @@ enum LogosTokenKind {
     Function,
     #[token("type", priority = 3)]
     Type,
+    #[token("protocol", priority = 3)]
+    Protocol,
+    #[token("extends", priority = 3)]
+    Extends,
     #[token("new", priority = 3)]
     New,
     #[token("while", priority = 3)]
     While,
+    #[token("for", priority = 3)]
+    For,
+    #[token("range", priority = 3)]
+    Range,
     #[token("if", priority = 3)]
     If,
     #[token("elif", priority = 3)]
@@ -52,6 +60,10 @@ enum LogosTokenKind {
     Null,
     #[token("inherits", priority = 3)]
     Inherits,
+    #[token("is", priority = 3)]
+    Is,
+    #[token("as", priority = 3)]
+    As,
     #[regex(r"true|false")]
     Boolean,
     #[regex(r"[0-9]+[A-Za-z_][A-Za-z0-9_]*", priority = 2)]
@@ -133,8 +145,12 @@ impl LogosTokenKind {
             LogosTokenKind::Let => (TokenKind::Let, lexeme.to_string()),
             LogosTokenKind::Function => (TokenKind::Function, lexeme.to_string()),
             LogosTokenKind::Type => (TokenKind::Type, lexeme.to_string()),
+            LogosTokenKind::Protocol => (TokenKind::Protocol, lexeme.to_string()),
+            LogosTokenKind::Extends => (TokenKind::Extends, lexeme.to_string()),
             LogosTokenKind::New => (TokenKind::New, lexeme.to_string()),
             LogosTokenKind::While => (TokenKind::While, lexeme.to_string()),
+            LogosTokenKind::For => (TokenKind::For, lexeme.to_string()),
+            LogosTokenKind::Range => (TokenKind::Range, lexeme.to_string()),
             LogosTokenKind::If => (TokenKind::If, lexeme.to_string()),
             LogosTokenKind::Elif => (TokenKind::Elif, lexeme.to_string()),
             LogosTokenKind::Else => (TokenKind::Else, lexeme.to_string()),
@@ -150,6 +166,8 @@ impl LogosTokenKind {
             LogosTokenKind::In => (TokenKind::In, lexeme.to_string()),
             LogosTokenKind::Null => (TokenKind::Null, lexeme.to_string()),
             LogosTokenKind::Inherits => (TokenKind::Inherits, lexeme.to_string()),
+            LogosTokenKind::Is => (TokenKind::Is, lexeme.to_string()),
+            LogosTokenKind::As => (TokenKind::As, lexeme.to_string()),
             LogosTokenKind::Boolean => {
                 let value = lexeme.to_string();
                 (TokenKind::Boolean(value.clone()), value)

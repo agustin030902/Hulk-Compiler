@@ -50,6 +50,18 @@ impl LlvmBackend {
             layout.size_bytes
         ));
 
+        let tag_ptr = self.next_temp();
+        self.emit_body(format!(
+            "{tag_ptr} = getelementptr i8, i8* {object_ptr}, i64 0"
+        ));
+        let tag_ptr_i64 = self.next_temp();
+        self.emit_body(format!(
+            "{tag_ptr_i64} = bitcast i8* {tag_ptr} to i64*"
+        ));
+        self.emit_body(format!(
+            "store i64 {type_id}, i64* {tag_ptr_i64}"
+        ));
+
         self.push_scope();
 
         for (param, value) in type_decl.params.iter().zip(ctor_values.iter()) {
@@ -64,8 +76,8 @@ impl LlvmBackend {
                     "Type '{}' constructor parameter '{}' expects {}, but got {}.",
                     new_expr.type_name,
                     param.name,
-                    expected_type.display_name(),
-                    value.value_type.display_name()
+                    self.type_name_for_value_type(expected_type),
+                    self.type_name_for_value_type(value.value_type)
                 ));
                 self.pop_scope();
                 return None;
@@ -76,8 +88,8 @@ impl LlvmBackend {
                     "Type '{}' constructor parameter '{}' expects {}, but got {}.",
                     new_expr.type_name,
                     param.name,
-                    expected_type.display_name(),
-                    value.value_type.display_name()
+                    self.type_name_for_value_type(expected_type),
+                    self.type_name_for_value_type(value.value_type)
                 ));
                 self.pop_scope();
                 return None;
@@ -162,8 +174,8 @@ impl LlvmBackend {
                     "Attribute '{}' in type '{}' expects {}, but initializer produced {}.",
                     attribute.name,
                     concrete_type_name,
-                    field_layout.value_type.display_name(),
-                    value.value_type.display_name()
+                    self.type_name_for_value_type(field_layout.value_type),
+                    self.type_name_for_value_type(value.value_type)
                 ));
                 return false;
             }
@@ -174,8 +186,8 @@ impl LlvmBackend {
                     "Attribute '{}' in type '{}' expects {}, but initializer produced {}.",
                     attribute.name,
                     concrete_type_name,
-                    field_layout.value_type.display_name(),
-                    value.value_type.display_name()
+                    self.type_name_for_value_type(field_layout.value_type),
+                    self.type_name_for_value_type(value.value_type)
                 ));
                 return false;
             };
@@ -210,8 +222,8 @@ impl LlvmBackend {
                     "Type '{}' constructor parameter '{}' expects {}, but got {}.",
                     type_name,
                     param.name,
-                    expected_type.display_name(),
-                    value.value_type.display_name()
+                    self.type_name_for_value_type(expected_type),
+                    self.type_name_for_value_type(value.value_type)
                 ));
                 return false;
             }
@@ -221,8 +233,8 @@ impl LlvmBackend {
                     "Type '{}' constructor parameter '{}' expects {}, but got {}.",
                     type_name,
                     param.name,
-                    expected_type.display_name(),
-                    value.value_type.display_name()
+                    self.type_name_for_value_type(expected_type),
+                    self.type_name_for_value_type(value.value_type)
                 ));
                 return false;
             };

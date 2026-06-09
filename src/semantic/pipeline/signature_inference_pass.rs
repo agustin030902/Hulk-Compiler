@@ -22,8 +22,10 @@ impl SignatureInferencePass {
         analyzer.suppress_errors = true;
 
         SymbolCollector::collect_types(analyzer, &program.types, source);
+        SymbolCollector::collect_protocols(analyzer, &program.protocols, source);
         SymbolCollector::collect_functions(analyzer, &program.functions, source);
         SymbolCollector::collect_methods(analyzer, &program.types, source);
+        SymbolCollector::collect_protocol_methods(analyzer, &program.protocols, source);
 
         for _ in 0..MAX_INFERENCE_PASSES {
             let before = analyzer.functions.clone();

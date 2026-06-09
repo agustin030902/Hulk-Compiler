@@ -74,8 +74,8 @@ impl<'a> TypeChecker<'a> {
                         "Type '{}' constructor argument #{} expects {}, but got {}.",
                         new_expr.type_name,
                         index + 1,
-                        expected_type.display_name(),
-                        arg_type.display_name()
+                        expected_type.display_name_with_table(&self.analyzer.type_table),
+                        arg_type.display_name_with_table(&self.analyzer.type_table)
                     ),
                 );
                 return None;

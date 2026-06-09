@@ -7,8 +7,12 @@ pub enum TokenKind {
     Let,
     Function,
     Type,
+    Protocol,
+    Extends,
     New,
     While,
+    For,
+    Range,
     Print,
     Pi,
     E,
@@ -54,6 +58,8 @@ pub enum TokenKind {
     Else,
     Elif,
     Inherits,
+    Is,
+    As,
 }
 
 #[derive(Clone, Debug)]

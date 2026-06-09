@@ -6,6 +6,7 @@ use crate::{
 };
 
 use super::{
+    builtins,
     helper::{FunctionSignature, FunctionSymbol, ScopeStack, SemanticType, TypeId, TypeTable},
     pipeline::{SignatureInferencePass, SymbolCollector, TypeChecker},
 };
@@ -21,6 +22,7 @@ pub struct SemanticAnalyzer {
     pub(super) current_method_receiver: Option<TypeId>,
     pub(super) current_self_scope_index: Option<usize>,
     pub(super) suppress_errors: bool,
+    pub(super) protocol_real_types: HashMap<String, TypeId>,
 }
 
 impl SemanticAnalyzer {
@@ -44,14 +46,20 @@ impl SemanticAnalyzer {
         &self.type_symbols
     }
 
+    pub fn protocol_real_types(&self) -> &HashMap<String, TypeId> {
+        &self.protocol_real_types
+    }
+
     pub fn analyze(&mut self, program: &Program, source: &str) -> Vec<CompilerError> {
         let inferred_signatures =
             SignatureInferencePass::infer_function_signatures(self, program, source);
 
         self.reset_analysis_state();
         SymbolCollector::collect_types(self, &program.types, source);
+        SymbolCollector::collect_protocols(self, &program.protocols, source);
         SymbolCollector::collect_functions(self, &program.functions, source);
         SymbolCollector::collect_methods(self, &program.types, source);
+        SymbolCollector::collect_protocol_methods(self, &program.protocols, source);
         SignatureInferencePass::apply_inferred_signatures(self, &inferred_signatures);
 
         self.start_scope_pass();
@@ -74,10 +82,13 @@ impl SemanticAnalyzer {
         self.type_table = TypeTable::new();
         self.type_symbols
             .insert("Object".to_string(), self.type_table.object);
+        builtins::register_builtin_iterable(self);
+        builtins::register_builtin_range(self);
         self.errors.clear();
         self.current_method_receiver = None;
         self.current_self_scope_index = None;
         self.suppress_errors = false;
+        self.protocol_real_types.clear();
     }
 
     pub(super) fn start_scope_pass(&mut self) {

@@ -1,0 +1,10 @@
+protocol Producer {
+    produce(): Object;
+}
+
+type Cat {
+    name = "cat";
+    produce(): Number => 1;
+}
+
+let p: Producer = new Cat() in print(p.produce());

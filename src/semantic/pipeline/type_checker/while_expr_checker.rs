@@ -26,7 +26,7 @@ impl<'a> TypeChecker<'a> {
                 source,
                 format!(
                     "While condition expects Boolean, but got {}.",
-                    condition_type.display_name()
+                    condition_type.display_name_with_table(&self.analyzer.type_table)
                 ),
             );
             return None;

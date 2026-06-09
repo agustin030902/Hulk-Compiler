@@ -13,13 +13,74 @@ impl<'a> TypeChecker<'a> {
                 source,
                 format!(
                     "Method call expects a struct instance receiver, but got {}.",
-                    receiver_type.display_name()
+                    receiver_type.display_name_with_table(&self.analyzer.type_table)
                 ),
             );
             return None;
         };
 
         let receiver_id = TypeId(receiver_raw);
+
+        if SymbolCollector::is_protocol(self.analyzer, receiver_id) {
+            let protocol_methods = ProtocolChecker::collect_inherited_protocol_methods(self.analyzer, receiver_id, receiver_id);
+            let Some(protocol_signature) = protocol_methods
+                .iter()
+                .find(|m| m.name == call.method_name)
+                .map(|m| FunctionSignature {
+                    type_id: m.type_id.0,
+                    param_types: m.param_types.clone(),
+                    return_type: m.return_type,
+                })
+            else {
+                self.analyzer.push_semantic_error(
+                    call.method_name_span,
+                    source,
+                    format!(
+                        "Method '{}' is not declared in protocol '{}'.",
+                        call.method_name,
+                        self.analyzer
+                            .type_table
+                            .get_struct(receiver_id)
+                            .map(|info| info.name.clone())
+                            .unwrap_or_default()
+                    ),
+                );
+                return None;
+            };
+
+            if protocol_signature.arity() != call.args.len() {
+                self.analyzer.push_semantic_error(
+                    call.span,
+                    source,
+                    format!(
+                        "Method '{}' expects {} argument(s), but got {}.",
+                        call.method_name,
+                        protocol_signature.arity(),
+                        call.args.len()
+                    ),
+                );
+                return None;
+            }
+
+            for (index, arg) in call.args.iter().enumerate() {
+                let _ = self.check_expr(arg, source);
+            }
+
+            if let Expr::Variable { name, .. } = call.receiver.as_ref()
+                && let Some(real_id) = self.analyzer.protocol_real_types.get(name).copied()
+            {
+                if let Some(real_signature) = self
+                    .resolve_method_symbol_key(real_id, &call.method_name)
+                    .or_else(|| self.resolve_method_symbol_key_in_structs(real_id, &call.method_name))
+                    .and_then(|key| self.analyzer.functions.get(&key).cloned())
+                {
+                    return Some(real_signature.return_type);
+                }
+            }
+
+            return Some(protocol_signature.return_type);
+        }
+
         let Some(method_key) = self.resolve_method_symbol_key(receiver_id, &call.method_name)
         else {
             self.analyzer.push_semantic_error(
@@ -100,8 +161,8 @@ impl<'a> TypeChecker<'a> {
                         "Method '{}' argument #{} expects {}, but got {}.",
                         call.method_name,
                         index + 1,
-                        expected_type.display_name(),
-                        arg_type.display_name()
+                        expected_type.display_name_with_table(&self.analyzer.type_table),
+                        arg_type.display_name_with_table(&self.analyzer.type_table)
                     ),
                 );
                 valid_call = false;
@@ -117,5 +178,27 @@ impl<'a> TypeChecker<'a> {
             .get(&method_key)
             .map(|entry| entry.return_type)
             .or(Some(SemanticType::Unknown))
+    }
+
+    fn resolve_method_symbol_key_in_structs(
+        &self,
+        receiver: TypeId,
+        method_name: &str,
+    ) -> Option<String> {
+        let mut cursor = Some(receiver);
+        while let Some(current) = cursor {
+            if let Some(info) = self.analyzer.type_table.get_struct(current) {
+                if info.methods.iter().any(|(name, _)| name == method_name) {
+                    let key = SymbolCollector::method_symbol_key(current, method_name);
+                    if self.analyzer.function_symbols.contains_key(&key) {
+                        return Some(key);
+                    }
+                }
+                cursor = info.parent;
+            } else {
+                return None;
+            }
+        }
+        None
     }
 }

@@ -45,10 +45,10 @@ impl LlvmBackend {
                 }
 
                 let intrinsic = match function {
-                    BuiltinFunction::Sin => "llvm.sin.f64",
-                    BuiltinFunction::Cos => "llvm.cos.f64",
-                    BuiltinFunction::Sqrt => "llvm.sqrt.f64",
-                    BuiltinFunction::Exp => "llvm.exp.f64",
+                    BuiltinFunction::Sin => "sin",
+                    BuiltinFunction::Cos => "cos",
+                    BuiltinFunction::Sqrt => "sqrt",
+                    BuiltinFunction::Exp => "exp",
                     BuiltinFunction::Log => unreachable!("log handled in dedicated branch"),
                     BuiltinFunction::Rand => unreachable!("rand handled in dedicated branch"),
                     BuiltinFunction::Print => unreachable!("print handled in dedicated branch"),
@@ -160,8 +160,8 @@ impl LlvmBackend {
                     "Function '{}' argument #{} expects {}, but got {}.",
                     call.name,
                     index + 1,
-                    expected.display_name(),
-                    value.value_type.display_name()
+                    self.type_name_for_value_type(expected),
+                    self.type_name_for_value_type(value.value_type)
                 ));
                 return None;
             }
@@ -171,8 +171,8 @@ impl LlvmBackend {
                     "Function '{}' argument #{} expects {}, but got {}.",
                     call.name,
                     index + 1,
-                    expected.display_name(),
-                    value.value_type.display_name()
+                    self.type_name_for_value_type(expected),
+                    self.type_name_for_value_type(value.value_type)
                 ));
                 return None;
             };
@@ -208,16 +208,29 @@ impl LlvmBackend {
         &mut self,
         call: &MethodCallExpr,
     ) -> Option<ValueRef> {
-        let receiver = self.emit_expr(&call.receiver)?;
+        let mut receiver = self.emit_expr(&call.receiver)?;
         let ValueType::Struct(type_id) = receiver.value_type else {
             self.semantic_error(format!(
                 "Method call expects a struct instance receiver, but got {}.",
-                receiver.value_type.display_name()
+                self.type_name_for_value_type(receiver.value_type)
             ));
             return None;
         };
 
-        let Some(method_key) = self.lookup_method_key(type_id, &call.method_name).cloned() else {
+        if let Expr::Variable { name, .. } = call.receiver.as_ref()
+            && let Some(&real_id) = self.protocol_real_types.get(name)
+            && real_id != type_id
+        {
+            receiver.value_type = ValueType::Struct(real_id);
+        }
+
+        let effective_type_id = if let ValueType::Struct(t) = receiver.value_type {
+            t
+        } else {
+            type_id
+        };
+
+        let Some(method_key) = self.lookup_method_key(effective_type_id, &call.method_name).cloned() else {
             self.semantic_error(format!(
                 "Method '{}' is not declared for this type.",
                 call.method_name
@@ -255,8 +268,8 @@ impl LlvmBackend {
                     "Method '{}' argument #{} expects {}, but got {}.",
                     call.method_name,
                     index + 1,
-                    expected.display_name(),
-                    value.value_type.display_name()
+                    self.type_name_for_value_type(expected),
+                    self.type_name_for_value_type(value.value_type)
                 ));
                 return None;
             }
@@ -266,8 +279,8 @@ impl LlvmBackend {
                     "Method '{}' argument #{} expects {}, but got {}.",
                     call.method_name,
                     index + 1,
-                    expected.display_name(),
-                    value.value_type.display_name()
+                    self.type_name_for_value_type(expected),
+                    self.type_name_for_value_type(value.value_type)
                 ));
                 return None;
             };

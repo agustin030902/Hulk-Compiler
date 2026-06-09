@@ -1,8 +1,10 @@
+mod as_expr;
 mod binary;
 mod block;
 mod call;
 mod destructive_assign;
 mod if_expr;
+mod is_expr;
 mod let_in;
 mod literal;
 mod member_access;
@@ -35,5 +37,7 @@ pub(in crate::codegen::llvm) fn emit_expr(
         Expr::MemberAccess(access) => backend.emit_member_access(access),
         Expr::New(new_expr) => backend.emit_new_expr(new_expr),
         Expr::Binary(binary) => backend.emit_binary_expr(binary),
+        Expr::Is(is_expr) => backend.emit_is_expr(is_expr),
+        Expr::As(as_expr) => backend.emit_as_expr(as_expr),
     }
 }

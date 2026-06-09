@@ -1,0 +1,9 @@
+type Countdown(count: Number) {
+    count = count;
+    next() => { self.count := self.count - 1; self.count > 0; };
+    current() => self.count;
+}
+
+for (x in new Countdown(3)) {
+    print(x);
+};

@@ -1,14 +1,15 @@
 use std::collections::HashSet;
 
 use crate::parser::expression::{
-    AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinFunction, DestructiveAssignExpr,
-    ElifBranch, Expr, FunctionCallExpr, FunctionDecl, IfExpr, LetInExpr, Literal, MethodCallExpr,
-    MethodDecl, NewExpr, Program, Span, Statement, TypeDecl, UnaryExpr, UnaryOp, WhileExpr,
+    AsExpr, AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinFunction, DestructiveAssignExpr,
+    ElifBranch, Expr, FunctionCallExpr, FunctionDecl, IfExpr, IsExpr, LetInExpr, Literal,
+    MethodCallExpr, MethodDecl, NewExpr, Program, ProtocolDecl, Span, Statement, TypeDecl,
+    UnaryExpr, UnaryOp, WhileExpr,
 };
 
 use super::super::{
     analyzer::SemanticAnalyzer,
-    helper::{SemanticType, TypeId},
+    helper::{FunctionSignature, FunctionSymbol, SemanticType, TypeId},
 };
 use super::{SymbolCollector, TypeConstraintEngine, TypeResolver};
 
@@ -23,9 +24,12 @@ mod literal_expr_checker;
 mod member_access_expr_checker;
 mod method_call_expr_checker;
 mod new_expr_checker;
+mod protocol_checker;
 mod unary_expr_checker;
 mod variable_expr_checker;
 mod while_expr_checker;
+
+pub(in crate::semantic) use protocol_checker::ProtocolChecker;
 
 pub(in crate::semantic) struct TypeChecker<'a> {
     pub(in crate::semantic) analyzer: &'a mut SemanticAnalyzer,
@@ -37,6 +41,10 @@ impl<'a> TypeChecker<'a> {
     }
 
     pub(in crate::semantic) fn check_program(&mut self, program: &Program, source: &str) {
+        for protocol_decl in &program.protocols {
+            self.check_protocol_decl(protocol_decl, source);
+        }
+
         for type_decl in &program.types {
             self.check_type_decl(type_decl, source);
         }
@@ -148,6 +156,8 @@ impl<'a> TypeChecker<'a> {
             Expr::MemberAccess(access) => self.check_member_access(access, source),
             Expr::New(new_expr) => self.check_new_expr(new_expr, source),
             Expr::Binary(binary) => self.check_binary_expr(binary, source),
+            Expr::Is(is_expr) => self.check_is_expr(is_expr, source),
+            Expr::As(as_expr) => self.check_as_expr(as_expr, source),
         }
     }
 
@@ -168,22 +178,79 @@ impl<'a> TypeChecker<'a> {
                 TypeConstraintEngine::constrain_expr_type(self, value, annotation_type, source);
         }
 
-        if value_type != SemanticType::Unknown && value_type != annotation_type {
-            if self.types_compatible(annotation_type, value_type) {
-                return annotation_type;
+        let SemanticType::Struct(annotation_raw) = annotation_type else {
+            if value_type != SemanticType::Unknown && value_type != annotation_type {
+                if self.types_compatible(annotation_type, value_type) {
+                    return annotation_type;
+                }
+                self.analyzer.push_type_error(
+                    annotation_span,
+                    source,
+                    format!(
+                        "Type annotation for variable '{}' expects {}, but initializer is {}.",
+                        variable_name,
+                        annotation_type.display_name_with_table(&self.analyzer.type_table),
+                        value_type.display_name_with_table(&self.analyzer.type_table)
+                    ),
+                );
             }
-            self.analyzer.push_type_error(
-                annotation_span,
-                source,
-                format!(
-                    "Type annotation for variable '{}' expects {}, but initializer is {}.",
-                    variable_name,
-                    annotation_type.display_name(),
-                    value_type.display_name()
-                ),
-            );
+            return annotation_type;
+        };
+
+        let annotation_id = TypeId(annotation_raw);
+        if !SymbolCollector::is_protocol(self.analyzer, annotation_id) {
+            if value_type != SemanticType::Unknown && value_type != annotation_type {
+                if self.types_compatible(annotation_type, value_type) {
+                    return annotation_type;
+                }
+                self.analyzer.push_type_error(
+                    annotation_span,
+                    source,
+                    format!(
+                        "Type annotation for variable '{}' expects {}, but initializer is {}.",
+                        variable_name,
+                        annotation_type.display_name_with_table(&self.analyzer.type_table),
+                        value_type.display_name_with_table(&self.analyzer.type_table)
+                    ),
+                );
+            }
+            return annotation_type;
         }
 
+        if value_type == SemanticType::Unknown {
+            return annotation_type;
+        }
+
+        if value_type == annotation_type {
+            return annotation_type;
+        }
+
+        if self
+            .validate_protocol_conformance(value_type, annotation_id, source)
+            .is_some()
+        {
+            if let SemanticType::Struct(real_raw) = value_type {
+                self.analyzer
+                    .protocol_real_types
+                    .insert(variable_name.to_string(), TypeId(real_raw));
+            }
+            return annotation_type;
+        }
+
+        self.analyzer.push_type_error(
+            annotation_span,
+            source,
+            format!(
+                "Type annotation for variable '{}' uses protocol '{}' but initializer of type {} does not conform to it.",
+                variable_name,
+                self.analyzer
+                    .type_table
+                    .get_struct(annotation_id)
+                    .map(|info| info.name.clone())
+                    .unwrap_or_default(),
+                value_type.display_name_with_table(&self.analyzer.type_table)
+            ),
+        );
         annotation_type
     }
 
@@ -206,10 +273,97 @@ impl<'a> TypeChecker<'a> {
 
         match (expected, actual) {
             (SemanticType::Struct(parent), SemanticType::Struct(child)) => {
-                self.is_subtype_of(TypeId(child), TypeId(parent))
+                let parent_id = TypeId(parent);
+                if SymbolCollector::is_protocol(self.analyzer, parent_id) {
+                    return self
+                        .validate_protocol_conformance(actual, parent_id, "")
+                        .is_some();
+                }
+                self.is_subtype_of(TypeId(child), parent_id)
             }
             _ => false,
         }
+    }
+
+    pub(in crate::semantic) fn check_protocol_decl(
+        &mut self,
+        protocol_decl: &ProtocolDecl,
+        source: &str,
+    ) {
+        let Some(protocol_id) = self
+            .analyzer
+            .type_symbols
+            .get(&protocol_decl.name)
+            .copied()
+        else {
+            return;
+        };
+
+        for method in &protocol_decl.methods {
+            for param in &method.params {
+                if let Some(annotation) = &param.type_annotation {
+                    let _ = TypeResolver::resolve_annotation_type(
+                        self.analyzer,
+                        annotation,
+                        source,
+                    );
+                }
+            }
+            let _ = TypeResolver::resolve_annotation_type(
+                self.analyzer,
+                &method.return_type_annotation,
+                source,
+            );
+        }
+
+        if let Some(parent_name) = &protocol_decl.parent_name {
+            let Some(parent_id) = self.analyzer.type_symbols.get(parent_name).copied() else {
+                return;
+            };
+            for parent_method in
+                ProtocolChecker::collect_inherited_protocol_methods(self.analyzer, protocol_id, parent_id)
+            {
+                let key = SymbolCollector::method_symbol_key(protocol_id, &parent_method.name);
+                if !self.analyzer.functions.contains_key(&key) {
+                    self.analyzer.function_symbols.insert(
+                        key.clone(),
+                        FunctionSymbol::new_method(
+                            parent_method.name.clone(),
+                            parent_method.type_id,
+                            protocol_id,
+                        ),
+                    );
+                    self.analyzer.functions.insert(
+                        key,
+                        FunctionSignature {
+                            type_id: parent_method.type_id.0,
+                            param_types: parent_method.param_types.clone(),
+                            return_type: parent_method.return_type,
+                        },
+                    );
+                }
+            }
+        }
+    }
+
+    pub(super) fn validate_protocol_conformance(
+        &self,
+        impl_type: SemanticType,
+        protocol_id: TypeId,
+        source: &str,
+    ) -> Option<()> {
+        ProtocolChecker::validate_protocol_conformance(self.analyzer, impl_type, protocol_id, source)
+    }
+
+    pub(super) fn validate_protocol_method_call(
+        &mut self,
+        impl_type: SemanticType,
+        protocol_id: TypeId,
+        method_name: &str,
+        call_span: Span,
+        source: &str,
+    ) -> Option<SemanticType> {
+        ProtocolChecker::validate_protocol_method_call(self.analyzer, impl_type, protocol_id, method_name, call_span, source)
     }
 
     pub(in crate::semantic) fn check_type_decl(&mut self, type_decl: &TypeDecl, source: &str) {
@@ -285,22 +439,22 @@ impl<'a> TypeChecker<'a> {
                     })
                     .unwrap_or(SemanticType::Unknown);
 
-                if expected_type != SemanticType::Unknown
-                    && arg_type != SemanticType::Unknown
-                    && !self.types_compatible(expected_type, arg_type)
-                {
-                    self.analyzer.push_type_error(
-                        arg.span(),
-                        source,
-                        format!(
-                            "Parent type '{}' constructor argument #{} expects {}, but got {}.",
-                            parent_name,
-                            index + 1,
-                            expected_type.display_name(),
-                            arg_type.display_name()
-                        ),
-                    );
-                }
+                    if expected_type != SemanticType::Unknown
+                        && arg_type != SemanticType::Unknown
+                        && !self.types_compatible(expected_type, arg_type)
+                    {
+                        self.analyzer.push_type_error(
+                            arg.span(),
+                            source,
+                            format!(
+                                "Parent type '{}' constructor argument #{} expects {}, but got {}.",
+                                parent_name,
+                                index + 1,
+                                expected_type.display_name_with_table(&self.analyzer.type_table),
+                                arg_type.display_name_with_table(&self.analyzer.type_table)
+                            ),
+                        );
+                    }
             }
         }
 
@@ -323,9 +477,39 @@ impl<'a> TypeChecker<'a> {
             let value_type = self
                 .check_expr(&attribute.value, source)
                 .unwrap_or(SemanticType::Unknown);
+
+            let annotated_type = attribute
+                .type_annotation
+                .as_ref()
+                .and_then(|annotation| {
+                    TypeResolver::resolve_annotation_type(self.analyzer, annotation, source)
+                });
+
+            let field_type = match annotated_type {
+                Some(annotation_type) => {
+                    if value_type != SemanticType::Unknown
+                        && value_type != annotation_type
+                    {
+                        self.analyzer.push_type_error(
+                            attribute.type_annotation.as_ref().unwrap().span,
+                            source,
+                            format!(
+                                "Type annotation for attribute '{}' in type '{}' expects {}, but initializer is {}.",
+                                attribute.name,
+                                type_decl.name,
+                                annotation_type.display_name_with_table(&self.analyzer.type_table),
+                                value_type.display_name_with_table(&self.analyzer.type_table)
+                            ),
+                        );
+                    }
+                    annotation_type
+                }
+                None => value_type,
+            };
+
             fields.push((
                 attribute.name.clone(),
-                TypeResolver::semantic_type_to_type_id(self.analyzer, value_type),
+                TypeResolver::semantic_type_to_type_id(self.analyzer, field_type),
             ));
         }
 
@@ -597,6 +781,14 @@ impl<'a> TypeChecker<'a> {
             if current == parent {
                 return true;
             }
+            if self
+                .analyzer
+                .type_table
+                .get_struct(current)
+                .is_some_and(|info| info.is_protocol)
+            {
+                return false;
+            }
             cursor = self
                 .analyzer
                 .type_table
@@ -604,5 +796,41 @@ impl<'a> TypeChecker<'a> {
                 .and_then(|info| info.parent);
         }
         false
+    }
+
+    fn check_is_expr(&mut self, is_expr: &IsExpr, source: &str) -> Option<SemanticType> {
+        let _expr_type = self.check_expr(&is_expr.expr, source)?;
+        if TypeResolver::resolve_named_type(self.analyzer, &is_expr.target_type).is_none() {
+            self.analyzer.push_semantic_error(
+                is_expr.target_type_span,
+                source,
+                format!(
+                    "Unknown type '{}' in 'is' expression. Expected one of: {}.",
+                    is_expr.target_type,
+                    TypeResolver::known_annotation_names(self.analyzer)
+                ),
+            );
+        }
+        Some(SemanticType::Boolean)
+    }
+
+    fn check_as_expr(&mut self, as_expr: &AsExpr, source: &str) -> Option<SemanticType> {
+        let _expr_type = self.check_expr(&as_expr.expr, source)?;
+        if let Some(semantic_type) =
+            TypeResolver::resolve_named_type(self.analyzer, &as_expr.target_type)
+        {
+            Some(semantic_type)
+        } else {
+            self.analyzer.push_semantic_error(
+                as_expr.target_type_span,
+                source,
+                format!(
+                    "Unknown type '{}' in 'as' expression. Expected one of: {}.",
+                    as_expr.target_type,
+                    TypeResolver::known_annotation_names(self.analyzer)
+                ),
+            );
+            Some(SemanticType::Unknown)
+        }
     }
 }

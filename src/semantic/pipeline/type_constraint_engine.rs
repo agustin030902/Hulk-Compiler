@@ -94,8 +94,8 @@ impl TypeConstraintEngine {
                     format!(
                         "Type inference conflict for variable '{}': {} vs {}.",
                         name,
-                        left.display_name(),
-                        right.display_name()
+                        left.display_name_with_table(&checker.analyzer.type_table),
+                        right.display_name_with_table(&checker.analyzer.type_table)
                     ),
                 );
                 current_type
@@ -137,8 +137,8 @@ impl TypeConstraintEngine {
                         "Function '{}' argument #{} has conflicting types: {} vs {}.",
                         function_name,
                         param_index + 1,
-                        left.display_name(),
-                        right.display_name()
+                        left.display_name_with_table(&checker.analyzer.type_table),
+                        right.display_name_with_table(&checker.analyzer.type_table)
                     ),
                 );
                 current_type
@@ -178,8 +178,8 @@ impl TypeConstraintEngine {
                     format!(
                         "Function '{}' return type conflict: {} vs {}.",
                         function_name,
-                        left.display_name(),
-                        right.display_name()
+                        left.display_name_with_table(&checker.analyzer.type_table),
+                        right.display_name_with_table(&checker.analyzer.type_table)
                     ),
                 );
                 current_type

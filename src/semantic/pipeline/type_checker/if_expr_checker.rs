@@ -64,8 +64,8 @@ impl<'a> TypeChecker<'a> {
                     source,
                     format!(
                         "If branches must return the same type, but got {} and {}.",
-                        expected_type.display_name(),
-                        actual_type.display_name()
+                        expected_type.display_name_with_table(&self.analyzer.type_table),
+                        actual_type.display_name_with_table(&self.analyzer.type_table)
                     ),
                 );
                 return None;
@@ -96,7 +96,7 @@ impl<'a> TypeChecker<'a> {
                     source,
                     format!(
                         "If condition expects Boolean, but got {}.",
-                        condition_type.display_name()
+                        condition_type.display_name_with_table(&self.analyzer.type_table)
                     ),
                 );
                 false

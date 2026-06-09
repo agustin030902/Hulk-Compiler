@@ -13,7 +13,7 @@ impl<'a> TypeChecker<'a> {
                 source,
                 format!(
                     "Member access expects a struct instance, but got {}.",
-                    object_type.display_name()
+                    object_type.display_name_with_table(&self.analyzer.type_table)
                 ),
             );
             return None;

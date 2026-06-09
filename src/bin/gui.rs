@@ -692,6 +692,7 @@ fn classify_highlight_role(tokens: &[Token], idx: usize) -> HighlightRole {
         | TokenKind::Minus
         | TokenKind::Multiply
         | TokenKind::Divide
+        | TokenKind::Mod
         | TokenKind::EqualEqual
         | TokenKind::NotEqual
         | TokenKind::Less
@@ -1202,6 +1203,7 @@ fn binary_op_symbol(op: &BinaryOp) -> &'static str {
         BinaryOp::Sub => "-",
         BinaryOp::Mul => "*",
         BinaryOp::Div => "/",
+        BinaryOp::Mod => "%",
         BinaryOp::Equal => "==",
         BinaryOp::NotEqual => "!=",
         BinaryOp::Less => "<",

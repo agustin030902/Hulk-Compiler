@@ -88,6 +88,8 @@ enum LogosTokenKind {
     Multiply,
     #[token("/")]
     Divide,
+    #[token("%")]
+    Mod,
     #[token("==")]
     EqualEqual,
     #[token("!=")]
@@ -193,6 +195,7 @@ impl LogosTokenKind {
             LogosTokenKind::Minus => (TokenKind::Minus, lexeme.to_string()),
             LogosTokenKind::Multiply => (TokenKind::Multiply, lexeme.to_string()),
             LogosTokenKind::Divide => (TokenKind::Divide, lexeme.to_string()),
+            LogosTokenKind::Mod => (TokenKind::Mod, lexeme.to_string()),
             LogosTokenKind::EqualEqual => (TokenKind::EqualEqual, lexeme.to_string()),
             LogosTokenKind::NotEqual => (TokenKind::NotEqual, lexeme.to_string()),
             LogosTokenKind::Less => (TokenKind::Less, lexeme.to_string()),

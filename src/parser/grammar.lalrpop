@@ -51,6 +51,7 @@ extern {
         "-" => TokenKind::Minus,
         "*" => TokenKind::Multiply,
         "/" => TokenKind::Divide,
+        "%" => TokenKind::Mod,
         "==" => TokenKind::EqualEqual,
         "!=" => TokenKind::NotEqual,
         "<" => TokenKind::Less,
@@ -609,6 +610,12 @@ Factor: Expr = {
     <l:@L> <left:Factor> "/" <right:Unary> <r:@R> => Expr::Binary(BinaryExpr {
         left: Box::new(left),
         op: BinaryOp::Div,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Factor> "%" <right:Unary> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Mod,
         right: Box::new(right),
         span: Span::new(l, r),
     }),

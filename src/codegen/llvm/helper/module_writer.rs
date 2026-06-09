@@ -49,6 +49,7 @@ impl LlvmBackend {
             "declare double @exp(double)".to_string(),
             "declare double @log(double)".to_string(),
             "declare double @pow(double, double)".to_string(),
+            "declare double @fmod(double, double)".to_string(),
             "@.fmt.number = private unnamed_addr constant [4 x i8] c\"%g\\0A\\00\"".to_string(),
             "@.fmt.string = private unnamed_addr constant [4 x i8] c\"%s\\0A\\00\"".to_string(),
             "@.fmt.bool = private unnamed_addr constant [4 x i8] c\"%d\\0A\\00\"".to_string(),

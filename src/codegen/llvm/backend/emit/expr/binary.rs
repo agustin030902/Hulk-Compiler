@@ -34,6 +34,23 @@ impl LlvmBackend {
                     repr: result,
                 })
             }
+            BinaryOp::Mod => {
+                if left.value_type != ValueType::Double || right.value_type != ValueType::Double {
+                    self.semantic_error("Modulo operator only supports numeric values");
+                    return None;
+                }
+
+                let result = self.next_temp();
+                self.emit_body(format!(
+                    "{result} = call double @fmod(double {}, double {})",
+                    left.repr, right.repr
+                ));
+
+                Some(ValueRef {
+                    value_type: ValueType::Double,
+                    repr: result,
+                })
+            }
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
                 if left.value_type != ValueType::Double || right.value_type != ValueType::Double {
                     self.semantic_error("Binary arithmetic operators only support numeric values");

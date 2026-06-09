@@ -29,6 +29,7 @@ pub enum TokenKind {
     Minus,
     Multiply,
     Divide,
+    Mod,
     EqualEqual,
     NotEqual,
     Less,

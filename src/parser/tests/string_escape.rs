@@ -81,6 +81,7 @@ fn token(kind: TokenKind, start: usize, end: usize) -> Token {
         TokenKind::Minus => "-".to_string(),
         TokenKind::Multiply => "*".to_string(),
         TokenKind::Divide => "/".to_string(),
+        TokenKind::Mod=> "%".to_string(),
         TokenKind::EqualEqual => "==".to_string(),
         TokenKind::NotEqual => "!=".to_string(),
         TokenKind::Less => "<".to_string(),

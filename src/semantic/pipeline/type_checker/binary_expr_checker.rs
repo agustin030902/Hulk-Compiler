@@ -14,7 +14,7 @@ impl<'a> TypeChecker<'a> {
         };
 
         match binary.op {
-            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Pow => {
+            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Mod | BinaryOp::Pow => {
                 if left_type == SemanticType::Unknown {
                     left_type = TypeConstraintEngine::constrain_expr_type(
                         self,
@@ -287,6 +287,7 @@ fn op_symbol(op: BinaryOp) -> &'static str {
         BinaryOp::Sub => "-",
         BinaryOp::Mul => "*",
         BinaryOp::Div => "/",
+        BinaryOp::Mod => "%",
         BinaryOp::Equal => "==",
         BinaryOp::NotEqual => "!=",
         BinaryOp::Less => "<",

@@ -28,6 +28,7 @@ impl<'a> TypeChecker<'a> {
                 .find(|m| m.name == call.method_name)
                 .map(|m| FunctionSignature {
                     type_id: m.type_id.0,
+                    param_names: vec![],
                     param_types: m.param_types.clone(),
                     return_type: m.return_type,
                 })
@@ -62,19 +63,25 @@ impl<'a> TypeChecker<'a> {
                 return None;
             }
 
-            for (index, arg) in call.args.iter().enumerate() {
+            for (_index, arg) in call.args.iter().enumerate() {
                 let _ = self.check_expr(arg, source);
             }
 
-            if let Expr::Variable { name, .. } = call.receiver.as_ref()
-                && let Some(real_id) = self.analyzer.protocol_real_types.get(name).copied()
-            {
-                if let Some(real_signature) = self
-                    .resolve_method_symbol_key(real_id, &call.method_name)
-                    .or_else(|| self.resolve_method_symbol_key_in_structs(real_id, &call.method_name))
-                    .and_then(|key| self.analyzer.functions.get(&key).cloned())
-                {
-                    return Some(real_signature.return_type);
+            if let Expr::Variable { name, .. } = call.receiver.as_ref() {
+                let real_id = self
+                    .analyzer
+                    .protocol_real_types
+                    .get(name)
+                    .copied()
+                    .or_else(|| self.analyzer.lookup_param_real_type(name));
+                if let Some(real_id) = real_id {
+                    if let Some(real_signature) = self
+                        .resolve_method_symbol_key(real_id, &call.method_name)
+                        .or_else(|| self.resolve_method_symbol_key_in_structs(real_id, &call.method_name))
+                        .and_then(|key| self.analyzer.functions.get(&key).cloned())
+                    {
+                        return Some(real_signature.return_type);
+                    }
                 }
             }
 

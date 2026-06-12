@@ -13,7 +13,13 @@ impl TypeResolver {
         annotation: &TypeAnnotation,
         source: &str,
     ) -> Option<SemanticType> {
-        let Some(annotation_type) = Self::resolve_named_type(analyzer, &annotation.name) else {
+        let resolved_name = if annotation.is_splat {
+            format!("Iterable_{}", annotation.name)
+        } else {
+            annotation.name.clone()
+        };
+
+        let Some(annotation_type) = Self::resolve_named_type(analyzer, &resolved_name) else {
             analyzer.push_semantic_error(
                 annotation.span,
                 source,

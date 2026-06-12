@@ -5,6 +5,7 @@ mod function_type_annotations;
 mod is_as_expr;
 mod let_in;
 mod print_expr;
+mod splat_annotations;
 mod string_escape;
 mod type_annotations;
 mod types;

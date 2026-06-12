@@ -6,6 +6,7 @@ mod let_in;
 mod print_expr;
 mod protocol_param_propagation;
 mod rand_expression;
+mod splat_annotations;
 mod string_escape;
 mod types;
 mod while_expr;

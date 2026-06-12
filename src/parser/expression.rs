@@ -103,6 +103,7 @@ pub struct FunctionParam {
 pub struct TypeAnnotation {
     pub name: String,
     pub span: Span,
+    pub is_splat: bool,
 }
 
 #[derive(Debug, Clone)]

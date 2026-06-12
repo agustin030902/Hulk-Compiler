@@ -134,9 +134,15 @@ ProtocolMember: ProtocolMethodDecl = {
 };
 
 RequiredTypeAnnotation: TypeAnnotation = {
+    <l:@L> <name:"identifier"> "*" <r:@R> => TypeAnnotation {
+        name,
+        span: Span::new(l, r),
+        is_splat: true,
+    },
     <l:@L> <name:"identifier"> <r:@R> => TypeAnnotation {
         name,
         span: Span::new(l, r),
+        is_splat: false,
     },
 };
 
@@ -452,9 +458,15 @@ LetBinding: LetBinding = {
 };
 
 OptionalTypeAnnotation: Option<TypeAnnotation> = {
+    <l:@L> ":" <name:"identifier"> "*" <r:@R> => Some(TypeAnnotation {
+        name,
+        span: Span::new(l, r),
+        is_splat: true,
+    }),
     <l:@L> ":" <name:"identifier"> <r:@R> => Some(TypeAnnotation {
         name,
         span: Span::new(l, r),
+        is_splat: false,
     }),
     => None,
 };

@@ -88,6 +88,7 @@ impl SemanticAnalyzer {
             SignatureInferencePass::infer_function_signatures(self, program, source);
 
         self.reset_analysis_state();
+        SymbolCollector::inject_splat_protocols(self, program);
         SymbolCollector::collect_types(self, &program.types, source);
         SymbolCollector::collect_protocols(self, &program.protocols, source);
         SymbolCollector::collect_functions(self, &program.functions, source);

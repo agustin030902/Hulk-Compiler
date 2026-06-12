@@ -25,6 +25,7 @@ fn annotation(name: &str) -> TypeAnnotation {
     TypeAnnotation {
         name: name.to_string(),
         span: synthetic_span(),
+        is_splat: false,
     }
 }
 

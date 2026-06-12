@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     error::{CompilerError, ErrorCategory, offset_to_line_column},
-    parser::expression::{Program, Span},
+    parser::expression::{FunctionDecl, Program, Span},
 };
 
 use super::{
@@ -23,6 +23,9 @@ pub struct SemanticAnalyzer {
     pub(super) current_self_scope_index: Option<usize>,
     pub(super) suppress_errors: bool,
     pub(super) protocol_real_types: HashMap<String, TypeId>,
+    pub(super) param_real_types: Vec<HashMap<String, TypeId>>,
+    pub(super) flat_param_real_types: HashMap<String, TypeId>,
+    pub(super) function_decls: HashMap<String, FunctionDecl>,
 }
 
 impl SemanticAnalyzer {
@@ -48,6 +51,36 @@ impl SemanticAnalyzer {
 
     pub fn protocol_real_types(&self) -> &HashMap<String, TypeId> {
         &self.protocol_real_types
+    }
+
+    pub fn flat_param_real_types(&self) -> &HashMap<String, TypeId> {
+        &self.flat_param_real_types
+    }
+
+    pub fn current_param_real_types(&self) -> Option<&HashMap<String, TypeId>> {
+        self.param_real_types.last()
+    }
+
+    pub(super) fn push_param_real_types(&mut self) {
+        self.param_real_types.push(HashMap::new());
+    }
+
+    pub(super) fn pop_param_real_types(&mut self) {
+        self.param_real_types.pop();
+    }
+
+    pub(super) fn bind_param_real_type(&mut self, name: String, type_id: TypeId) {
+        if let Some(ctx) = self.param_real_types.last_mut() {
+            ctx.insert(name.clone(), type_id);
+        }
+        self.flat_param_real_types.insert(name, type_id);
+    }
+
+    pub(super) fn lookup_param_real_type(&self, name: &str) -> Option<TypeId> {
+        self.param_real_types
+            .iter()
+            .rev()
+            .find_map(|ctx| ctx.get(name).copied())
     }
 
     pub fn analyze(&mut self, program: &Program, source: &str) -> Vec<CompilerError> {
@@ -89,6 +122,9 @@ impl SemanticAnalyzer {
         self.current_self_scope_index = None;
         self.suppress_errors = false;
         self.protocol_real_types.clear();
+        self.param_real_types.clear();
+        self.flat_param_real_types.clear();
+        self.function_decls.clear();
     }
 
     pub(super) fn start_scope_pass(&mut self) {

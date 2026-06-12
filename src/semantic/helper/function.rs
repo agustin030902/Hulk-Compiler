@@ -3,6 +3,7 @@ use super::{SemanticType, TypeId};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionSignature {
     pub type_id: u32,
+    pub param_names: Vec<String>,
     pub param_types: Vec<SemanticType>,
     pub return_type: SemanticType,
 }

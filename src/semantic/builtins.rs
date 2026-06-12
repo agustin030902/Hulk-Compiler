@@ -181,6 +181,7 @@ fn register_protocol_method(
         key.clone(),
         FunctionSignature {
             type_id: method_type_id.0,
+            param_names: vec![],
             param_types,
             return_type,
         },

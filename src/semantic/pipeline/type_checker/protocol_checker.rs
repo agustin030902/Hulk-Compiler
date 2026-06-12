@@ -136,10 +136,11 @@ impl ProtocolChecker {
             .iter()
             .find(|m| m.name == method_name)
             .map(|m| FunctionSignature {
-                type_id: m.type_id.0,
-                param_types: m.param_types.clone(),
-                return_type: m.return_type,
-            })
+                    type_id: m.type_id.0,
+                    param_names: vec![],
+                    param_types: m.param_types.clone(),
+                    return_type: m.return_type,
+                })
         else {
             analyzer.push_semantic_error(
                 call_span,

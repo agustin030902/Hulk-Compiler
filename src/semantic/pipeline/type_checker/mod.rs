@@ -337,6 +337,7 @@ impl<'a> TypeChecker<'a> {
                         key,
                         FunctionSignature {
                             type_id: parent_method.type_id.0,
+                            param_names: vec![],
                             param_types: parent_method.param_types.clone(),
                             return_type: parent_method.return_type,
                         },
@@ -637,6 +638,10 @@ impl<'a> TypeChecker<'a> {
         function: &FunctionDecl,
         source: &str,
     ) {
+        self.analyzer
+            .function_decls
+            .insert(function.name.clone(), function.clone());
+
         let mut param_names = HashSet::new();
         let param_types = self
             .analyzer

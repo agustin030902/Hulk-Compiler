@@ -51,6 +51,12 @@ impl LlvmBackend {
             .map(|(name, type_id)| (name.clone(), type_id.0))
             .collect();
 
+        self.param_real_types = analyzer
+            .flat_param_real_types()
+            .iter()
+            .map(|(name, type_id)| (name.clone(), type_id.0))
+            .collect();
+
         if !self.load_struct_layouts(&analyzer) {
             return false;
         }

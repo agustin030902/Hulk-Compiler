@@ -295,6 +295,12 @@ impl SymbolCollector {
                 continue;
             }
 
+            let param_names: Vec<String> = function
+                .params
+                .iter()
+                .map(|param| param.name.clone())
+                .collect();
+
             let param_types = function
                 .params
                 .iter()
@@ -331,6 +337,7 @@ impl SymbolCollector {
 
             let signature = FunctionSignature {
                 type_id: function_type_id.0,
+                param_names,
                 param_types,
                 return_type,
             };
@@ -365,6 +372,12 @@ impl SymbolCollector {
                     );
                     continue;
                 }
+
+                let param_names: Vec<String> = method
+                    .params
+                    .iter()
+                    .map(|param| param.name.clone())
+                    .collect();
 
                 let param_types = method
                     .params
@@ -433,6 +446,7 @@ impl SymbolCollector {
                     key.clone(),
                     FunctionSignature {
                         type_id: method_type_id.0,
+                        param_names,
                         param_types,
                         return_type,
                     },
@@ -483,6 +497,12 @@ impl SymbolCollector {
                         );
                     }
                 }
+
+                let param_names: Vec<String> = method
+                    .params
+                    .iter()
+                    .map(|param| param.name.clone())
+                    .collect();
 
                 let param_types = method
                     .params
@@ -548,6 +568,7 @@ impl SymbolCollector {
                     key.clone(),
                     FunctionSignature {
                         type_id: method_type_id.0,
+                        param_names,
                         param_types,
                         return_type,
                     },

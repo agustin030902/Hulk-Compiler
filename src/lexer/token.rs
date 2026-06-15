@@ -7,7 +7,7 @@ pub enum TokenKind {
     Let,
     Function,
     Type,
-    Protocol,
+    Interface,
     Extends,
     New,
     While,

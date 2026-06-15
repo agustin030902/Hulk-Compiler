@@ -18,6 +18,13 @@ pub struct Program {
     pub statements: Vec<Statement>,
 }
 
+#[derive(Debug)]
+pub enum ProgramItem {
+    Protocol(ProtocolDecl),
+    Type(TypeDecl),
+    Function(FunctionDecl),
+}
+
 #[derive(Debug, Clone)]
 pub struct TypeDecl {
     pub name: String,

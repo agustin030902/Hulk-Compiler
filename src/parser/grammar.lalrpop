@@ -3,8 +3,8 @@ use crate::parser::expression::{
     AsExpr, AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction,
     DestructiveAssignExpr, ElifBranch, Expr, FunctionCallExpr, FunctionDecl, FunctionParam, IfExpr,
     IsExpr, LetBinding, LetInExpr, Literal, MemberAccessExpr, MethodCallExpr, MethodDecl, NewExpr,
-    Program, ProtocolDecl, ProtocolMethodDecl, Span, Statement, TypeAnnotation, TypeAttribute,
-    TypeDecl, TypeMemberDecl, TypeParam, UnaryExpr, UnaryOp, WhileExpr,
+    Program, ProgramItem, ProtocolDecl, ProtocolMethodDecl, Span, Statement, TypeAnnotation,
+    TypeAttribute, TypeDecl, TypeMemberDecl, TypeParam, UnaryExpr, UnaryOp, WhileExpr,
 };
 
 grammar;
@@ -17,7 +17,7 @@ extern {
         "let" => TokenKind::Let,
         "function" => TokenKind::Function,
         "type" => TokenKind::Type,
-        "protocol" => TokenKind::Protocol,
+        "interface" => TokenKind::Interface,
         "extends" => TokenKind::Extends,
         "new" => TokenKind::New,
         "while" => TokenKind::While,
@@ -78,25 +78,34 @@ extern {
 }
 
 pub Program: Program = {
-    <protocols:ProtocolDecls> <types:TypeDecls> <functions:FunctionDecls> <statements:Statements> "eof" => Program {
-        types,
-        protocols,
-        functions,
-        statements,
+    <items:Declaration*> <statements:Statements> "eof" => {
+        let mut protocols = Vec::new();
+        let mut types = Vec::new();
+        let mut functions = Vec::new();
+        for item in items {
+            match item {
+                ProgramItem::Protocol(p) => protocols.push(p),
+                ProgramItem::Type(t) => types.push(t),
+                ProgramItem::Function(f) => functions.push(f),
+            }
+        }
+        Program {
+            types,
+            protocols,
+            functions,
+            statements,
+        }
     },
 };
 
-ProtocolDecls: Vec<ProtocolDecl> = {
-    => vec![],
-    <first:ProtocolDecl> <rest:ProtocolDecls> => {
-        let mut protocols = vec![first];
-        protocols.extend(rest);
-        protocols
-    },
+Declaration: ProgramItem = {
+    <p:ProtocolDecl> => ProgramItem::Protocol(p),
+    <t:TypeDecl> => ProgramItem::Type(t),
+    <f:FunctionDecl> => ProgramItem::Function(f),
 };
 
 ProtocolDecl: ProtocolDecl = {
-    <l:@L> "protocol" <id:IdentifierWithSpan> <inheritance:ProtocolInheritance> "{" <methods:ProtocolMembers> "}" <r:@R> => {
+    <l:@L> "interface" <id:IdentifierWithSpan> <inheritance:ProtocolInheritance> "{" <methods:ProtocolMembers> "}" <r:@R> => {
         let (parent_name, parent_span) = inheritance;
         ProtocolDecl {
             name: id.0,
@@ -143,15 +152,6 @@ RequiredTypeAnnotation: TypeAnnotation = {
         name,
         span: Span::new(l, r),
         is_splat: false,
-    },
-};
-
-TypeDecls: Vec<TypeDecl> = {
-    => vec![],
-    <first:TypeDecl> <rest:TypeDecls> => {
-        let mut types = vec![first];
-        types.extend(rest);
-        types
     },
 };
 
@@ -251,15 +251,6 @@ TypeMember: TypeMemberDecl = {
             body: Expr::Block(body),
             span: Span::new(l, r),
         }))
-    },
-};
-
-FunctionDecls: Vec<FunctionDecl> = {
-    => vec![],
-    <first:FunctionDecl> <rest:FunctionDecls> => {
-        let mut functions = vec![first];
-        functions.extend(rest);
-        functions
     },
 };
 

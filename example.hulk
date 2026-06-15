@@ -81,12 +81,12 @@ let x : Object = new Knight("Phil", "Collins") in {
     };
 }
 
-// 10. Protocols (Structural Typing)
-protocol Hashable {
+// 10. Interfaces (Structural Typing)
+interface Hashable {
     hash(): Number;
 }
 
-protocol Equatable extends Hashable {
+interface Equatable extends Hashable {
     equals(other: Object): Boolean;
 }
 

@@ -241,7 +241,7 @@ impl<'a> TypeChecker<'a> {
             annotation_span,
             source,
             format!(
-                "Type annotation for variable '{}' uses protocol '{}' but initializer of type {} does not conform to it.",
+                "Type annotation for variable '{}' uses interface '{}' but initializer of type {} does not conform to it.",
                 variable_name,
                 self.analyzer
                     .type_table

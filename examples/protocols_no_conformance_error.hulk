@@ -1,4 +1,4 @@
-protocol Hashable {
+interface Hashable {
     hash(): Number;
 }
 

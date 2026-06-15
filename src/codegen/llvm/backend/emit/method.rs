@@ -1,4 +1,4 @@
-use crate::parser::expression::{MethodDecl, ProtocolDecl, TypeDecl};
+use crate::parser::expression::{MethodDecl, InterfaceDecl, TypeDecl};
 
 use super::super::LlvmBackend;
 use crate::codegen::llvm::helper::state::{ValueType, VariableInfo};
@@ -120,13 +120,13 @@ impl LlvmBackend {
         self.emit_function_line("}");
     }
 
-    pub(in crate::codegen::llvm) fn emit_protocol_methods(&mut self, protocol_decl: &ProtocolDecl) {
-        let Some(protocol_type_id) = self.type_ids.get(&protocol_decl.name).copied() else {
+    pub(in crate::codegen::llvm) fn emit_interface_methods(&mut self, interface_decl: &InterfaceDecl) {
+        let Some(interface_type_id) = self.type_ids.get(&interface_decl.name).copied() else {
             return;
         };
 
-        for method in &protocol_decl.methods {
-            let key = format!("type#{}::{}", protocol_type_id, method.name);
+        for method in &interface_decl.methods {
+            let key = format!("type#{}::{}", interface_type_id, method.name);
             let Some(info) = self.functions.get(&key).cloned() else {
                 continue;
             };

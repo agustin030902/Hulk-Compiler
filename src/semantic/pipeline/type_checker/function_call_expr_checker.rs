@@ -51,7 +51,7 @@ impl<'a> TypeChecker<'a> {
         }
 
         let mut valid_call = true;
-        let mut has_protocol_args = false;
+        let mut has_interface_args = false;
         let mut arg_types: Vec<SemanticType> = Vec::with_capacity(call.args.len());
 
         for (index, arg) in call.args.iter().enumerate() {
@@ -106,10 +106,10 @@ impl<'a> TypeChecker<'a> {
                 SemanticType::Struct(arg_raw),
             ) = (expected_type, arg_type) {
                 let exp_id = TypeId(exp_raw);
-                if SymbolCollector::is_protocol(self.analyzer, exp_id)
+                if SymbolCollector::is_interface(self.analyzer, exp_id)
                     && exp_raw != arg_raw
                 {
-                    has_protocol_args = true;
+                    has_interface_args = true;
                     if let Some(param_name) = signature.param_names.get(index) {
                         self.analyzer
                             .bind_param_real_type(param_name.clone(), TypeId(arg_raw));
@@ -122,7 +122,7 @@ impl<'a> TypeChecker<'a> {
             return None;
         }
 
-        if has_protocol_args {
+        if has_interface_args {
             self.analyzer.push_param_real_types();
 
             for (index, param_name) in signature.param_names.iter().enumerate() {
@@ -132,7 +132,7 @@ impl<'a> TypeChecker<'a> {
                         SemanticType::Struct(arg_raw),
                     ) = (signature.param_types.get(index).copied().unwrap_or(SemanticType::Unknown), *arg_type) {
                         let exp_id = TypeId(exp_raw);
-                        if SymbolCollector::is_protocol(self.analyzer, exp_id)
+                        if SymbolCollector::is_interface(self.analyzer, exp_id)
                             && exp_raw != arg_raw
                         {
                             self.analyzer

@@ -4,7 +4,7 @@ mod is_as_expr;
 mod iterable;
 mod let_in;
 mod print_expr;
-mod protocol_param_propagation;
+mod interface_param_propagation;
 mod rand_expression;
 mod splat_annotations;
 mod string_escape;

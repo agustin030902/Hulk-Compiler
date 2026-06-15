@@ -82,7 +82,7 @@ fn compiles_let_binding_with_splat_annotation() {
 }
 
 #[test]
-fn compiles_function_with_splat_param_and_protocol_conformance() {
+fn compiles_function_with_splat_param_and_interface_conformance() {
     let source = r#"
     function first(items: Number*): Number {
         let result = 0;
@@ -93,7 +93,7 @@ fn compiles_function_with_splat_param_and_protocol_conformance() {
     }
     print(first(range(10, 20)));
     "#;
-    let output_path = unique_output_path("splat_protocol_conformance");
+    let output_path = unique_output_path("splat_interface_conformance");
 
     let mut compiler = Compiler::new();
     let report = compiler.compile(

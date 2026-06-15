@@ -18,7 +18,7 @@ enum LogosTokenKind {
     Function,
     #[token("type", priority = 3)]
     Type,
-    #[token("protocol", priority = 3)]
+    #[token("interface", priority = 3)]
     Protocol,
     #[token("extends", priority = 3)]
     Extends,

@@ -37,7 +37,7 @@ impl<'a> TypeChecker<'a> {
                     call.method_name_span,
                     source,
                     format!(
-                        "Method '{}' is not declared in protocol '{}'.",
+                        "Method '{}' is not declared in interface '{}'.",
                         call.method_name,
                         self.analyzer
                             .type_table

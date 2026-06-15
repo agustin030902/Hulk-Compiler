@@ -146,7 +146,7 @@ impl ProtocolChecker {
                 call_span,
                 source,
                 format!(
-                    "Type does not conform to protocol: method '{}' is not declared in the protocol.",
+                    "Type does not conform to interface: method '{}' is not declared in the interface.",
                     method_name
                 ),
             );
@@ -158,7 +158,7 @@ impl ProtocolChecker {
                 call_span,
                 source,
                 format!(
-                    "Type does not conform to protocol: method '{}' is not declared in the implementing type.",
+                    "Type does not conform to interface: method '{}' is not declared in the implementing type.",
                     method_name
                 ),
             );
@@ -170,7 +170,7 @@ impl ProtocolChecker {
                 call_span,
                 source,
                 format!(
-                    "Type does not conform to protocol: method '{}' expects {} argument(s), but type provides {}.",
+                    "Type does not conform to interface: method '{}' expects {} argument(s), but type provides {}.",
                     method_name,
                     protocol_signature.param_types.len(),
                     impl_signature.param_types.len()
@@ -190,7 +190,7 @@ impl ProtocolChecker {
                     call_span,
                     source,
                     format!(
-                        "Type does not conform to protocol: method '{}' argument #{} has incompatible variance: expected {} (contravariant) in protocol, got {}.",
+                        "Type does not conform to interface: method '{}' argument #{} has incompatible variance: expected {} (contravariant) in interface, got {}.",
                         method_name,
                         index + 1,
                         proto_t.display_name_with_table(&analyzer.type_table),
@@ -207,7 +207,7 @@ impl ProtocolChecker {
                 call_span,
                 source,
                 format!(
-                    "Type does not conform to protocol: method '{}' return type is incompatible (covariant): expected {} in protocol, got {}.",
+                    "Type does not conform to interface: method '{}' return type is incompatible (covariant): expected {} in interface, got {}.",
                     method_name,
                     protocol_signature.return_type.display_name_with_table(&analyzer.type_table),
                     impl_signature.return_type.display_name_with_table(&analyzer.type_table)
@@ -277,7 +277,7 @@ impl ProtocolChecker {
                             method.name_span,
                             source,
                             format!(
-                                "Method '{}' override in protocol '{}' does not respect variance constraints of parent protocol.",
+                                "Method '{}' override in interface '{}' does not respect variance constraints of parent interface.",
                                 method.name, protocol_decl.name
                             ),
                         );

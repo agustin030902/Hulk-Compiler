@@ -149,7 +149,7 @@ impl SymbolCollector {
                     protocol_decl.name_span,
                     source,
                     format!(
-                        "Protocol '{}' cannot be declared because the name is reserved.",
+                        "Interface '{}' cannot be declared because the name is reserved.",
                         protocol_decl.name
                     ),
                 );
@@ -160,7 +160,7 @@ impl SymbolCollector {
                 analyzer.push_semantic_error(
                     protocol_decl.name_span,
                     source,
-                    format!("Protocol '{}' redeclared.", protocol_decl.name),
+                    format!("Interface '{}' redeclared.", protocol_decl.name),
                 );
                 continue;
             }
@@ -197,7 +197,7 @@ impl SymbolCollector {
                                     parent_span,
                                     source,
                                     format!(
-                                        "Protocol '{}' cannot extend type '{}' (only protocols can be extended).",
+                                        "Interface '{}' cannot extend type '{}' (only interfaces can be extended).",
                                         protocol_decl.name, parent_name
                                     ),
                                 );
@@ -209,7 +209,7 @@ impl SymbolCollector {
                                     parent_span,
                                     source,
                                     format!(
-                                        "Circular extension detected for protocol '{}'.",
+                                        "Circular extension detected for interface '{}'.",
                                         protocol_decl.name
                                     ),
                                 );
@@ -221,7 +221,7 @@ impl SymbolCollector {
                                     parent_span,
                                     source,
                                     format!(
-                                        "Circular extension detected for protocol '{}'.",
+                                        "Circular extension detected for interface '{}'.",
                                         protocol_decl.name
                                     ),
                                 );
@@ -236,7 +236,7 @@ impl SymbolCollector {
                             analyzer.push_semantic_error(
                                 parent_span,
                                 source,
-                                format!("Parent protocol '{}' not found.", parent_name),
+                                format!("Parent interface '{}' not found.", parent_name),
                             );
                         }
                         None
@@ -480,7 +480,7 @@ impl SymbolCollector {
                         method.name_span,
                         source,
                         format!(
-                            "Method '{}' redeclared in protocol '{}'.",
+                            "Method '{}' redeclared in interface '{}'.",
                             method.name, protocol_decl.name
                         ),
                     );
@@ -493,7 +493,7 @@ impl SymbolCollector {
                             param.span,
                             source,
                             format!(
-                                "Parameter '{}' in protocol method '{}' must have an explicit type annotation.",
+                                "Parameter '{}' in interface method '{}' must have an explicit type annotation.",
                                 param.name, method.name
                             ),
                         );
@@ -536,7 +536,7 @@ impl SymbolCollector {
                         method.return_type_annotation.span,
                         source,
                         format!(
-                            "Protocol method '{}' must declare a fully resolvable return type.",
+                            "Interface method '{}' must declare a fully resolvable return type.",
                             method.name
                         ),
                     );

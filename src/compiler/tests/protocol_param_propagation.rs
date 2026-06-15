@@ -18,7 +18,7 @@ fn unique_output_path(test_name: &str) -> PathBuf {
 #[test]
 fn writes_llvm_ir_dispatching_concrete_method_for_protocol_param() {
     let source = r#"
-    protocol Printable { show(): String; }
+    interface Printable { show(): String; }
     type Person {
         name: String = "John";
         show(): String => self.name;
@@ -53,7 +53,7 @@ fn writes_llvm_ir_dispatching_concrete_method_for_protocol_param() {
     );
     assert!(
         !llvm_ir.contains(" Printable::"),
-        "IR should NOT dispatch via protocol method, got:\n{}",
+        "IR should NOT dispatch via interface method, got:\n{}",
         llvm_ir
     );
 }
@@ -61,7 +61,7 @@ fn writes_llvm_ir_dispatching_concrete_method_for_protocol_param() {
 #[test]
 fn writes_llvm_ir_for_protocol_param_with_multiple_concrete_calls() {
     let source = r#"
-    protocol Printable { show(): String; }
+    interface Printable { show(): String; }
     type Person { show(): String => "Person"; }
     type Robot { show(): String => "Robot"; }
     function mostrar(p: Printable): Unit => print(p.show());

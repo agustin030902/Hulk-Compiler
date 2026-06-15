@@ -1,4 +1,4 @@
-protocol Serializable {
+interface Serializable {
     toString(): String;
 }
 

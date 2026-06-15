@@ -1,0 +1,15 @@
+interface Printable {
+    show(): String;
+}
+
+type Person {
+    name = "John";
+    show(): String => self.name;
+}
+
+function mostrar(p: Printable): Unit => {
+    print(p.show());
+};
+
+let persona = new Person();
+mostrar(persona);

@@ -51,11 +51,14 @@ impl<'a> TypeChecker<'a> {
         }
 
         let mut valid_call = true;
+        let mut has_interface_args = false;
+        let mut arg_types: Vec<SemanticType> = Vec::with_capacity(call.args.len());
 
         for (index, arg) in call.args.iter().enumerate() {
             let arg_type = self
                 .check_expr(arg, source)
                 .unwrap_or(SemanticType::Unknown);
+            arg_types.push(arg_type);
             let expected_type = self
                 .analyzer
                 .functions
@@ -97,16 +100,80 @@ impl<'a> TypeChecker<'a> {
                 );
                 valid_call = false;
             }
+
+            if let (
+                SemanticType::Struct(exp_raw),
+                SemanticType::Struct(arg_raw),
+            ) = (expected_type, arg_type) {
+                let exp_id = TypeId(exp_raw);
+                if SymbolCollector::is_interface(self.analyzer, exp_id)
+                    && exp_raw != arg_raw
+                {
+                    has_interface_args = true;
+                    if let Some(param_name) = signature.param_names.get(index) {
+                        self.analyzer
+                            .bind_param_real_type(param_name.clone(), TypeId(arg_raw));
+                    }
+                }
+            }
         }
 
         if !valid_call {
             return None;
         }
 
-        self.analyzer
-            .functions
-            .get(&call.name)
-            .map(|entry| entry.return_type)
-            .or(Some(SemanticType::Unknown))
+        if has_interface_args {
+            self.analyzer.push_param_real_types();
+
+            for (index, param_name) in signature.param_names.iter().enumerate() {
+                if let Some(arg_type) = arg_types.get(index) {
+                    if let (
+                        SemanticType::Struct(exp_raw),
+                        SemanticType::Struct(arg_raw),
+                    ) = (signature.param_types.get(index).copied().unwrap_or(SemanticType::Unknown), *arg_type) {
+                        let exp_id = TypeId(exp_raw);
+                        if SymbolCollector::is_interface(self.analyzer, exp_id)
+                            && exp_raw != arg_raw
+                        {
+                            self.analyzer
+                                .bind_param_real_type(param_name.clone(), TypeId(arg_raw));
+                        }
+                    }
+                }
+            }
+
+            if let Some(function_decl) = self
+                .analyzer
+                .function_decls
+                .get(&call.name)
+                .cloned()
+            {
+                self.analyzer.push_scope();
+                for (index, param) in function_decl.params.iter().enumerate() {
+                    let param_type = if let Some(param_name) = signature.param_names.get(index) {
+                        self.analyzer
+                            .lookup_param_real_type(param_name)
+                            .map(|tid| SemanticType::Struct(tid.0))
+                            .unwrap_or_else(|| signature.param_types.get(index).copied().unwrap_or(SemanticType::Unknown))
+                    } else {
+                        signature.param_types.get(index).copied().unwrap_or(SemanticType::Unknown)
+                    };
+                    self.analyzer
+                        .bind_current_scope(param.name.clone(), param_type);
+                }
+                let _ = self.check_expr(&function_decl.body, source);
+                self.analyzer.pop_scope();
+            }
+
+            self.analyzer.pop_param_real_types();
+        }
+
+        Some(
+            self.analyzer
+                .functions
+                .get(&call.name)
+                .map(|entry| entry.return_type)
+                .unwrap_or(SemanticType::Unknown),
+        )
     }
 }

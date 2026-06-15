@@ -28,6 +28,10 @@ impl LlvmBackend {
             }
         }
 
+        for interface_decl in &program.interfaces {
+            self.emit_interface_methods(interface_decl);
+        }
+
         for function in &program.functions {
             self.emit_function_decl(function);
         }

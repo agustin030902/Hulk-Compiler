@@ -90,3 +90,67 @@ print(value + 1);
         errors
     );
 }
+
+#[test]
+fn allows_method_call_on_interface_typed_parameter_with_concrete_argument() {
+    let source = r#"
+    interface Printable { show(): String; }
+type Person {
+    name: String = "John";
+    show(): String => self.name;
+}
+function mostrar(p: Printable): String => p.show();
+print(mostrar(new Person()));
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn allows_method_call_on_interface_param_with_multiple_concrete_types() {
+    let source = r#"
+    interface Greetable { greet(): String; }
+type Person {
+    name: String = "Alice";
+    greet(): String => "Hello " @ self.name;
+}
+type Robot {
+    id: Number = 1;
+    greet(): String => "Beep " @ self.id;
+}
+function send_greeting(g: Greetable): String => g.greet();
+print(send_greeting(new Person()));
+print(send_greeting(new Robot()));
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn allows_same_interface_param_function_called_with_different_types() {
+    let source = r#"
+    interface Printable { show(): String; }
+type Person { show(): String => "Person"; }
+type Robot { show(): String => "Robot"; }
+function mostrar(p: Printable): Unit => print(p.show());
+mostrar(new Person());
+mostrar(new Robot());
+"#;
+
+    let errors = analyze_source(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}

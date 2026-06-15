@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::parser::expression::{
     AsExpr, AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinFunction, DestructiveAssignExpr,
     ElifBranch, Expr, FunctionCallExpr, FunctionDecl, IfExpr, IsExpr, LetInExpr, Literal,
-    MethodCallExpr, MethodDecl, NewExpr, Program, ProtocolDecl, Span, Statement, TypeDecl,
+    MethodCallExpr, MethodDecl, NewExpr, Program, InterfaceDecl, Span, Statement, TypeDecl,
     UnaryExpr, UnaryOp, WhileExpr,
 };
 
@@ -24,12 +24,12 @@ mod literal_expr_checker;
 mod member_access_expr_checker;
 mod method_call_expr_checker;
 mod new_expr_checker;
-mod protocol_checker;
+    mod interface_checker;
 mod unary_expr_checker;
 mod variable_expr_checker;
 mod while_expr_checker;
 
-pub(in crate::semantic) use protocol_checker::ProtocolChecker;
+pub(in crate::semantic) use interface_checker::InterfaceChecker;
 
 pub(in crate::semantic) struct TypeChecker<'a> {
     pub(in crate::semantic) analyzer: &'a mut SemanticAnalyzer,
@@ -41,8 +41,8 @@ impl<'a> TypeChecker<'a> {
     }
 
     pub(in crate::semantic) fn check_program(&mut self, program: &Program, source: &str) {
-        for protocol_decl in &program.protocols {
-            self.check_protocol_decl(protocol_decl, source);
+        for interface_decl in &program.interfaces {
+            self.check_interface_decl(interface_decl, source);
         }
 
         for type_decl in &program.types {
@@ -198,7 +198,7 @@ impl<'a> TypeChecker<'a> {
         };
 
         let annotation_id = TypeId(annotation_raw);
-        if !SymbolCollector::is_protocol(self.analyzer, annotation_id) {
+        if !SymbolCollector::is_interface(self.analyzer, annotation_id) {
             if value_type != SemanticType::Unknown && value_type != annotation_type {
                 if self.types_compatible(annotation_type, value_type) {
                     return annotation_type;
@@ -226,12 +226,12 @@ impl<'a> TypeChecker<'a> {
         }
 
         if self
-            .validate_protocol_conformance(value_type, annotation_id, source)
+            .validate_interface_conformance(value_type, annotation_id, source)
             .is_some()
         {
             if let SemanticType::Struct(real_raw) = value_type {
                 self.analyzer
-                    .protocol_real_types
+                    .interface_real_types
                     .insert(variable_name.to_string(), TypeId(real_raw));
             }
             return annotation_type;
@@ -241,7 +241,7 @@ impl<'a> TypeChecker<'a> {
             annotation_span,
             source,
             format!(
-                "Type annotation for variable '{}' uses protocol '{}' but initializer of type {} does not conform to it.",
+                "Type annotation for variable '{}' uses interface '{}' but initializer of type {} does not conform to it.",
                 variable_name,
                 self.analyzer
                     .type_table
@@ -274,9 +274,9 @@ impl<'a> TypeChecker<'a> {
         match (expected, actual) {
             (SemanticType::Struct(parent), SemanticType::Struct(child)) => {
                 let parent_id = TypeId(parent);
-                if SymbolCollector::is_protocol(self.analyzer, parent_id) {
+                if SymbolCollector::is_interface(self.analyzer, parent_id) {
                     return self
-                        .validate_protocol_conformance(actual, parent_id, "")
+                        .validate_interface_conformance(actual, parent_id, "")
                         .is_some();
                 }
                 self.is_subtype_of(TypeId(child), parent_id)
@@ -285,21 +285,21 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    pub(in crate::semantic) fn check_protocol_decl(
+    pub(in crate::semantic) fn check_interface_decl(
         &mut self,
-        protocol_decl: &ProtocolDecl,
+        interface_decl: &InterfaceDecl,
         source: &str,
     ) {
-        let Some(protocol_id) = self
+        let Some(interface_id) = self
             .analyzer
             .type_symbols
-            .get(&protocol_decl.name)
+            .get(&interface_decl.name)
             .copied()
         else {
             return;
         };
 
-        for method in &protocol_decl.methods {
+        for method in &interface_decl.methods {
             for param in &method.params {
                 if let Some(annotation) = &param.type_annotation {
                     let _ = TypeResolver::resolve_annotation_type(
@@ -316,27 +316,28 @@ impl<'a> TypeChecker<'a> {
             );
         }
 
-        if let Some(parent_name) = &protocol_decl.parent_name {
+        if let Some(parent_name) = &interface_decl.parent_name {
             let Some(parent_id) = self.analyzer.type_symbols.get(parent_name).copied() else {
                 return;
             };
             for parent_method in
-                ProtocolChecker::collect_inherited_protocol_methods(self.analyzer, protocol_id, parent_id)
+                InterfaceChecker::collect_inherited_interface_methods(self.analyzer, interface_id, parent_id)
             {
-                let key = SymbolCollector::method_symbol_key(protocol_id, &parent_method.name);
+                let key = SymbolCollector::method_symbol_key(interface_id, &parent_method.name);
                 if !self.analyzer.functions.contains_key(&key) {
                     self.analyzer.function_symbols.insert(
                         key.clone(),
                         FunctionSymbol::new_method(
                             parent_method.name.clone(),
                             parent_method.type_id,
-                            protocol_id,
+                            interface_id,
                         ),
                     );
                     self.analyzer.functions.insert(
                         key,
                         FunctionSignature {
                             type_id: parent_method.type_id.0,
+                            param_names: vec![],
                             param_types: parent_method.param_types.clone(),
                             return_type: parent_method.return_type,
                         },
@@ -346,24 +347,24 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    pub(super) fn validate_protocol_conformance(
+    pub(super) fn validate_interface_conformance(
         &self,
         impl_type: SemanticType,
-        protocol_id: TypeId,
+        interface_id: TypeId,
         source: &str,
     ) -> Option<()> {
-        ProtocolChecker::validate_protocol_conformance(self.analyzer, impl_type, protocol_id, source)
+        InterfaceChecker::validate_interface_conformance(self.analyzer, impl_type, interface_id, source)
     }
 
-    pub(super) fn validate_protocol_method_call(
+    pub(super) fn validate_interface_method_call(
         &mut self,
         impl_type: SemanticType,
-        protocol_id: TypeId,
+        interface_id: TypeId,
         method_name: &str,
         call_span: Span,
         source: &str,
     ) -> Option<SemanticType> {
-        ProtocolChecker::validate_protocol_method_call(self.analyzer, impl_type, protocol_id, method_name, call_span, source)
+        InterfaceChecker::validate_interface_method_call(self.analyzer, impl_type, interface_id, method_name, call_span, source)
     }
 
     pub(in crate::semantic) fn check_type_decl(&mut self, type_decl: &TypeDecl, source: &str) {
@@ -637,6 +638,10 @@ impl<'a> TypeChecker<'a> {
         function: &FunctionDecl,
         source: &str,
     ) {
+        self.analyzer
+            .function_decls
+            .insert(function.name.clone(), function.clone());
+
         let mut param_names = HashSet::new();
         let param_types = self
             .analyzer
@@ -785,7 +790,7 @@ impl<'a> TypeChecker<'a> {
                 .analyzer
                 .type_table
                 .get_struct(current)
-                .is_some_and(|info| info.is_protocol)
+                .is_some_and(|info| info.is_interface)
             {
                 return false;
             }

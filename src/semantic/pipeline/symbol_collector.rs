@@ -1,10 +1,12 @@
-use crate::parser::expression::{FunctionDecl, ProtocolDecl, TypeDecl};
+use crate::parser::expression::{
+    FunctionDecl, FunctionParam, InterfaceDecl, Statement, TypeAnnotation, TypeDecl,
+};
 
 use super::super::{
     analyzer::SemanticAnalyzer,
     helper::{FunctionSignature, FunctionSymbol, SemanticType, StructTypeInfo, TypeId},
 };
-use super::{ProtocolChecker, TypeResolver};
+use super::{InterfaceChecker, TypeResolver};
 
 pub(in crate::semantic) struct SymbolCollector;
 
@@ -46,7 +48,7 @@ impl SymbolCollector {
                 fields: Vec::new(),
                 methods: Vec::new(),
                 parent: None,
-                is_protocol: false,
+                is_interface: false,
             });
             analyzer
                 .type_symbols
@@ -136,91 +138,91 @@ impl SymbolCollector {
         }
     }
 
-    pub(in crate::semantic) fn collect_protocols(
+    pub(in crate::semantic) fn collect_interfaces(
         analyzer: &mut SemanticAnalyzer,
-        protocol_decls: &[ProtocolDecl],
+        interface_decls: &[InterfaceDecl],
         source: &str,
     ) {
-        for protocol_decl in protocol_decls {
-            if SemanticType::from_annotation_name(&protocol_decl.name).is_some() {
+        for interface_decl in interface_decls {
+            if SemanticType::from_annotation_name(&interface_decl.name).is_some() {
                 analyzer.push_semantic_error(
-                    protocol_decl.name_span,
+                    interface_decl.name_span,
                     source,
                     format!(
-                        "Protocol '{}' cannot be declared because the name is reserved.",
-                        protocol_decl.name
+                        "Interface '{}' cannot be declared because the name is reserved.",
+                        interface_decl.name
                     ),
                 );
                 continue;
             }
 
-            if analyzer.type_symbols.contains_key(&protocol_decl.name) {
+            if analyzer.type_symbols.contains_key(&interface_decl.name) {
                 analyzer.push_semantic_error(
-                    protocol_decl.name_span,
+                    interface_decl.name_span,
                     source,
-                    format!("Protocol '{}' redeclared.", protocol_decl.name),
+                    format!("Interface '{}' redeclared.", interface_decl.name),
                 );
                 continue;
             }
 
             let type_id = analyzer.type_table.register_type(StructTypeInfo {
-                name: protocol_decl.name.clone(),
+                name: interface_decl.name.clone(),
                 constructor_params: Vec::new(),
                 fields: Vec::new(),
                 methods: Vec::new(),
                 parent: None,
-                is_protocol: true,
+                is_interface: true,
             });
             analyzer
                 .type_symbols
-                .insert(protocol_decl.name.clone(), type_id);
+                .insert(interface_decl.name.clone(), type_id);
         }
 
-        for protocol_decl in protocol_decls {
-            let Some(protocol_id) = analyzer.type_symbols.get(&protocol_decl.name).copied()
+        for interface_decl in interface_decls {
+            let Some(interface_id) = analyzer.type_symbols.get(&interface_decl.name).copied()
             else {
                 continue;
             };
 
-            let parent_id = if let Some(parent_name) = &protocol_decl.parent_name {
+            let parent_id = if let Some(parent_name) = &interface_decl.parent_name {
                 match analyzer.type_symbols.get(parent_name).copied() {
                     Some(parent) => {
-                        let is_protocol = analyzer
+                        let is_interface = analyzer
                             .type_table
                             .get_struct(parent)
-                            .is_some_and(|info| info.is_protocol);
-                        if !is_protocol {
-                            if let Some(parent_span) = protocol_decl.parent_span {
+                            .is_some_and(|info| info.is_interface);
+                        if !is_interface {
+                            if let Some(parent_span) = interface_decl.parent_span {
                                 analyzer.push_semantic_error(
                                     parent_span,
                                     source,
                                     format!(
-                                        "Protocol '{}' cannot extend type '{}' (only protocols can be extended).",
-                                        protocol_decl.name, parent_name
+                                        "Interface '{}' cannot extend type '{}' (only interfaces can be extended).",
+                                        interface_decl.name, parent_name
                                     ),
                                 );
                             }
                             None
-                        } else if parent == protocol_id {
-                            if let Some(parent_span) = protocol_decl.parent_span {
+                        } else if parent == interface_id {
+                            if let Some(parent_span) = interface_decl.parent_span {
                                 analyzer.push_semantic_error(
                                     parent_span,
                                     source,
                                     format!(
-                                        "Circular extension detected for protocol '{}'.",
-                                        protocol_decl.name
+                                        "Circular extension detected for interface '{}'.",
+                                        interface_decl.name
                                     ),
                                 );
                             }
                             None
-                        } else if Self::is_circular_inheritance(analyzer, parent, protocol_id) {
-                            if let Some(parent_span) = protocol_decl.parent_span {
+                        } else if Self::is_circular_inheritance(analyzer, parent, interface_id) {
+                            if let Some(parent_span) = interface_decl.parent_span {
                                 analyzer.push_semantic_error(
                                     parent_span,
                                     source,
                                     format!(
-                                        "Circular extension detected for protocol '{}'.",
-                                        protocol_decl.name
+                                        "Circular extension detected for interface '{}'.",
+                                        interface_decl.name
                                     ),
                                 );
                             }
@@ -230,11 +232,11 @@ impl SymbolCollector {
                         }
                     }
                     None => {
-                        if let Some(parent_span) = protocol_decl.parent_span {
+                        if let Some(parent_span) = interface_decl.parent_span {
                             analyzer.push_semantic_error(
                                 parent_span,
                                 source,
-                                format!("Parent protocol '{}' not found.", parent_name),
+                                format!("Parent interface '{}' not found.", parent_name),
                             );
                         }
                         None
@@ -245,21 +247,21 @@ impl SymbolCollector {
             };
 
             if let Some(parent_id) = parent_id
-                && let Some(info) = analyzer.type_table.get_struct_mut(protocol_id)
+                && let Some(info) = analyzer.type_table.get_struct_mut(interface_id)
             {
                 info.parent = Some(parent_id);
             }
         }
     }
 
-    pub(in crate::semantic) fn is_protocol(
+    pub(in crate::semantic) fn is_interface(
         analyzer: &SemanticAnalyzer,
         type_id: TypeId,
     ) -> bool {
         analyzer
             .type_table
             .get_struct(type_id)
-            .is_some_and(|info| info.is_protocol)
+            .is_some_and(|info| info.is_interface)
     }
 
     fn is_circular_inheritance(
@@ -294,6 +296,12 @@ impl SymbolCollector {
                 );
                 continue;
             }
+
+            let param_names: Vec<String> = function
+                .params
+                .iter()
+                .map(|param| param.name.clone())
+                .collect();
 
             let param_types = function
                 .params
@@ -331,6 +339,7 @@ impl SymbolCollector {
 
             let signature = FunctionSignature {
                 type_id: function_type_id.0,
+                param_names,
                 param_types,
                 return_type,
             };
@@ -365,6 +374,12 @@ impl SymbolCollector {
                     );
                     continue;
                 }
+
+                let param_names: Vec<String> = method
+                    .params
+                    .iter()
+                    .map(|param| param.name.clone())
+                    .collect();
 
                 let param_types = method
                     .params
@@ -433,6 +448,7 @@ impl SymbolCollector {
                     key.clone(),
                     FunctionSignature {
                         type_id: method_type_id.0,
+                        param_names,
                         param_types,
                         return_type,
                     },
@@ -445,27 +461,27 @@ impl SymbolCollector {
         }
     }
 
-    pub(in crate::semantic) fn collect_protocol_methods(
+    pub(in crate::semantic) fn collect_interface_methods(
         analyzer: &mut SemanticAnalyzer,
-        protocol_decls: &[ProtocolDecl],
+        interface_decls: &[InterfaceDecl],
         source: &str,
     ) {
-        for protocol_decl in protocol_decls {
+        for interface_decl in interface_decls {
             let Some(receiver_type_id) =
-                analyzer.type_symbols.get(&protocol_decl.name).copied()
+                analyzer.type_symbols.get(&interface_decl.name).copied()
             else {
                 continue;
             };
 
-            for method in &protocol_decl.methods {
+            for method in &interface_decl.methods {
                 let key = Self::method_symbol_key(receiver_type_id, &method.name);
                 if analyzer.function_symbols.contains_key(&key) {
                     analyzer.push_semantic_error(
                         method.name_span,
                         source,
                         format!(
-                            "Method '{}' redeclared in protocol '{}'.",
-                            method.name, protocol_decl.name
+                            "Method '{}' redeclared in interface '{}'.",
+                            method.name, interface_decl.name
                         ),
                     );
                     continue;
@@ -477,12 +493,18 @@ impl SymbolCollector {
                             param.span,
                             source,
                             format!(
-                                "Parameter '{}' in protocol method '{}' must have an explicit type annotation.",
+                                "Parameter '{}' in interface method '{}' must have an explicit type annotation.",
                                 param.name, method.name
                             ),
                         );
                     }
                 }
+
+                let param_names: Vec<String> = method
+                    .params
+                    .iter()
+                    .map(|param| param.name.clone())
+                    .collect();
 
                 let param_types = method
                     .params
@@ -514,7 +536,7 @@ impl SymbolCollector {
                         method.return_type_annotation.span,
                         source,
                         format!(
-                            "Protocol method '{}' must declare a fully resolvable return type.",
+                            "Interface method '{}' must declare a fully resolvable return type.",
                             method.name
                         ),
                     );
@@ -548,6 +570,7 @@ impl SymbolCollector {
                     key.clone(),
                     FunctionSignature {
                         type_id: method_type_id.0,
+                        param_names,
                         param_types,
                         return_type,
                     },
@@ -559,7 +582,7 @@ impl SymbolCollector {
             }
         }
 
-        ProtocolChecker::check_protocol_variance(analyzer, protocol_decls, source);
+        InterfaceChecker::check_interface_variance(analyzer, interface_decls, source);
     }
 
     fn find_method_in_parent(
@@ -573,5 +596,245 @@ impl SymbolCollector {
             return Some(signature.clone());
         }
         Self::find_method_in_parent(analyzer, parent_id, method_name)
+    }
+
+    pub(in crate::semantic) fn inject_splat_interfaces(
+        analyzer: &mut SemanticAnalyzer,
+        program: &crate::parser::expression::Program,
+    ) {
+        let mut splat_types: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+        Self::collect_splat_annotations_program(program, &mut splat_types);
+
+        for base_type in &splat_types {
+            let interface_name = format!("Iterable_{}", base_type);
+
+            if analyzer.type_symbols.contains_key(&interface_name) {
+                continue;
+            }
+
+            let iterable_id = analyzer.type_table.iterable;
+
+            let interface_id = analyzer.type_table.register_type(StructTypeInfo {
+                name: interface_name.clone(),
+                constructor_params: Vec::new(),
+                fields: Vec::new(),
+                methods: Vec::new(),
+                parent: Some(iterable_id),
+                is_interface: true,
+            });
+
+            analyzer
+                .type_symbols
+                .insert(interface_name.clone(), interface_id);
+
+            let return_type = Self::resolve_base_type(analyzer, base_type);
+
+            let return_type_id =
+                crate::semantic::pipeline::TypeResolver::semantic_type_to_type_id(
+                    analyzer,
+                    return_type,
+                );
+
+            let method_type_id = analyzer
+                .type_table
+                .register_method(interface_id, Vec::new(), return_type_id);
+
+            let key = Self::method_symbol_key(interface_id, "current");
+            analyzer.function_symbols.insert(
+                key.clone(),
+                FunctionSymbol::new_method("current".to_string(), method_type_id, interface_id),
+            );
+            analyzer.functions.insert(
+                key.clone(),
+                FunctionSignature {
+                    type_id: method_type_id.0,
+                    param_names: vec![],
+                    param_types: vec![],
+                    return_type: crate::semantic::pipeline::TypeResolver::type_id_to_semantic_type(
+                        analyzer, return_type_id,
+                    ),
+                },
+            );
+
+            if let Some(info) = analyzer.type_table.get_struct_mut(interface_id) {
+                info.methods
+                    .push(("current".to_string(), method_type_id));
+            }
+        }
+    }
+
+    fn collect_splat_annotations_program(
+        program: &crate::parser::expression::Program,
+        splat_types: &mut std::collections::HashSet<String>,
+    ) {
+        for function in &program.functions {
+            Self::collect_splat_annotations_params(&function.params, splat_types);
+            if let Some(ret) = &function.return_type_annotation {
+                if ret.is_splat {
+                    splat_types.insert(ret.name.clone());
+                }
+            }
+        }
+
+        for type_decl in &program.types {
+            for param in &type_decl.params {
+                if let Some(ann) = &param.type_annotation {
+                    if ann.is_splat {
+                        splat_types.insert(ann.name.clone());
+                    }
+                }
+            }
+            for member in &type_decl.methods {
+                Self::collect_splat_annotations_params(&member.params, splat_types);
+                if let Some(ret) = &member.return_type_annotation {
+                    if ret.is_splat {
+                        splat_types.insert(ret.name.clone());
+                    }
+                }
+            }
+        }
+
+        for iface in &program.interfaces {
+            for method in &iface.methods {
+                Self::collect_splat_annotations_params(&method.params, splat_types);
+                if method.return_type_annotation.is_splat {
+                    splat_types
+                        .insert(method.return_type_annotation.name.clone());
+                }
+            }
+        }
+
+        Self::collect_splat_annotations_statements(&program.statements, splat_types);
+    }
+
+    fn collect_splat_annotations_statements(
+        statements: &[Statement],
+        splat_types: &mut std::collections::HashSet<String>,
+    ) {
+        for stmt in statements {
+            match stmt {
+                Statement::Let {
+                    type_annotation,
+                    value,
+                    ..
+                } => {
+                    if let Some(ann) = type_annotation {
+                        if ann.is_splat {
+                            splat_types.insert(ann.name.clone());
+                        }
+                    }
+                    Self::collect_splat_annotations_expr(value, splat_types);
+                }
+                Statement::Print { value, .. } => {
+                    Self::collect_splat_annotations_expr(value, splat_types);
+                }
+                Statement::Expr { value, .. } => {
+                    Self::collect_splat_annotations_expr(value, splat_types);
+                }
+                Statement::Assign { value, .. } => {
+                    Self::collect_splat_annotations_expr(value, splat_types);
+                }
+            }
+        }
+    }
+
+    fn collect_splat_annotations_expr(
+        expr: &crate::parser::expression::Expr,
+        splat_types: &mut std::collections::HashSet<String>,
+    ) {
+        use crate::parser::expression::Expr;
+        match expr {
+            Expr::LetIn(let_in) => {
+                for binding in &let_in.bindings {
+                    if let Some(ann) = &binding.type_annotation {
+                        if ann.is_splat {
+                            splat_types.insert(ann.name.clone());
+                        }
+                    }
+                    Self::collect_splat_annotations_expr(&binding.value, splat_types);
+                }
+                Self::collect_splat_annotations_expr(&let_in.body, splat_types);
+            }
+            Expr::Block(block) => {
+                Self::collect_splat_annotations_statements(&block.statements, splat_types);
+            }
+            Expr::If(if_expr) => {
+                Self::collect_splat_annotations_expr(&if_expr.condition, splat_types);
+                Self::collect_splat_annotations_expr(&if_expr.then_branch, splat_types);
+                Self::collect_splat_annotations_expr(&if_expr.else_branch, splat_types);
+            }
+            Expr::While(while_expr) => {
+                Self::collect_splat_annotations_expr(&while_expr.condition, splat_types);
+                Self::collect_splat_annotations_statements(&while_expr.body.statements, splat_types);
+            }
+            Expr::FunctionCall(call) => {
+                for arg in &call.args {
+                    Self::collect_splat_annotations_expr(arg, splat_types);
+                }
+            }
+            Expr::MethodCall(call) => {
+                Self::collect_splat_annotations_expr(&call.receiver, splat_types);
+                for arg in &call.args {
+                    Self::collect_splat_annotations_expr(arg, splat_types);
+                }
+            }
+            Expr::Binary(bin) => {
+                Self::collect_splat_annotations_expr(&bin.left, splat_types);
+                Self::collect_splat_annotations_expr(&bin.right, splat_types);
+            }
+            Expr::Unary(unary) => {
+                Self::collect_splat_annotations_expr(&unary.expr, splat_types);
+            }
+            Expr::MemberAccess(access) => {
+                Self::collect_splat_annotations_expr(&access.object, splat_types);
+            }
+            Expr::New(new_expr) => {
+                for arg in &new_expr.args {
+                    Self::collect_splat_annotations_expr(arg, splat_types);
+                }
+            }
+            Expr::Is(is_expr) => {
+                Self::collect_splat_annotations_expr(&is_expr.expr, splat_types);
+            }
+            Expr::As(as_expr) => {
+                Self::collect_splat_annotations_expr(&as_expr.expr, splat_types);
+            }
+            Expr::DestructiveAssign(da) => {
+                Self::collect_splat_annotations_expr(&da.value, splat_types);
+            }
+            _ => {}
+        }
+    }
+
+    fn collect_splat_annotations_params(
+        params: &[FunctionParam],
+        splat_types: &mut std::collections::HashSet<String>,
+    ) {
+        for param in params {
+            if let Some(ann) = &param.type_annotation {
+                if ann.is_splat {
+                    splat_types.insert(ann.name.clone());
+                }
+            }
+        }
+    }
+
+    fn resolve_base_type(
+        analyzer: &SemanticAnalyzer,
+        type_name: &str,
+    ) -> crate::semantic::SemanticType {
+        if let Some(primitive) =
+            crate::semantic::SemanticType::from_annotation_name(type_name)
+        {
+            return primitive;
+        }
+
+        analyzer
+            .type_symbols
+            .get(type_name)
+            .copied()
+            .map(|type_id| crate::semantic::SemanticType::Struct(type_id.0))
+            .unwrap_or(crate::semantic::SemanticType::Unknown)
     }
 }

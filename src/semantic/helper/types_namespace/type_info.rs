@@ -20,7 +20,7 @@ pub struct StructTypeInfo {
     pub fields: Vec<(String, TypeId)>,
     pub methods: Vec<(String, TypeId)>,
     pub parent: Option<TypeId>,
-    pub is_protocol: bool,
+    pub is_interface: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

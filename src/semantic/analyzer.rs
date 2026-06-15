@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     error::{CompilerError, ErrorCategory, offset_to_line_column},
-    parser::expression::{Program, Span},
+    parser::expression::{FunctionDecl, Program, Span},
 };
 
 use super::{
@@ -22,7 +22,10 @@ pub struct SemanticAnalyzer {
     pub(super) current_method_receiver: Option<TypeId>,
     pub(super) current_self_scope_index: Option<usize>,
     pub(super) suppress_errors: bool,
-    pub(super) protocol_real_types: HashMap<String, TypeId>,
+    pub(super) interface_real_types: HashMap<String, TypeId>,
+    pub(super) param_real_types: Vec<HashMap<String, TypeId>>,
+    pub(super) flat_param_real_types: HashMap<String, TypeId>,
+    pub(super) function_decls: HashMap<String, FunctionDecl>,
 }
 
 impl SemanticAnalyzer {
@@ -46,8 +49,38 @@ impl SemanticAnalyzer {
         &self.type_symbols
     }
 
-    pub fn protocol_real_types(&self) -> &HashMap<String, TypeId> {
-        &self.protocol_real_types
+    pub fn interface_real_types(&self) -> &HashMap<String, TypeId> {
+        &self.interface_real_types
+    }
+
+    pub fn flat_param_real_types(&self) -> &HashMap<String, TypeId> {
+        &self.flat_param_real_types
+    }
+
+    pub fn current_param_real_types(&self) -> Option<&HashMap<String, TypeId>> {
+        self.param_real_types.last()
+    }
+
+    pub(super) fn push_param_real_types(&mut self) {
+        self.param_real_types.push(HashMap::new());
+    }
+
+    pub(super) fn pop_param_real_types(&mut self) {
+        self.param_real_types.pop();
+    }
+
+    pub(super) fn bind_param_real_type(&mut self, name: String, type_id: TypeId) {
+        if let Some(ctx) = self.param_real_types.last_mut() {
+            ctx.insert(name.clone(), type_id);
+        }
+        self.flat_param_real_types.insert(name, type_id);
+    }
+
+    pub(super) fn lookup_param_real_type(&self, name: &str) -> Option<TypeId> {
+        self.param_real_types
+            .iter()
+            .rev()
+            .find_map(|ctx| ctx.get(name).copied())
     }
 
     pub fn analyze(&mut self, program: &Program, source: &str) -> Vec<CompilerError> {
@@ -55,11 +88,12 @@ impl SemanticAnalyzer {
             SignatureInferencePass::infer_function_signatures(self, program, source);
 
         self.reset_analysis_state();
+        SymbolCollector::inject_splat_interfaces(self, program);
         SymbolCollector::collect_types(self, &program.types, source);
-        SymbolCollector::collect_protocols(self, &program.protocols, source);
+        SymbolCollector::collect_interfaces(self, &program.interfaces, source);
         SymbolCollector::collect_functions(self, &program.functions, source);
         SymbolCollector::collect_methods(self, &program.types, source);
-        SymbolCollector::collect_protocol_methods(self, &program.protocols, source);
+        SymbolCollector::collect_interface_methods(self, &program.interfaces, source);
         SignatureInferencePass::apply_inferred_signatures(self, &inferred_signatures);
 
         self.start_scope_pass();
@@ -88,7 +122,10 @@ impl SemanticAnalyzer {
         self.current_method_receiver = None;
         self.current_self_scope_index = None;
         self.suppress_errors = false;
-        self.protocol_real_types.clear();
+        self.interface_real_types.clear();
+        self.param_real_types.clear();
+        self.flat_param_real_types.clear();
+        self.function_decls.clear();
     }
 
     pub(super) fn start_scope_pass(&mut self) {

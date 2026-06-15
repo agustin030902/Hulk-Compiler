@@ -1,0 +1,52 @@
+type Counter(n: Number) {
+    n = n;
+    next() => { self.n := self.n - 1; self.n > 0; };
+    current() => self.n;
+}
+
+function sum(numbers: Number*): Number {
+    let total = 0;
+    for (x in numbers) {
+        total := total + x;
+    };
+    total
+}
+
+function greet_all(names: String*): String {
+    let acc = "";
+    for (w in names) {
+        acc := acc @ w @ " ";
+    };
+    acc
+}
+
+function zip_sum(a: Number*, b: Number*): Number {
+    let total = 0;
+    for (x in a) {
+        total := total + x;
+    };
+    total
+}
+
+function count_last(c: Number*): Number {
+    let last = 0;
+    for (x in c) {
+        last := x;
+    };
+    last
+}
+
+print("sum 1..5 = " @ sum(range(1, 5)));
+
+let nums: Number* = range(10, 15);
+let result = 0;
+for (x in nums) {
+    result := result + x;
+};
+print("sum 10..15 = " @ result);
+
+print(greet_all(range(1, 4)));
+
+print("zip_sum = " @ zip_sum(range(1, 5), range(5, 9)));
+
+print("countdown last = " @ count_last(new Counter(5)));

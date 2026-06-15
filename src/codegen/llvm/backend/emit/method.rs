@@ -1,4 +1,4 @@
-use crate::parser::expression::{MethodDecl, TypeDecl};
+use crate::parser::expression::{MethodDecl, InterfaceDecl, TypeDecl};
 
 use super::super::LlvmBackend;
 use crate::codegen::llvm::helper::state::{ValueType, VariableInfo};
@@ -118,5 +118,50 @@ impl LlvmBackend {
         }
         self.emit_function_line(format!("  ret {return_type} {}", result.repr));
         self.emit_function_line("}");
+    }
+
+    pub(in crate::codegen::llvm) fn emit_interface_methods(&mut self, interface_decl: &InterfaceDecl) {
+        let Some(interface_type_id) = self.type_ids.get(&interface_decl.name).copied() else {
+            return;
+        };
+
+        for method in &interface_decl.methods {
+            let key = format!("type#{}::{}", interface_type_id, method.name);
+            let Some(info) = self.functions.get(&key).cloned() else {
+                continue;
+            };
+
+            let mut params = vec!["i8* %self".to_string()];
+            params.extend(
+                method
+                    .params
+                    .iter()
+                    .zip(info.param_types.iter().copied())
+                    .map(|(param, value_type)| {
+                        format!("{} %{}", value_type.llvm_type(), param.name)
+                    })
+                    .collect::<Vec<_>>(),
+            );
+
+            let return_type = info.return_type.llvm_type();
+            let default_val = match info.return_type {
+                ValueType::Double => "0.0".to_string(),
+                ValueType::Bool => "false".to_string(),
+                ValueType::StringPtr | ValueType::Struct(_) | ValueType::Null | ValueType::Function => {
+                    "null".to_string()
+                }
+                ValueType::Unit => "0".to_string(),
+            };
+
+            self.emit_function_line(String::new());
+            self.emit_function_line(format!(
+                "define {return_type} @{}({}) {{",
+                info.llvm_name,
+                params.join(", ")
+            ));
+            self.emit_function_line("entry:".to_string());
+            self.emit_function_line(format!("  ret {return_type} {default_val}"));
+            self.emit_function_line("}".to_string());
+        }
     }
 }

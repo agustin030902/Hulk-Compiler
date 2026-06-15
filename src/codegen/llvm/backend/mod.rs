@@ -27,7 +27,8 @@ pub struct LlvmBackend {
     pub(super) type_decls: HashMap<String, TypeDecl>,
     pub(super) struct_layouts: HashMap<u32, StructLayout>,
     pub(super) method_dispatch: HashMap<(u32, String), String>,
-    pub(super) protocol_real_types: HashMap<String, u32>,
+    pub(super) interface_real_types: HashMap<String, u32>,
+    pub(super) param_real_types: HashMap<String, u32>,
     pub(super) temp_counter: usize,
     pub(super) label_counter: usize,
     pub(super) string_counter: usize,
@@ -50,7 +51,8 @@ impl LlvmBackend {
         self.type_decls.clear();
         self.struct_layouts.clear();
         self.method_dispatch.clear();
-        self.protocol_real_types.clear();
+        self.interface_real_types.clear();
+        self.param_real_types.clear();
         self.temp_counter = 0;
         self.label_counter = 0;
         self.string_counter = 0;

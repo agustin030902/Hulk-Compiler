@@ -42,7 +42,7 @@ fn writes_llvm_ir_for_iterable_assignment_with_range() {
         .expect("compiler should write llvm output file on success");
     assert!(
         llvm_ir.contains("define i1 @hulk_is_subtype"),
-        "IR should contain hulk_is_subtype for protocol conformance, got:\n{}",
+        "IR should contain hulk_is_subtype for interface conformance, got:\n{}",
         llvm_ir
     );
     assert!(

@@ -25,6 +25,7 @@ fn annotation(name: &str) -> TypeAnnotation {
     TypeAnnotation {
         name: name.to_string(),
         span: synthetic_span(),
+        is_splat: false,
     }
 }
 
@@ -91,14 +92,14 @@ pub(in crate::semantic) fn register_builtin_iterable(analyzer: &mut SemanticAnal
     let next_return = type_id_to_semantic(analyzer, analyzer.type_table.boolean);
     let current_return = type_id_to_semantic(analyzer, analyzer.type_table.object);
 
-    register_protocol_method(
+    register_interface_method(
         analyzer,
         iterable_id,
         ITERABLE_NEXT_METHOD,
         Vec::new(),
         next_return,
     );
-    register_protocol_method(
+    register_interface_method(
         analyzer,
         iterable_id,
         ITERABLE_CURRENT_METHOD,
@@ -134,7 +135,7 @@ pub(in crate::semantic) fn register_builtin_range(analyzer: &mut SemanticAnalyze
     register_type_method(analyzer, range_id, RANGE_CURRENT_METHOD, Vec::new(), number);
 }
 
-fn register_protocol_method(
+fn register_interface_method(
     analyzer: &mut SemanticAnalyzer,
     receiver: TypeId,
     name: &str,
@@ -181,6 +182,7 @@ fn register_protocol_method(
         key.clone(),
         FunctionSignature {
             type_id: method_type_id.0,
+            param_names: vec![],
             param_types,
             return_type,
         },
@@ -198,7 +200,7 @@ fn register_type_method(
     param_types: Vec<crate::semantic::SemanticType>,
     return_type: crate::semantic::SemanticType,
 ) {
-    register_protocol_method(analyzer, receiver, name, param_types, return_type);
+    register_interface_method(analyzer, receiver, name, param_types, return_type);
 }
 
 pub(crate) fn build_object_type_decl() -> TypeDecl {

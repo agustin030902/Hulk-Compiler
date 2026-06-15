@@ -18,8 +18,8 @@ enum LogosTokenKind {
     Function,
     #[token("type", priority = 3)]
     Type,
-    #[token("protocol", priority = 3)]
-    Protocol,
+    #[token("interface", priority = 3)]
+    Interface,
     #[token("extends", priority = 3)]
     Extends,
     #[token("new", priority = 3)]
@@ -145,7 +145,7 @@ impl LogosTokenKind {
             LogosTokenKind::Let => (TokenKind::Let, lexeme.to_string()),
             LogosTokenKind::Function => (TokenKind::Function, lexeme.to_string()),
             LogosTokenKind::Type => (TokenKind::Type, lexeme.to_string()),
-            LogosTokenKind::Protocol => (TokenKind::Protocol, lexeme.to_string()),
+            LogosTokenKind::Interface => (TokenKind::Interface, lexeme.to_string()),
             LogosTokenKind::Extends => (TokenKind::Extends, lexeme.to_string()),
             LogosTokenKind::New => (TokenKind::New, lexeme.to_string()),
             LogosTokenKind::While => (TokenKind::While, lexeme.to_string()),

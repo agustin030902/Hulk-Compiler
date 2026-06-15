@@ -1,8 +1,8 @@
-protocol Hashable {
+interface Hashable {
     hash(): Number;
 }
 
-protocol Equatable extends Hashable {
+interface Equatable extends Hashable {
     equals(other: Object): Boolean;
 }
 

@@ -155,7 +155,16 @@ impl LlvmBackend {
             let value = self.emit_expr(arg)?;
             let expected = info.param_types[index];
 
-            if !self.are_compatible_value_types(expected, value.value_type) {
+            let param_is_interface = if let ValueType::Struct(exp_id) = expected {
+                !self.type_ids
+                    .iter()
+                    .find(|(_, tid)| **tid == exp_id)
+                    .is_some_and(|(name, _)| self.type_decls.contains_key(name))
+            } else {
+                false
+            };
+
+            if !param_is_interface && !self.are_compatible_value_types(expected, value.value_type) {
                 self.semantic_error(format!(
                     "Function '{}' argument #{} expects {}, but got {}.",
                     call.name,
@@ -166,15 +175,20 @@ impl LlvmBackend {
                 return None;
             }
 
-            let Some(arg_repr) = self.value_repr_for_expected_type(expected, &value) else {
-                self.semantic_error(format!(
-                    "Function '{}' argument #{} expects {}, but got {}.",
-                    call.name,
-                    index + 1,
-                    self.type_name_for_value_type(expected),
-                    self.type_name_for_value_type(value.value_type)
-                ));
-                return None;
+            let arg_repr = if param_is_interface {
+                value.repr.clone()
+            } else {
+                let Some(repr) = self.value_repr_for_expected_type(expected, &value) else {
+                    self.semantic_error(format!(
+                        "Function '{}' argument #{} expects {}, but got {}.",
+                        call.name,
+                        index + 1,
+                        self.type_name_for_value_type(expected),
+                        self.type_name_for_value_type(value.value_type)
+                    ));
+                    return None;
+                };
+                repr
             };
 
             arg_values.push(format!("{} {}", expected.llvm_type(), arg_repr));
@@ -217,11 +231,16 @@ impl LlvmBackend {
             return None;
         };
 
-        if let Expr::Variable { name, .. } = call.receiver.as_ref()
-            && let Some(&real_id) = self.protocol_real_types.get(name)
-            && real_id != type_id
-        {
-            receiver.value_type = ValueType::Struct(real_id);
+        if let Expr::Variable { name, .. } = call.receiver.as_ref() {
+            let real_id = self
+                .interface_real_types
+                .get(name)
+                .copied();
+            if let Some(real_id) = real_id {
+                if real_id != type_id {
+                    receiver.value_type = ValueType::Struct(real_id);
+                }
+            }
         }
 
         let effective_type_id = if let ValueType::Struct(t) = receiver.value_type {
@@ -229,6 +248,14 @@ impl LlvmBackend {
         } else {
             type_id
         };
+
+        let is_interface = !self.type_ids.iter().any(|(name, tid)| {
+            *tid == effective_type_id && self.type_decls.contains_key(name)
+        });
+
+        if is_interface {
+            return self.emit_interface_method_dispatch(call, &receiver, effective_type_id);
+        }
 
         let Some(method_key) = self.lookup_method_key(effective_type_id, &call.method_name).cloned() else {
             self.semantic_error(format!(
@@ -310,5 +337,148 @@ impl LlvmBackend {
             value_type: info.return_type,
             repr: result,
         })
+    }
+
+    fn emit_interface_method_dispatch(
+        &mut self,
+        call: &MethodCallExpr,
+        receiver: &ValueRef,
+        interface_type_id: u32,
+    ) -> Option<ValueRef> {
+        let interface_method_key = self.lookup_method_key(interface_type_id, &call.method_name)?.clone();
+        let interface_info = self.functions.get(&interface_method_key)?.clone();
+
+        if interface_info.param_types.len() != call.args.len() {
+            self.semantic_error(format!(
+                "Method '{}' expects {} argument(s), but got {}.",
+                call.method_name,
+                interface_info.param_types.len(),
+                call.args.len()
+            ));
+            return None;
+        }
+
+        let mut concrete_impls: Vec<(u32, String)> = self.type_ids.iter()
+            .filter(|(name, _)| self.type_decls.contains_key(name.as_str()))
+            .filter_map(|(_, tid)| {
+                self.method_dispatch.get(&(*tid, call.method_name.clone()))
+                    .map(|key| (*tid, key.clone()))
+            })
+            .collect();
+        concrete_impls.sort_by_key(|(tid, _)| *tid);
+
+        let mut arg_values = Vec::with_capacity(call.args.len() + 1);
+        arg_values.push(format!("i8* {}", receiver.repr));
+        for (index, arg) in call.args.iter().enumerate() {
+            let value = self.emit_expr(arg)?;
+            let expected = interface_info.param_types[index];
+            let arg_repr = if self.are_compatible_value_types(expected, value.value_type) {
+                self.value_repr_for_expected_type(expected, &value)
+                    .unwrap_or_else(|| value.repr.clone())
+            } else {
+                value.repr.clone()
+            };
+            arg_values.push(format!("{} {}", expected.llvm_type(), arg_repr));
+        }
+
+        let arg_str = arg_values.join(", ");
+        let return_type = interface_info.return_type.llvm_type();
+
+        let type_id_temp = self.next_temp();
+        self.emit_body(format!("{type_id_temp} = bitcast i8* {} to i64*", receiver.repr));
+        let type_id_val = self.next_temp();
+        self.emit_body(format!("{type_id_val} = load i64, i64* {type_id_temp}"));
+
+        let done_label = self.next_label("dispatch.done");
+        let default_label = self.next_label("dispatch.default");
+        let mut branch_results: Vec<(String, String)> = Vec::new();
+
+        for (i, (concrete_tid, method_key)) in concrete_impls.iter().enumerate() {
+            let Some(concrete_info) = self.functions.get(method_key).cloned() else {
+                continue;
+            };
+
+            let is_last = i == concrete_impls.len() - 1;
+            let call_label = self.next_label("dispatch.call");
+            let else_label = if is_last {
+                default_label.clone()
+            } else {
+                self.next_label("dispatch.check")
+            };
+
+            let cmp = self.next_temp();
+            self.emit_body(format!("{cmp} = icmp eq i64 {type_id_val}, {concrete_tid}"));
+            self.emit_body(format!(
+                "br i1 {cmp}, label %{call_label}, label %{else_label}"
+            ));
+
+            self.emit_body(format!("{call_label}:"));
+            let call_result = if interface_info.return_type != ValueType::Unit {
+                let t = self.next_temp();
+                self.emit_body(format!(
+                    "{t} = call {return_type} @{}({arg_str})",
+                    concrete_info.llvm_name
+                ));
+                Some(t)
+            } else {
+                self.emit_body(format!(
+                    "call {return_type} @{}({arg_str})",
+                    concrete_info.llvm_name
+                ));
+                None
+            };
+
+            let terminal_label = self.current_block.clone();
+            self.emit_body(format!("br label %{done_label}"));
+
+            if let Some(t) = call_result {
+                branch_results.push((t, terminal_label));
+            }
+
+            if !is_last {
+                self.emit_body(format!("{else_label}:"));
+            }
+        }
+
+        self.emit_body(format!("{default_label}:"));
+        let default_result = if interface_info.return_type != ValueType::Unit {
+            let t = self.next_temp();
+            self.emit_body(format!(
+                "{t} = call {return_type} @{}({arg_str})",
+                interface_info.llvm_name
+            ));
+            Some(t)
+        } else {
+            self.emit_body(format!(
+                "call {return_type} @{}({arg_str})",
+                interface_info.llvm_name
+            ));
+            None
+        };
+        let default_terminal = self.current_block.clone();
+        self.emit_body(format!("br label %{done_label}"));
+
+        if let Some(t) = default_result {
+            branch_results.push((t, default_terminal));
+        }
+
+        self.emit_body(format!("{done_label}:"));
+
+        if interface_info.return_type != ValueType::Unit {
+            let result = self.next_temp();
+            let phi_args = branch_results
+                .iter()
+                .map(|(val, label)| format!("[ {}, %{} ]", val, label))
+                .collect::<Vec<_>>()
+                .join(", ");
+            self.emit_body(format!("{result} = phi {return_type} {phi_args}"));
+
+            Some(ValueRef {
+                value_type: interface_info.return_type,
+                repr: result,
+            })
+        } else {
+            Some(self.unit_value())
+        }
     }
 }

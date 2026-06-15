@@ -1,4 +1,4 @@
-use crate::parser::expression::{ProtocolDecl, Span};
+use crate::parser::expression::{InterfaceDecl, Span};
 
 use super::super::super::{
     analyzer::SemanticAnalyzer,
@@ -6,37 +6,37 @@ use super::super::super::{
 };
 use super::super::{SymbolCollector, TypeResolver};
 
-pub(in crate::semantic) struct InheritedProtocolMethod {
+pub(in crate::semantic) struct InheritedInterfaceMethod {
     pub name: String,
     pub type_id: TypeId,
     pub param_types: Vec<SemanticType>,
     pub return_type: SemanticType,
 }
 
-pub(in crate::semantic) struct ProtocolChecker;
+pub(in crate::semantic) struct InterfaceChecker;
 
-impl ProtocolChecker {
-    pub(in crate::semantic) fn collect_inherited_protocol_methods(
+impl InterfaceChecker {
+    pub(in crate::semantic) fn collect_inherited_interface_methods(
         analyzer: &SemanticAnalyzer,
-        _protocol_id: TypeId,
+        _interface_id: TypeId,
         parent_id: TypeId,
-    ) -> Vec<InheritedProtocolMethod> {
+    ) -> Vec<InheritedInterfaceMethod> {
         let mut out = Vec::new();
         let mut cursor = Some(parent_id);
         while let Some(current) = cursor {
-            let is_protocol = analyzer
+            let is_interface = analyzer
                 .type_table
                 .get_struct(current)
-                .is_some_and(|info| info.is_protocol);
-            if is_protocol {
+                .is_some_and(|info| info.is_interface);
+            if is_interface {
                 if let Some(info) = analyzer.type_table.get_struct(current) {
                     for (method_name, method_type_id) in &info.methods {
-                        if out.iter().any(|m: &InheritedProtocolMethod| &m.name == method_name) {
+                        if out.iter().any(|m: &InheritedInterfaceMethod| &m.name == method_name) {
                             continue;
                         }
                         let key = SymbolCollector::method_symbol_key(current, method_name);
                         if let Some(signature) = analyzer.functions.get(&key) {
-                            out.push(InheritedProtocolMethod {
+                            out.push(InheritedInterfaceMethod {
                                 name: method_name.to_string(),
                                 type_id: *method_type_id,
                                 param_types: signature.param_types.clone(),
@@ -54,10 +54,10 @@ impl ProtocolChecker {
         out
     }
 
-    pub(in crate::semantic) fn validate_protocol_conformance(
+    pub(in crate::semantic) fn validate_interface_conformance(
         analyzer: &SemanticAnalyzer,
         impl_type: SemanticType,
-        protocol_id: TypeId,
+        interface_id: TypeId,
         source: &str,
     ) -> Option<()> {
         let SemanticType::Struct(impl_raw) = impl_type else {
@@ -67,13 +67,13 @@ impl ProtocolChecker {
         if analyzer
             .type_table
             .get_struct(impl_id)
-            .is_some_and(|info| info.is_protocol)
+            .is_some_and(|info| info.is_interface)
         {
             return None;
         }
 
-        let protocol_methods = Self::collect_inherited_protocol_methods(analyzer, protocol_id, protocol_id);
-        for method in &protocol_methods {
+        let interface_methods = Self::collect_inherited_interface_methods(analyzer, interface_id, interface_id);
+        for method in &interface_methods {
             let impl_signature = Self::resolve_method_symbol_key(analyzer, impl_id, &method.name)
                 .or_else(|| Self::resolve_method_symbol_key_in_structs(analyzer, impl_id, &method.name))
                 .and_then(|key| analyzer.functions.get(&key).cloned());
@@ -105,10 +105,10 @@ impl ProtocolChecker {
         Some(())
     }
 
-    pub(in crate::semantic) fn validate_protocol_method_call(
+    pub(in crate::semantic) fn validate_interface_method_call(
         analyzer: &mut SemanticAnalyzer,
         impl_type: SemanticType,
-        protocol_id: TypeId,
+        interface_id: TypeId,
         method_name: &str,
         call_span: Span,
         source: &str,
@@ -121,7 +121,7 @@ impl ProtocolChecker {
         if analyzer
             .type_table
             .get_struct(impl_id)
-            .is_some_and(|info| info.is_protocol)
+            .is_some_and(|info| info.is_interface)
         {
             return None;
         }
@@ -131,21 +131,22 @@ impl ProtocolChecker {
             .as_ref()
             .and_then(|key| analyzer.functions.get(key).cloned());
 
-        let protocol_methods = Self::collect_inherited_protocol_methods(analyzer, protocol_id, protocol_id);
-        let Some(protocol_signature) = protocol_methods
+        let interface_methods = Self::collect_inherited_interface_methods(analyzer, interface_id, interface_id);
+        let Some(interface_signature) = interface_methods
             .iter()
             .find(|m| m.name == method_name)
             .map(|m| FunctionSignature {
-                type_id: m.type_id.0,
-                param_types: m.param_types.clone(),
-                return_type: m.return_type,
-            })
+                    type_id: m.type_id.0,
+                    param_names: vec![],
+                    param_types: m.param_types.clone(),
+                    return_type: m.return_type,
+                })
         else {
             analyzer.push_semantic_error(
                 call_span,
                 source,
                 format!(
-                    "Type does not conform to protocol: method '{}' is not declared in the protocol.",
+                    "Type does not conform to interface: method '{}' is not declared in the interface.",
                     method_name
                 ),
             );
@@ -157,21 +158,21 @@ impl ProtocolChecker {
                 call_span,
                 source,
                 format!(
-                    "Type does not conform to protocol: method '{}' is not declared in the implementing type.",
+                    "Type does not conform to interface: method '{}' is not declared in the implementing type.",
                     method_name
                 ),
             );
             return None;
         };
 
-        if impl_signature.param_types.len() != protocol_signature.param_types.len() {
+        if impl_signature.param_types.len() != interface_signature.param_types.len() {
             analyzer.push_type_error(
                 call_span,
                 source,
                 format!(
-                    "Type does not conform to protocol: method '{}' expects {} argument(s), but type provides {}.",
+                    "Type does not conform to interface: method '{}' expects {} argument(s), but type provides {}.",
                     method_name,
-                    protocol_signature.param_types.len(),
+                    interface_signature.param_types.len(),
                     impl_signature.param_types.len()
                 ),
             );
@@ -181,7 +182,7 @@ impl ProtocolChecker {
         for (index, (impl_t, proto_t)) in impl_signature
             .param_types
             .iter()
-            .zip(protocol_signature.param_types.iter())
+            .zip(interface_signature.param_types.iter())
             .enumerate()
         {
             if !Self::variance_param_compatible(analyzer, *impl_t, *proto_t) {
@@ -189,7 +190,7 @@ impl ProtocolChecker {
                     call_span,
                     source,
                     format!(
-                        "Type does not conform to protocol: method '{}' argument #{} has incompatible variance: expected {} (contravariant) in protocol, got {}.",
+                        "Type does not conform to interface: method '{}' argument #{} has incompatible variance: expected {} (contravariant) in interface, got {}.",
                         method_name,
                         index + 1,
                         proto_t.display_name_with_table(&analyzer.type_table),
@@ -200,15 +201,15 @@ impl ProtocolChecker {
             }
         }
 
-        if !Self::variance_return_compatible(analyzer, impl_signature.return_type, protocol_signature.return_type)
+        if !Self::variance_return_compatible(analyzer, impl_signature.return_type, interface_signature.return_type)
         {
             analyzer.push_type_error(
                 call_span,
                 source,
                 format!(
-                    "Type does not conform to protocol: method '{}' return type is incompatible (covariant): expected {} in protocol, got {}.",
+                    "Type does not conform to interface: method '{}' return type is incompatible (covariant): expected {} in interface, got {}.",
                     method_name,
-                    protocol_signature.return_type.display_name_with_table(&analyzer.type_table),
+                    interface_signature.return_type.display_name_with_table(&analyzer.type_table),
                     impl_signature.return_type.display_name_with_table(&analyzer.type_table)
                 ),
             );
@@ -218,19 +219,19 @@ impl ProtocolChecker {
         Some(impl_signature.return_type)
     }
 
-    pub(in crate::semantic) fn check_protocol_variance(
+    pub(in crate::semantic) fn check_interface_variance(
         analyzer: &mut SemanticAnalyzer,
-        protocol_decls: &[ProtocolDecl],
+        interface_decls: &[InterfaceDecl],
         source: &str,
     ) {
-        for protocol_decl in protocol_decls {
+        for interface_decl in interface_decls {
             let Some(receiver_type_id) =
-                analyzer.type_symbols.get(&protocol_decl.name).copied()
+                analyzer.type_symbols.get(&interface_decl.name).copied()
             else {
                 continue;
             };
 
-            for method in &protocol_decl.methods {
+            for method in &interface_decl.methods {
                 let param_types = method
                     .params
                     .iter()
@@ -252,7 +253,7 @@ impl ProtocolChecker {
                 )
                 .unwrap_or(SemanticType::Unknown);
 
-                if let Some(parent_signature) = Self::find_protocol_method_in_parent(
+                if let Some(parent_signature) = Self::find_interface_method_in_parent(
                     analyzer,
                     receiver_type_id,
                     &method.name,
@@ -276,8 +277,8 @@ impl ProtocolChecker {
                             method.name_span,
                             source,
                             format!(
-                                "Method '{}' override in protocol '{}' does not respect variance constraints of parent protocol.",
-                                method.name, protocol_decl.name
+                                "Method '{}' override in interface '{}' does not respect variance constraints of parent interface.",
+                                method.name, interface_decl.name
                             ),
                         );
                     }
@@ -286,7 +287,7 @@ impl ProtocolChecker {
         }
     }
 
-    fn find_protocol_method_in_parent(
+    fn find_interface_method_in_parent(
         analyzer: &SemanticAnalyzer,
         type_id: TypeId,
         method_name: &str,
@@ -295,7 +296,7 @@ impl ProtocolChecker {
         if !analyzer
             .type_table
             .get_struct(parent_id)
-            .is_some_and(|info| info.is_protocol)
+            .is_some_and(|info| info.is_interface)
         {
             return None;
         }
@@ -303,41 +304,41 @@ impl ProtocolChecker {
         if let Some(signature) = analyzer.functions.get(&key) {
             return Some(signature.clone());
         }
-        Self::find_protocol_method_in_parent(analyzer, parent_id, method_name)
+        Self::find_interface_method_in_parent(analyzer, parent_id, method_name)
     }
 
     fn variance_param_compatible(
         analyzer: &SemanticAnalyzer,
         impl_type: SemanticType,
-        protocol_type: SemanticType,
+        interface_type: SemanticType,
     ) -> bool {
-        Self::variance_compatible(analyzer, impl_type, protocol_type, true)
+        Self::variance_compatible(analyzer, impl_type, interface_type, true)
     }
 
     fn variance_return_compatible(
         analyzer: &SemanticAnalyzer,
         impl_type: SemanticType,
-        protocol_type: SemanticType,
+        interface_type: SemanticType,
     ) -> bool {
-        Self::variance_compatible(analyzer, impl_type, protocol_type, false)
+        Self::variance_compatible(analyzer, impl_type, interface_type, false)
     }
 
     fn variance_compatible(
         analyzer: &SemanticAnalyzer,
         impl_type: SemanticType,
-        protocol_type: SemanticType,
+        interface_type: SemanticType,
         contravariant: bool,
     ) -> bool {
-        if impl_type == SemanticType::Unknown || protocol_type == SemanticType::Unknown {
+        if impl_type == SemanticType::Unknown || interface_type == SemanticType::Unknown {
             return true;
         }
-        if impl_type == protocol_type {
+        if impl_type == interface_type {
             return true;
         }
         let (left, right) = if contravariant {
-            (protocol_type, impl_type)
+            (interface_type, impl_type)
         } else {
-            (impl_type, protocol_type)
+            (impl_type, interface_type)
         };
         match (left, right) {
             (SemanticType::Struct(a), SemanticType::Struct(b)) => {
@@ -347,7 +348,7 @@ impl ProtocolChecker {
                     .type_table
                     .get_struct(a_id)
                     .zip(analyzer.type_table.get_struct(b_id))
-                    .is_some_and(|(info_a, info_b)| !info_a.is_protocol && !info_b.is_protocol)
+                    .is_some_and(|(info_a, info_b)| !info_a.is_interface && !info_b.is_interface)
                     && Self::is_subtype(analyzer, b_id, a_id)
             }
             (SemanticType::Struct(_), _) => false,

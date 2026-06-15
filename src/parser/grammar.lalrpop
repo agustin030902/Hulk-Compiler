@@ -3,7 +3,7 @@ use crate::parser::expression::{
     AsExpr, AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction,
     DestructiveAssignExpr, ElifBranch, Expr, FunctionCallExpr, FunctionDecl, FunctionParam, IfExpr,
     IsExpr, LetBinding, LetInExpr, Literal, MemberAccessExpr, MethodCallExpr, MethodDecl, NewExpr,
-    Program, ProgramItem, ProtocolDecl, ProtocolMethodDecl, Span, Statement, TypeAnnotation,
+    Program, ProgramItem, InterfaceDecl, InterfaceMethodDecl, Span, Statement, TypeAnnotation,
     TypeAttribute, TypeDecl, TypeMemberDecl, TypeParam, UnaryExpr, UnaryOp, WhileExpr,
 };
 
@@ -79,19 +79,19 @@ extern {
 
 pub Program: Program = {
     <items:Declaration*> <statements:Statements> "eof" => {
-        let mut protocols = Vec::new();
+        let mut interfaces = Vec::new();
         let mut types = Vec::new();
         let mut functions = Vec::new();
         for item in items {
             match item {
-                ProgramItem::Protocol(p) => protocols.push(p),
+                ProgramItem::Interface(p) => interfaces.push(p),
                 ProgramItem::Type(t) => types.push(t),
                 ProgramItem::Function(f) => functions.push(f),
             }
         }
         Program {
             types,
-            protocols,
+            interfaces,
             functions,
             statements,
         }
@@ -99,15 +99,15 @@ pub Program: Program = {
 };
 
 Declaration: ProgramItem = {
-    <p:ProtocolDecl> => ProgramItem::Protocol(p),
+    <p:InterfaceDecl> => ProgramItem::Interface(p),
     <t:TypeDecl> => ProgramItem::Type(t),
     <f:FunctionDecl> => ProgramItem::Function(f),
 };
 
-ProtocolDecl: ProtocolDecl = {
-    <l:@L> "interface" <id:IdentifierWithSpan> <inheritance:ProtocolInheritance> "{" <methods:ProtocolMembers> "}" <r:@R> => {
+InterfaceDecl: InterfaceDecl = {
+    <l:@L> "interface" <id:IdentifierWithSpan> <inheritance:InterfaceInheritance> "{" <methods:InterfaceMembers> "}" <r:@R> => {
         let (parent_name, parent_span) = inheritance;
-        ProtocolDecl {
+        InterfaceDecl {
             name: id.0,
             name_span: id.1,
             parent_name,
@@ -118,22 +118,22 @@ ProtocolDecl: ProtocolDecl = {
     },
 };
 
-ProtocolInheritance: (Option<String>, Option<Span>) = {
+InterfaceInheritance: (Option<String>, Option<Span>) = {
     => (None, None),
     <pl:@L> "extends" <parent_id:IdentifierWithSpan> <pr:@R> => (Some(parent_id.0), Some(Span::new(pl, pr))),
 };
 
-ProtocolMembers: Vec<ProtocolMethodDecl> = {
+InterfaceMembers: Vec<InterfaceMethodDecl> = {
     => vec![],
-    <first:ProtocolMember> <rest:ProtocolMembers> => {
+    <first:InterfaceMember> <rest:InterfaceMembers> => {
         let mut members = vec![first];
         members.extend(rest);
         members
     },
 };
 
-ProtocolMember: ProtocolMethodDecl = {
-    <l:@L> <id:IdentifierWithSpan> "(" <params:FunctionParams> ")" ":" <return_annotation:RequiredTypeAnnotation> ";" <r:@R> => ProtocolMethodDecl {
+InterfaceMember: InterfaceMethodDecl = {
+    <l:@L> <id:IdentifierWithSpan> "(" <params:FunctionParams> ")" ":" <return_annotation:RequiredTypeAnnotation> ";" <r:@R> => InterfaceMethodDecl {
         name: id.0,
         name_span: id.1,
         params,

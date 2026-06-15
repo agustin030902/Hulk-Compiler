@@ -28,8 +28,8 @@ impl LlvmBackend {
             }
         }
 
-        for protocol_decl in &program.protocols {
-            self.emit_protocol_methods(protocol_decl);
+        for interface_decl in &program.interfaces {
+            self.emit_interface_methods(interface_decl);
         }
 
         for function in &program.functions {

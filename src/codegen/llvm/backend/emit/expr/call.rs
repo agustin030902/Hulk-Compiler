@@ -155,7 +155,7 @@ impl LlvmBackend {
             let value = self.emit_expr(arg)?;
             let expected = info.param_types[index];
 
-            let param_is_protocol = if let ValueType::Struct(exp_id) = expected {
+            let param_is_interface = if let ValueType::Struct(exp_id) = expected {
                 !self.type_ids
                     .iter()
                     .find(|(_, tid)| **tid == exp_id)
@@ -164,7 +164,7 @@ impl LlvmBackend {
                 false
             };
 
-            if !param_is_protocol && !self.are_compatible_value_types(expected, value.value_type) {
+            if !param_is_interface && !self.are_compatible_value_types(expected, value.value_type) {
                 self.semantic_error(format!(
                     "Function '{}' argument #{} expects {}, but got {}.",
                     call.name,
@@ -175,7 +175,7 @@ impl LlvmBackend {
                 return None;
             }
 
-            let arg_repr = if param_is_protocol {
+            let arg_repr = if param_is_interface {
                 value.repr.clone()
             } else {
                 let Some(repr) = self.value_repr_for_expected_type(expected, &value) else {
@@ -233,7 +233,7 @@ impl LlvmBackend {
 
         if let Expr::Variable { name, .. } = call.receiver.as_ref() {
             let real_id = self
-                .protocol_real_types
+                .interface_real_types
                 .get(name)
                 .copied();
             if let Some(real_id) = real_id {
@@ -249,12 +249,12 @@ impl LlvmBackend {
             type_id
         };
 
-        let is_protocol = !self.type_ids.iter().any(|(name, tid)| {
+        let is_interface = !self.type_ids.iter().any(|(name, tid)| {
             *tid == effective_type_id && self.type_decls.contains_key(name)
         });
 
-        if is_protocol {
-            return self.emit_protocol_method_dispatch(call, &receiver, effective_type_id);
+        if is_interface {
+            return self.emit_interface_method_dispatch(call, &receiver, effective_type_id);
         }
 
         let Some(method_key) = self.lookup_method_key(effective_type_id, &call.method_name).cloned() else {
@@ -339,20 +339,20 @@ impl LlvmBackend {
         })
     }
 
-    fn emit_protocol_method_dispatch(
+    fn emit_interface_method_dispatch(
         &mut self,
         call: &MethodCallExpr,
         receiver: &ValueRef,
-        protocol_type_id: u32,
+        interface_type_id: u32,
     ) -> Option<ValueRef> {
-        let protocol_method_key = self.lookup_method_key(protocol_type_id, &call.method_name)?.clone();
-        let protocol_info = self.functions.get(&protocol_method_key)?.clone();
+        let interface_method_key = self.lookup_method_key(interface_type_id, &call.method_name)?.clone();
+        let interface_info = self.functions.get(&interface_method_key)?.clone();
 
-        if protocol_info.param_types.len() != call.args.len() {
+        if interface_info.param_types.len() != call.args.len() {
             self.semantic_error(format!(
                 "Method '{}' expects {} argument(s), but got {}.",
                 call.method_name,
-                protocol_info.param_types.len(),
+                interface_info.param_types.len(),
                 call.args.len()
             ));
             return None;
@@ -371,7 +371,7 @@ impl LlvmBackend {
         arg_values.push(format!("i8* {}", receiver.repr));
         for (index, arg) in call.args.iter().enumerate() {
             let value = self.emit_expr(arg)?;
-            let expected = protocol_info.param_types[index];
+            let expected = interface_info.param_types[index];
             let arg_repr = if self.are_compatible_value_types(expected, value.value_type) {
                 self.value_repr_for_expected_type(expected, &value)
                     .unwrap_or_else(|| value.repr.clone())
@@ -382,7 +382,7 @@ impl LlvmBackend {
         }
 
         let arg_str = arg_values.join(", ");
-        let return_type = protocol_info.return_type.llvm_type();
+        let return_type = interface_info.return_type.llvm_type();
 
         let type_id_temp = self.next_temp();
         self.emit_body(format!("{type_id_temp} = bitcast i8* {} to i64*", receiver.repr));
@@ -413,7 +413,7 @@ impl LlvmBackend {
             ));
 
             self.emit_body(format!("{call_label}:"));
-            let call_result = if protocol_info.return_type != ValueType::Unit {
+            let call_result = if interface_info.return_type != ValueType::Unit {
                 let t = self.next_temp();
                 self.emit_body(format!(
                     "{t} = call {return_type} @{}({arg_str})",
@@ -441,17 +441,17 @@ impl LlvmBackend {
         }
 
         self.emit_body(format!("{default_label}:"));
-        let default_result = if protocol_info.return_type != ValueType::Unit {
+        let default_result = if interface_info.return_type != ValueType::Unit {
             let t = self.next_temp();
             self.emit_body(format!(
                 "{t} = call {return_type} @{}({arg_str})",
-                protocol_info.llvm_name
+                interface_info.llvm_name
             ));
             Some(t)
         } else {
             self.emit_body(format!(
                 "call {return_type} @{}({arg_str})",
-                protocol_info.llvm_name
+                interface_info.llvm_name
             ));
             None
         };
@@ -464,7 +464,7 @@ impl LlvmBackend {
 
         self.emit_body(format!("{done_label}:"));
 
-        if protocol_info.return_type != ValueType::Unit {
+        if interface_info.return_type != ValueType::Unit {
             let result = self.next_temp();
             let phi_args = branch_results
                 .iter()
@@ -474,7 +474,7 @@ impl LlvmBackend {
             self.emit_body(format!("{result} = phi {return_type} {phi_args}"));
 
             Some(ValueRef {
-                value_type: protocol_info.return_type,
+                value_type: interface_info.return_type,
                 repr: result,
             })
         } else {

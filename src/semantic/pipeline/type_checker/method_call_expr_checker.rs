@@ -21,9 +21,9 @@ impl<'a> TypeChecker<'a> {
 
         let receiver_id = TypeId(receiver_raw);
 
-        if SymbolCollector::is_protocol(self.analyzer, receiver_id) {
-            let protocol_methods = ProtocolChecker::collect_inherited_protocol_methods(self.analyzer, receiver_id, receiver_id);
-            let Some(protocol_signature) = protocol_methods
+        if SymbolCollector::is_interface(self.analyzer, receiver_id) {
+            let interface_methods = InterfaceChecker::collect_inherited_interface_methods(self.analyzer, receiver_id, receiver_id);
+            let Some(interface_signature) = interface_methods
                 .iter()
                 .find(|m| m.name == call.method_name)
                 .map(|m| FunctionSignature {
@@ -49,14 +49,14 @@ impl<'a> TypeChecker<'a> {
                 return None;
             };
 
-            if protocol_signature.arity() != call.args.len() {
+            if interface_signature.arity() != call.args.len() {
                 self.analyzer.push_semantic_error(
                     call.span,
                     source,
                     format!(
                         "Method '{}' expects {} argument(s), but got {}.",
                         call.method_name,
-                        protocol_signature.arity(),
+                        interface_signature.arity(),
                         call.args.len()
                     ),
                 );
@@ -70,7 +70,7 @@ impl<'a> TypeChecker<'a> {
             if let Expr::Variable { name, .. } = call.receiver.as_ref() {
                 let real_id = self
                     .analyzer
-                    .protocol_real_types
+                    .interface_real_types
                     .get(name)
                     .copied()
                     .or_else(|| self.analyzer.lookup_param_real_type(name));
@@ -85,7 +85,7 @@ impl<'a> TypeChecker<'a> {
                 }
             }
 
-            return Some(protocol_signature.return_type);
+            return Some(interface_signature.return_type);
         }
 
         let Some(method_key) = self.resolve_method_symbol_key(receiver_id, &call.method_name)

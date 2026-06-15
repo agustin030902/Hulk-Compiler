@@ -92,7 +92,7 @@ print(value + 1);
 }
 
 #[test]
-fn allows_method_call_on_protocol_typed_parameter_with_concrete_argument() {
+fn allows_method_call_on_interface_typed_parameter_with_concrete_argument() {
     let source = r#"
     interface Printable { show(): String; }
 type Person {
@@ -112,7 +112,7 @@ print(mostrar(new Person()));
 }
 
 #[test]
-fn allows_method_call_on_protocol_param_with_multiple_concrete_types() {
+fn allows_method_call_on_interface_param_with_multiple_concrete_types() {
     let source = r#"
     interface Greetable { greet(): String; }
 type Person {
@@ -137,7 +137,7 @@ print(send_greeting(new Robot()));
 }
 
 #[test]
-fn allows_same_protocol_param_function_called_with_different_types() {
+fn allows_same_interface_param_function_called_with_different_types() {
     let source = r#"
     interface Printable { show(): String; }
 type Person { show(): String => "Person"; }

@@ -16,7 +16,7 @@ fn unique_output_path(test_name: &str) -> PathBuf {
 }
 
 #[test]
-fn writes_llvm_ir_dispatching_concrete_method_for_protocol_param() {
+fn writes_llvm_ir_dispatching_concrete_method_for_interface_param() {
     let source = r#"
     interface Printable { show(): String; }
     type Person {
@@ -26,7 +26,7 @@ fn writes_llvm_ir_dispatching_concrete_method_for_protocol_param() {
     function mostrar(p: Printable): String => p.show();
     print(mostrar(new Person()));
     "#;
-    let output_path = unique_output_path("protocol_param_dispatch");
+    let output_path = unique_output_path("interface_param_dispatch");
 
     let mut compiler = Compiler::new();
     let report = compiler.compile(
@@ -59,7 +59,7 @@ fn writes_llvm_ir_dispatching_concrete_method_for_protocol_param() {
 }
 
 #[test]
-fn writes_llvm_ir_for_protocol_param_with_multiple_concrete_calls() {
+fn writes_llvm_ir_for_interface_param_with_multiple_concrete_calls() {
     let source = r#"
     interface Printable { show(): String; }
     type Person { show(): String => "Person"; }
@@ -68,7 +68,7 @@ fn writes_llvm_ir_for_protocol_param_with_multiple_concrete_calls() {
     mostrar(new Person());
     mostrar(new Robot());
     "#;
-    let output_path = unique_output_path("protocol_param_multi_call");
+    let output_path = unique_output_path("interface_param_multi_call");
 
     let mut compiler = Compiler::new();
     let report = compiler.compile(

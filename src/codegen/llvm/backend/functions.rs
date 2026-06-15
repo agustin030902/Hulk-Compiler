@@ -45,8 +45,8 @@ impl LlvmBackend {
             .map(|(name, type_id)| (name.clone(), type_id.0))
             .collect();
 
-        self.protocol_real_types = analyzer
-            .protocol_real_types()
+        self.interface_real_types = analyzer
+            .interface_real_types()
             .iter()
             .map(|(name, type_id)| (name.clone(), type_id.0))
             .collect();

@@ -57,7 +57,7 @@ impl LlvmBackend {
             return false;
         };
 
-        if type_info.is_protocol {
+        if type_info.is_interface {
             return true;
         }
 

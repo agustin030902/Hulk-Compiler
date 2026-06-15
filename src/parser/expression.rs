@@ -13,14 +13,14 @@ impl Span {
 #[derive(Debug)]
 pub struct Program {
     pub types: Vec<TypeDecl>,
-    pub protocols: Vec<ProtocolDecl>,
+    pub interfaces: Vec<InterfaceDecl>,
     pub functions: Vec<FunctionDecl>,
     pub statements: Vec<Statement>,
 }
 
 #[derive(Debug)]
 pub enum ProgramItem {
-    Protocol(ProtocolDecl),
+    Interface(InterfaceDecl),
     Type(TypeDecl),
     Function(FunctionDecl),
 }
@@ -65,17 +65,17 @@ pub struct MethodDecl {
 }
 
 #[derive(Debug, Clone)]
-pub struct ProtocolDecl {
+pub struct InterfaceDecl {
     pub name: String,
     pub name_span: Span,
     pub parent_name: Option<String>,
     pub parent_span: Option<Span>,
-    pub methods: Vec<ProtocolMethodDecl>,
+    pub methods: Vec<InterfaceMethodDecl>,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub struct ProtocolMethodDecl {
+pub struct InterfaceMethodDecl {
     pub name: String,
     pub name_span: Span,
     pub params: Vec<FunctionParam>,

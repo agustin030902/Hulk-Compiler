@@ -180,12 +180,14 @@ fn token_label(token: &TokenKind) -> String {
 
 fn normalize_token_kind(kind: TokenKind) -> TokenKind {
     match kind {
-        TokenKind::String(raw) => TokenKind::String(unescape_string_contents(&raw)),
+        TokenKind::String(raw) => TokenKind::String(
+            unescape_string_contents(&raw).expect("String unescape errors are handled by the lexer"),
+        ),
         other => other,
     }
 }
 
-fn unescape_string_contents(raw: &str) -> String {
+fn unescape_string_contents(raw: &str) -> Result<String, String> {
     let mut result = String::with_capacity(raw.len());
     let mut chars = raw.chars();
 
@@ -200,12 +202,13 @@ fn unescape_string_contents(raw: &str) -> String {
             Some('n') => result.push('\n'),
             Some('t') => result.push('\t'),
             Some(other) => {
-                result.push('\\');
-                result.push(other);
+                return Err(format!("Unexpected escape character: \\{other}"));
             }
-            None => result.push('\\'),
+            None => {
+                return Err("Unexpected end of escape sequence".to_string());
+            }
         }
     }
 
-    result
+    Ok(result)
 }

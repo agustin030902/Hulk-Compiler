@@ -180,15 +180,9 @@ impl LogosTokenKind {
                 let value = lexeme.to_string();
                 (TokenKind::Number(value.clone()), value)
             }
-            LogosTokenKind::String => {
-                let raw_value = lexeme
-                    .strip_prefix('"')
-                    .and_then(|s| s.strip_suffix('"'))
-                    .unwrap_or(lexeme);
-                let value = unescape_string_contents(raw_value);
-                (TokenKind::String(value.clone()), value)
+            LogosTokenKind::InvalidNumberIdent => {
+                unreachable!("InvalidNumberIdent is handled before into_token")
             }
-            LogosTokenKind::Add => (TokenKind::Add, lexeme.to_string()),
             LogosTokenKind::Power => (TokenKind::Power, lexeme.to_string()),
             LogosTokenKind::Concat => (TokenKind::Concat, lexeme.to_string()),
             LogosTokenKind::ConcatSpace => (TokenKind::ConcatSpace, lexeme.to_string()),
@@ -216,8 +210,9 @@ impl LogosTokenKind {
             LogosTokenKind::Comma => (TokenKind::Comma, lexeme.to_string()),
             LogosTokenKind::Semicolon => (TokenKind::Semicolon, lexeme.to_string()),
             LogosTokenKind::Assign => (TokenKind::Assign, lexeme.to_string()),
-            LogosTokenKind::InvalidNumberIdent => {
-                unreachable!("InvalidNumberIdent is handled before into_token")
+            LogosTokenKind::Add => (TokenKind::Add, lexeme.to_string()),
+            LogosTokenKind::String => {
+                unreachable!("String is handled in lex()")
             }
         };
 
@@ -277,6 +272,38 @@ impl Lexer {
                         start: span.start,
                         end: span.end,
                     });
+                }
+                Ok(LogosTokenKind::String) => {
+                    let raw_value = lexeme
+                        .strip_prefix('"')
+                        .and_then(|s| s.strip_suffix('"'))
+                        .unwrap_or(lexeme);
+                    match unescape_string_contents(raw_value) {
+                        Ok(value) => tokens.push(Token {
+                            kind: TokenKind::String(value.clone()),
+                            value,
+                            line: token_line,
+                            column: token_column,
+                            start: span.start,
+                            end: span.end,
+                        }),
+                        Err(msg) => {
+                            self.errors.push(CompilerError::new(
+                                ErrorCategory::Lexical,
+                                msg,
+                                token_line,
+                                token_column,
+                            ));
+                            tokens.push(Token {
+                                kind: TokenKind::Unknown,
+                                value: lexeme.to_string(),
+                                line: token_line,
+                                column: token_column,
+                                start: span.start,
+                                end: span.end,
+                            });
+                        }
+                    }
                 }
                 Ok(kind) => tokens.push(kind.into_token(
                     lexeme,
@@ -340,7 +367,7 @@ fn advance_position(input: &str, from: usize, to: usize, line: &mut usize, colum
     }
 }
 
-fn unescape_string_contents(raw: &str) -> String {
+fn unescape_string_contents(raw: &str) -> Result<String, String> {
     let mut result = String::with_capacity(raw.len());
     let mut chars = raw.chars();
 
@@ -355,12 +382,13 @@ fn unescape_string_contents(raw: &str) -> String {
             Some('n') => result.push('\n'),
             Some('t') => result.push('\t'),
             Some(other) => {
-                result.push('\\');
-                result.push(other);
+                return Err(format!("Unexpected escape character: \\{other}"));
             }
-            None => result.push('\\'),
+            None => {
+                return Err("Unexpected end of escape sequence".to_string());
+            }
         }
     }
 
-    result
+    Ok(result)
 }

@@ -3,6 +3,7 @@ mod binary;
 mod block;
 mod call;
 mod destructive_assign;
+mod for_expr;
 mod if_expr;
 mod is_expr;
 mod let_in;
@@ -30,6 +31,7 @@ pub(in crate::codegen::llvm) fn emit_expr(
         Expr::DestructiveAssign(assign) => backend.emit_destructive_assign(assign),
         Expr::LetIn(let_in) => backend.emit_let_in_expr(let_in),
         Expr::While(while_expr) => backend.emit_while_expr(while_expr),
+        Expr::For(for_expr) => backend.emit_for_expr(for_expr),
         Expr::If(if_expr) => backend.emit_if_expr(if_expr),
         Expr::BuiltinCall(call) => backend.emit_builtin_call(call.function, &call.args),
         Expr::FunctionCall(call) => backend.emit_function_call(call),

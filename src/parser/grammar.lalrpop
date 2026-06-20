@@ -1,7 +1,7 @@
 use crate::lexer::TokenKind;
 use crate::parser::expression::{
     AsExpr, AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction,
-    DestructiveAssignExpr, ElifBranch, Expr, FunctionCallExpr, FunctionDecl, FunctionParam, IfExpr,
+    DestructiveAssignExpr, ElifBranch, Expr, ForExpr, FunctionCallExpr, FunctionDecl, FunctionParam, IfExpr,
     IsExpr, LetBinding, LetInExpr, Literal, MemberAccessExpr, MethodCallExpr, MethodDecl, NewExpr,
     Program, ProgramItem, InterfaceDecl, InterfaceMethodDecl, Span, Statement, TypeAnnotation,
     TypeAttribute, TypeDecl, TypeMemberDecl, TypeParam, UnaryExpr, UnaryOp, WhileExpr,
@@ -349,62 +349,14 @@ ForStatement: Statement = {
                 error: "for body must be a block".to_string(),
             });
         };
-        let zero = Span::new(0, 0);
-        let iter_var_name = "__hulk_iter__".to_string();
-        let iter_ref = Expr::Variable {
-            name: iter_var_name.clone(),
-            span: zero,
-        };
-        let condition = Expr::MethodCall(MethodCallExpr {
-            receiver: Box::new(iter_ref.clone()),
-            method_name: "next".to_string(),
-            method_name_span: zero,
-            args: Vec::new(),
-            span: zero,
-        });
-        let current_value = Expr::MethodCall(MethodCallExpr {
-            receiver: Box::new(iter_ref),
-            method_name: "current".to_string(),
-            method_name_span: zero,
-            args: Vec::new(),
-            span: zero,
-        });
-        let inner_binding = LetBinding {
-            name: id.0,
-            type_annotation: None,
-            value: current_value,
-            span: zero,
-        };
-        let inner_let_in = Expr::LetIn(LetInExpr {
-            bindings: vec![inner_binding],
-            body: Box::new(Expr::Block(body_block)),
-            span: zero,
-        });
-        let while_body = BlockExpr {
-            statements: vec![Statement::Expr {
-                value: inner_let_in,
-                span: zero,
-            }],
-            span: zero,
-        };
-        let while_loop = Expr::While(WhileExpr {
-            condition: Box::new(condition),
-            body: while_body,
-            span: zero,
-        });
-        let outer_binding = LetBinding {
-            name: iter_var_name,
-            type_annotation: None,
-            value: iter,
-            span: zero,
-        };
-        let let_in = Expr::LetIn(LetInExpr {
-            bindings: vec![outer_binding],
-            body: Box::new(while_loop),
-            span: zero,
-        });
         Ok(Statement::Expr {
-            value: let_in,
+            value: Expr::For(ForExpr {
+                id: id.0,
+                id_span: id.1,
+                iter: Box::new(iter),
+                body: body_block,
+                span: Span::new(l, r),
+            }),
             span: Span::new(l, r),
         })
     },

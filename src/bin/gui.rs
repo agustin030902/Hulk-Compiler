@@ -893,6 +893,16 @@ fn render_expr_tree(ui: &mut egui::Ui, expr: &Expr, label: &str, query: &str) {
         Expr::If(if_expr) => render_if_tree(ui, if_expr, label, query),
         Expr::Is(is_expr) => render_is_tree(ui, is_expr, label, query),
         Expr::As(as_expr) => render_as_tree(ui, as_expr, label, query),
+        Expr::For(for_expr) => {
+            ui.label(match_rich_text(
+                format!(
+                    "{label}: for ({}) in ... [{}]",
+                    for_expr.id,
+                    span_text(for_expr.span)
+                ),
+                query,
+            ));
+        }
     }
 }
 

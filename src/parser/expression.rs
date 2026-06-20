@@ -151,6 +151,7 @@ pub enum Expr {
     LetIn(LetInExpr),
     Block(BlockExpr),
     While(WhileExpr),
+    For(ForExpr),
     If(IfExpr),
     Is(IsExpr),
     As(AsExpr),
@@ -172,6 +173,7 @@ impl Expr {
             Expr::LetIn(let_in) => let_in.span,
             Expr::Block(block) => block.span,
             Expr::While(while_expr) => while_expr.span,
+            Expr::For(for_expr) => for_expr.span,
             Expr::If(if_expr) => if_expr.span,
             Expr::Is(is_expr) => is_expr.span,
             Expr::As(as_expr) => as_expr.span,
@@ -291,6 +293,15 @@ pub struct LetInExpr {
 #[derive(Debug, Clone)]
 pub struct WhileExpr {
     pub condition: Box<Expr>,
+    pub body: BlockExpr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ForExpr {
+    pub id: String,
+    pub id_span: Span,
+    pub iter: Box<Expr>,
     pub body: BlockExpr,
     pub span: Span,
 }

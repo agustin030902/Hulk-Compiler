@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::parser::expression::{
     AsExpr, AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinFunction, DestructiveAssignExpr,
-    ElifBranch, Expr, FunctionCallExpr, FunctionDecl, IfExpr, IsExpr, LetInExpr, Literal,
+    ElifBranch, Expr, ForExpr, FunctionCallExpr, FunctionDecl, IfExpr, IsExpr, LetInExpr, Literal,
     MethodCallExpr, MethodDecl, NewExpr, Program, InterfaceDecl, Span, Statement, TypeDecl,
     UnaryExpr, UnaryOp, WhileExpr,
 };
@@ -17,6 +17,7 @@ mod binary_expr_checker;
 mod block_expr_checker;
 mod builtin_call_expr_checker;
 mod destructive_assign_expr_checker;
+mod for_expr_checker;
 mod function_call_expr_checker;
 mod if_expr_checker;
 mod let_in_expr_checker;
@@ -147,6 +148,7 @@ impl<'a> TypeChecker<'a> {
             Expr::Block(block) => self.check_block_expr(block, source),
             Expr::LetIn(let_in) => self.check_let_in_expr(let_in, source),
             Expr::While(while_expr) => self.check_while_expr(while_expr, source),
+            Expr::For(for_expr) => self.check_for_expr(for_expr, source),
             Expr::If(if_expr) => self.check_if_expr(if_expr, source),
             Expr::BuiltinCall(call) => {
                 self.check_builtin_call(call.function, &call.args, call.span, source)

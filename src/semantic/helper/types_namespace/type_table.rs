@@ -13,6 +13,7 @@ pub struct TypeTable {
     pub object: TypeId,
     pub iterable: TypeId,
     pub range: TypeId,
+    pub enumerable: TypeId,
 }
 
 impl TypeTable {
@@ -58,6 +59,15 @@ impl TypeTable {
             is_interface: false,
         }));
 
+        let enumerable = push(TypeInfo::Type(StructTypeInfo {
+            name: "Enumerable".to_string(),
+            constructor_params: Vec::new(),
+            fields: Vec::new(),
+            methods: Vec::new(),
+            parent: None,
+            is_interface: true,
+        }));
+
         Self {
             types,
             number,
@@ -69,6 +79,7 @@ impl TypeTable {
             object,
             iterable,
             range,
+            enumerable,
         }
     }
 

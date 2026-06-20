@@ -1,7 +1,7 @@
 use crate::lexer::Lexer;
 use crate::parser::{
     Parser,
-    expression::{Expr, LetInExpr, Program, Statement, WhileExpr},
+    expression::{Expr, ForExpr, Program, Statement},
 };
 
 fn parse_program(source: &str) -> Program {
@@ -25,7 +25,7 @@ fn parse_program(source: &str) -> Program {
 }
 
 #[test]
-fn parses_for_loop_desugars_to_let_in_while() {
+fn parses_for_loop_produces_for_expr() {
     let program = parse_program(r#"for (x in range(0, 5)) { print(x); };"#);
 
     assert_eq!(program.statements.len(), 1);
@@ -34,44 +34,16 @@ fn parses_for_loop_desugars_to_let_in_while() {
         panic!("expected expression statement");
     };
 
-    // for is desugared to: let __hulk_iter__ = <iter> in while (cond) let x = current() in body
-    let Expr::LetIn(LetInExpr { bindings, body, .. }) = value else {
-        panic!("expected let-in (outer desugaring), got: {:?}", value);
+    let Expr::For(ForExpr { id, iter, body, .. }) = value else {
+        panic!("expected For expression, got: {:?}", value);
     };
-    assert_eq!(bindings.len(), 1);
-    assert_eq!(bindings[0].name, "__hulk_iter__");
+    assert_eq!(id, "x");
+    assert!(body.statements.len() > 0);
 
-    let Expr::While(WhileExpr { condition, body, .. }) = body.as_ref() else {
-        panic!("expected while loop as body of outer let-in");
+    let Expr::New(new_expr) = iter.as_ref() else {
+        panic!("expected New expression for iter, got: {:?}", iter);
     };
-
-    // condition should be __hulk_iter__.next()
-    let Expr::MethodCall(call) = condition.as_ref() else {
-        panic!("expected method call for while condition");
-    };
-    assert_eq!(call.method_name, "next");
-
-    // while body should have inner let-in: let x = __hulk_iter__.current() in body
-    assert_eq!(body.statements.len(), 1);
-    let Statement::Expr { value: inner, .. } = &body.statements[0] else {
-        panic!("expected expression statement in while body");
-    };
-    let Expr::LetIn(LetInExpr {
-        bindings: inner_bindings,
-        body: inner_body,
-        ..
-    }) = inner
-    else {
-        panic!("expected inner let-in binding for loop variable");
-    };
-    assert_eq!(inner_bindings.len(), 1);
-    assert_eq!(inner_bindings[0].name, "x");
-
-    // inner let-in body should be a block with print(x)
-    let Expr::Block(block) = inner_body.as_ref() else {
-        panic!("expected block body");
-    };
-    assert_eq!(block.statements.len(), 1);
+    assert_eq!(new_expr.type_name, "Range");
 }
 
 #[test]
@@ -82,19 +54,10 @@ fn parses_for_loop_with_different_variable_name() {
     let Statement::Expr { value, .. } = &program.statements[0] else {
         panic!("expected expression statement");
     };
-    let Expr::LetIn(LetInExpr { body, .. }) = value else {
-        panic!("expected let-in");
+    let Expr::For(ForExpr { id, .. }) = value else {
+        panic!("expected For expression");
     };
-    let Expr::While(WhileExpr { body, .. }) = body.as_ref() else {
-        panic!("expected while");
-    };
-    let Statement::Expr { value: inner, .. } = &body.statements[0] else {
-        panic!("expected expression statement");
-    };
-    let Expr::LetIn(LetInExpr { bindings, .. }) = inner else {
-        panic!("expected inner let-in");
-    };
-    assert_eq!(bindings[0].name, "i");
+    assert_eq!(id, "i");
 }
 
 #[test]
@@ -133,28 +96,14 @@ fn parses_for_loop_with_block_body() {
     let Statement::Expr { value, .. } = &program.statements[0] else {
         panic!("expected expression statement");
     };
-    let Expr::LetIn(LetInExpr { body, .. }) = value else {
-        panic!("expected let-in");
+    let Expr::For(ForExpr { body, .. }) = value else {
+        panic!("expected For expression");
     };
-    let Expr::While(WhileExpr { body, .. }) = body.as_ref() else {
-        panic!("expected while");
-    };
-    let Statement::Expr { value: inner, .. } = &body.statements[0] else {
-        panic!("expected expression statement");
-    };
-    let Expr::LetIn(LetInExpr { body: inner_body, .. }) = inner else {
-        panic!("expected inner let-in");
-    };
-    // The inner body should be a block with 2 statements
-    let Expr::Block(block) = inner_body.as_ref() else {
-        panic!("expected block body");
-    };
-    assert_eq!(block.statements.len(), 2);
+    assert_eq!(body.statements.len(), 2);
 }
 
 #[test]
 fn rejects_for_loop_with_non_identifier_variable() {
-    // 'for (5 in range(0, 3)) { print(x); };' should produce a parse error
     let mut lexer = Lexer::new(r#"for (5 in range(0, 3)) { print(x); };"#.to_string());
     let tokens = lexer.lex();
     let mut parser = Parser::new(r#"for (5 in range(0, 3)) { print(x); };"#);

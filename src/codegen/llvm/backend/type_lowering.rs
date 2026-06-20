@@ -1,7 +1,7 @@
 use crate::semantic::{SemanticAnalyzer, SemanticType, TypeId, TypeInfo};
 
 use super::LlvmBackend;
-use crate::codegen::llvm::helper::state::ValueType;
+use crate::codegen::llvm::helper::state::{ValueType, ElementTag};
 
 impl LlvmBackend {
     pub(in crate::codegen::llvm) fn lower_semantic_type(
@@ -17,6 +17,20 @@ impl LlvmBackend {
             SemanticType::Null => ValueType::Null,
             SemanticType::Function(_) => ValueType::Function,
             SemanticType::Struct(type_id) => ValueType::Struct(type_id),
+            SemanticType::Array(inner) => {
+                let inner_tag = match *inner {
+                    SemanticType::Number => ElementTag::Double,
+                    SemanticType::Boolean => ElementTag::Bool,
+                    SemanticType::String => ElementTag::StringPtr,
+                    SemanticType::Unit => ElementTag::Unit,
+                    SemanticType::Null => ElementTag::Null,
+                    SemanticType::Function(id) => ElementTag::Function,
+                    SemanticType::Struct(id) => ElementTag::Struct(id),
+                    SemanticType::Array(_) => ElementTag::Array,
+                    SemanticType::Unknown => ElementTag::Array,
+                };
+                ValueType::ArrayPtrOf(inner_tag)
+            }
             SemanticType::Unknown => {
                 self.semantic_error(format!(
                     "Could not infer a concrete type for {context} before code generation."
@@ -61,7 +75,7 @@ impl LlvmBackend {
         match value_type {
             ValueType::Double => (8, 8),
             ValueType::Bool => (1, 1),
-            ValueType::StringPtr | ValueType::Null | ValueType::Function | ValueType::Struct(_) => {
+            ValueType::StringPtr | ValueType::Null | ValueType::Function | ValueType::Struct(_) | ValueType::ArrayPtr | ValueType::ArrayPtrOf(_) => {
                 (8, 8)
             }
             ValueType::Unit => (1, 1),

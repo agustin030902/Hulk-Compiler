@@ -36,6 +36,9 @@ impl LlvmBackend {
         type_decls_map
             .entry(builtins::RANGE_NAME.to_string())
             .or_insert_with(builtins::build_range_type_decl);
+        type_decls_map
+            .entry(builtins::ARRAY_NAME.to_string())
+            .or_insert_with(builtins::build_array_type_decl);
 
         self.type_decls = type_decls_map;
 
@@ -71,7 +74,7 @@ impl LlvmBackend {
             };
 
             let mut param_types = Vec::with_capacity(signature.param_types.len());
-            for (index, semantic_type) in signature.param_types.iter().copied().enumerate() {
+            for (index, semantic_type) in signature.param_types.iter().cloned().enumerate() {
                 let Some(value_type) = self.lower_semantic_type(
                     semantic_type,
                     &format!("parameter #{} in function '{}'", index + 1, symbol.name),
@@ -82,7 +85,7 @@ impl LlvmBackend {
             }
 
             let Some(return_type) = self.lower_semantic_type(
-                signature.return_type,
+                signature.return_type.clone(),
                 &format!("return type in function '{}'", symbol.name),
             ) else {
                 return false;

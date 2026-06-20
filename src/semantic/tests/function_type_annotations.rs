@@ -111,7 +111,7 @@ print(f(1));
     assert_eq!(errors[0].category, ErrorCategory::Semantic);
     assert_eq!(
         errors[0].message,
-        "Unknown type annotation 'Numeric'. Expected one of: Number, Boolean, String, Unit, Null, Iterable, Object, Range."
+        "Unknown type annotation 'Numeric'. Expected one of: Number, Boolean, String, Unit, Null, Enumerable, Iterable, Object, Range."
     );
 }
 
@@ -127,7 +127,7 @@ print(f(1));
     assert_eq!(errors[0].category, ErrorCategory::Semantic);
     assert_eq!(
         errors[0].message,
-        "Unknown type annotation 'Numeric'. Expected one of: Number, Boolean, String, Unit, Null, Iterable, Object, Range."
+        "Unknown type annotation 'Numeric'. Expected one of: Number, Boolean, String, Unit, Null, Enumerable, Iterable, Object, Range."
     );
 }
 

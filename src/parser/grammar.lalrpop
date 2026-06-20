@@ -1,8 +1,8 @@
 use crate::lexer::TokenKind;
 use crate::parser::expression::{
-    AsExpr, AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction,
+    AsExpr, AssignTarget, ArrayIndexExpr, ArrayLiteralExpr, BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction,
     DestructiveAssignExpr, ElifBranch, Expr, ForExpr, FunctionCallExpr, FunctionDecl, FunctionParam, IfExpr,
-    IsExpr, LetBinding, LetInExpr, Literal, MemberAccessExpr, MethodCallExpr, MethodDecl, NewExpr,
+    IsExpr, LambdaExpr, LetBinding, LetInExpr, Literal, MemberAccessExpr, MethodCallExpr, MethodDecl, NewArrayExpr, NewExpr,
     Program, ProgramItem, InterfaceDecl, InterfaceMethodDecl, Span, Statement, TypeAnnotation,
     TypeAttribute, TypeDecl, TypeMemberDecl, TypeParam, UnaryExpr, UnaryOp, WhileExpr,
 };
@@ -68,6 +68,9 @@ extern {
         "." => TokenKind::Dot,
         "{" => TokenKind::LeftBrace,
         "}" => TokenKind::RightBrace,
+        "[" => TokenKind::LeftBracket,
+        "]" => TokenKind::RightBracket,
+        "->" => TokenKind::ThinArrow,
         "identifier" => TokenKind::Identifier(<String>),
         "number" => TokenKind::Number(<String>),
         "string" => TokenKind::String(<String>),
@@ -147,11 +150,29 @@ RequiredTypeAnnotation: TypeAnnotation = {
         name,
         span: Span::new(l, r),
         is_splat: true,
+        is_vector: false,
+        vector_dims: 0,
+    },
+    <l:@L> <name:"identifier"> "[" "]" "[" "]" <r:@R> => TypeAnnotation {
+        name,
+        span: Span::new(l, r),
+        is_splat: false,
+        is_vector: true,
+        vector_dims: 2,
+    },
+    <l:@L> <name:"identifier"> "[" "]" <r:@R> => TypeAnnotation {
+        name,
+        span: Span::new(l, r),
+        is_splat: false,
+        is_vector: true,
+        vector_dims: 1,
     },
     <l:@L> <name:"identifier"> <r:@R> => TypeAnnotation {
         name,
         span: Span::new(l, r),
         is_splat: false,
+        is_vector: false,
+        vector_dims: 0,
     },
 };
 
@@ -405,11 +426,29 @@ OptionalTypeAnnotation: Option<TypeAnnotation> = {
         name,
         span: Span::new(l, r),
         is_splat: true,
+        is_vector: false,
+        vector_dims: 0,
+    }),
+    <l:@L> ":" <name:"identifier"> "[" "]" "[" "]" <r:@R> => Some(TypeAnnotation {
+        name,
+        span: Span::new(l, r),
+        is_splat: false,
+        is_vector: true,
+        vector_dims: 2,
+    }),
+    <l:@L> ":" <name:"identifier"> "[" "]" <r:@R> => Some(TypeAnnotation {
+        name,
+        span: Span::new(l, r),
+        is_splat: false,
+        is_vector: true,
+        vector_dims: 1,
     }),
     <l:@L> ":" <name:"identifier"> <r:@R> => Some(TypeAnnotation {
         name,
         span: Span::new(l, r),
         is_splat: false,
+        is_vector: false,
+        vector_dims: 0,
     }),
     => None,
 };
@@ -427,9 +466,14 @@ Assignment: Expr = {
                 member_span: access.member_span,
                 span: access.span,
             },
+            Expr::ArrayIndex(index_expr) => AssignTarget::Index {
+                object: index_expr.object,
+                index: index_expr.index,
+                span: index_expr.span,
+            },
             _ => {
                 return Err(lalrpop_util::ParseError::User {
-                    error: "Invalid assignment target for ':='. Expected a variable or member access.".to_string(),
+                    error: "Invalid assignment target for ':='. Expected a variable, member access, or array index.".to_string(),
                 });
             }
         };
@@ -603,7 +647,7 @@ Power: Expr = {
 
 Primary: Expr = {
     WhileExpr,
-    BlockExpr,
+    BraceExpr,
     PostfixExpr,
 };
 
@@ -619,6 +663,11 @@ PostfixExpr: Expr = {
         object: Box::new(object),
         member: id.0,
         member_span: id.1,
+        span: Span::new(l, r),
+    }),
+    <l:@L> <object:PostfixExpr> "[" <index:Expr> "]" <r:@R> => Expr::ArrayIndex(ArrayIndexExpr {
+        object: Box::new(object),
+        index: Box::new(index),
         span: Span::new(l, r),
     }),
     PrimaryAtom,
@@ -647,6 +696,32 @@ NewExpr: Expr = {
         type_name: id.0,
         type_name_span: id.1,
         args,
+        span: Span::new(l, r),
+    }),
+    <l:@L> "new" <id:IdentifierWithSpan> "[" <size:Expr> "]" "{" <param:IdentifierWithSpan> "->" <body:Expr> "}" <r:@R> => Expr::NewArray(NewArrayExpr {
+        type_name: id.0,
+        type_name_span: id.1,
+        sizes: vec![size],
+        initializer: Some(LambdaExpr {
+            param_name: param.0,
+            param_span: param.1,
+            body: Box::new(body),
+            span: Span::new(l, r),
+        }),
+        span: Span::new(l, r),
+    }),
+    <l:@L> "new" <id:IdentifierWithSpan> "[" "]" "[" <size:Expr> "]" <r:@R> => Expr::NewArray(NewArrayExpr {
+        type_name: id.0,
+        type_name_span: id.1,
+        sizes: vec![size],
+        initializer: None,
+        span: Span::new(l, r),
+    }),
+    <l:@L> "new" <id:IdentifierWithSpan> "[" <size:Expr> "]" <r:@R> => Expr::NewArray(NewArrayExpr {
+        type_name: id.0,
+        type_name_span: id.1,
+        sizes: vec![size],
+        initializer: None,
         span: Span::new(l, r),
     }),
 };
@@ -759,6 +834,32 @@ BlockExpr: Expr = {
         statements,
         span: Span::new(l, r),
     }),
+};
+
+BraceExpr: Expr = {
+    <l:@L> "{" <first:Expr> "," <rest:CommaExprs> "}" <r:@R> => Expr::ArrayLiteral(ArrayLiteralExpr {
+        elements: {
+            let mut v = vec![first];
+            v.extend(rest);
+            v
+        },
+        span: Span::new(l, r),
+    }),
+    <l:@L> "{" <statements:Statements> "}" <r:@R> => Expr::Block(BlockExpr {
+        statements,
+        span: Span::new(l, r),
+    }),
+};
+
+CommaExprs: Vec<Expr> = {
+    => vec![],
+    <first:Expr> <rest:("," <Expr>)*> => {
+        let mut v = vec![first];
+        for e in rest {
+            v.push(e);
+        }
+        v
+    },
 };
 
 WhileExpr: Expr = {

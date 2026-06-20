@@ -111,6 +111,8 @@ pub struct TypeAnnotation {
     pub name: String,
     pub span: Span,
     pub is_splat: bool,
+    pub is_vector: bool,
+    pub vector_dims: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -147,6 +149,9 @@ pub enum Expr {
     MethodCall(MethodCallExpr),
     MemberAccess(MemberAccessExpr),
     New(NewExpr),
+    NewArray(NewArrayExpr),
+    ArrayIndex(ArrayIndexExpr),
+    ArrayLiteral(ArrayLiteralExpr),
     DestructiveAssign(DestructiveAssignExpr),
     LetIn(LetInExpr),
     Block(BlockExpr),
@@ -169,6 +174,9 @@ impl Expr {
             Expr::MethodCall(call) => call.span,
             Expr::MemberAccess(access) => access.span,
             Expr::New(new_expr) => new_expr.span,
+            Expr::NewArray(new_array) => new_array.span,
+            Expr::ArrayIndex(array_index) => array_index.span,
+            Expr::ArrayLiteral(array_literal) => array_literal.span,
             Expr::DestructiveAssign(assign) => assign.span,
             Expr::LetIn(let_in) => let_in.span,
             Expr::Block(block) => block.span,
@@ -226,6 +234,11 @@ pub enum AssignTarget {
         member_span: Span,
         span: Span,
     },
+    Index {
+        object: Box<Expr>,
+        index: Box<Expr>,
+        span: Span,
+    },
 }
 
 impl AssignTarget {
@@ -233,6 +246,7 @@ impl AssignTarget {
         match self {
             AssignTarget::Variable { name_span, .. } => *name_span,
             AssignTarget::Member { span, .. } => *span,
+            AssignTarget::Index { span, .. } => *span,
         }
     }
 }
@@ -274,6 +288,36 @@ pub struct NewExpr {
     pub type_name: String,
     pub type_name_span: Span,
     pub args: Vec<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewArrayExpr {
+    pub type_name: String,
+    pub type_name_span: Span,
+    pub sizes: Vec<Expr>,
+    pub initializer: Option<LambdaExpr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArrayIndexExpr {
+    pub object: Box<Expr>,
+    pub index: Box<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArrayLiteralExpr {
+    pub elements: Vec<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct LambdaExpr {
+    pub param_name: String,
+    pub param_span: Span,
+    pub body: Box<Expr>,
     pub span: Span,
 }
 

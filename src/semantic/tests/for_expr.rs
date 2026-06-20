@@ -120,3 +120,108 @@ print(n);
         errors
     );
 }
+
+#[test]
+fn rejects_type_with_only_current_no_next() {
+    let source = r#"
+type OnlyCurrent(val: Number) {
+    val = val;
+    current() => self.val;
+}
+for (x in new OnlyCurrent(5)) {
+    print(x);
+};
+"#;
+
+    let errors = analyze(source);
+    assert!(
+        !errors.is_empty(),
+        "expected error: type has current() but missing next()"
+    );
+    assert!(
+        errors.iter().any(|e| e.message.contains("missing 'next()'")),
+        "expected 'missing next()' error, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_type_with_next_returning_non_boolean() {
+    let source = r#"
+type BadNext(val: Number) {
+    val = val;
+    next() => self.val;
+    current() => self.val;
+}
+for (x in new BadNext(5)) {
+    print(x);
+};
+"#;
+
+    let errors = analyze(source);
+    assert!(
+        !errors.is_empty(),
+        "expected error: next() must return Boolean"
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|e| e.message.contains("next()' must return Boolean")),
+        "expected 'next() must return Boolean' error, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_type_with_next_taking_parameters() {
+    let source = r#"
+type BadNextParam(val: Number) {
+    val = val;
+    next(n: Number) => self.val > 0;
+    current() => self.val;
+}
+for (x in new BadNextParam(5)) {
+    print(x);
+};
+"#;
+
+    let errors = analyze(source);
+    assert!(
+        !errors.is_empty(),
+        "expected error: next() must take no parameters"
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|e| e.message.contains("next()' must take no parameters")),
+        "expected 'next() must take no parameters' error, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_type_with_current_taking_parameters() {
+    let source = r#"
+type BadCurrentParam(val: Number) {
+    val = val;
+    next() => self.val > 0;
+    current(n: Number) => self.val;
+}
+for (x in new BadCurrentParam(5)) {
+    print(x);
+};
+"#;
+
+    let errors = analyze(source);
+    assert!(
+        !errors.is_empty(),
+        "expected error: current() must take no parameters"
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|e| e.message.contains("current()' must take no parameters")),
+        "expected 'current() must take no parameters' error, got: {:?}",
+        errors
+    );
+}

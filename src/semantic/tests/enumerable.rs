@@ -120,3 +120,119 @@ for (x in 42) {
     let errors = analyze(source);
     assert!(!errors.is_empty(), "expected semantic errors for non-iterable");
 }
+
+#[test]
+fn rejects_enumerable_with_iter_returning_non_struct() {
+    let source = r#"
+type BadEnumerable() {
+    iter() => 42;
+}
+for (x in new BadEnumerable()) {
+    print(x);
+};
+"#;
+    let errors = analyze(source);
+    assert!(
+        !errors.is_empty(),
+        "expected error: iter() must return an Iterable type"
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|e| e.message.contains("iter()' must return an Iterable")),
+        "expected 'iter() must return an Iterable' error, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_enumerable_iterator_missing_next() {
+    let source = r#"
+type MyEnum() {
+    iter() => new BadIter(0);
+}
+
+type BadIter(current: Number) {
+    current = current;
+    current() => self.current;
+}
+
+for (x in new MyEnum()) {
+    print(x);
+};
+"#;
+    let errors = analyze(source);
+    assert!(
+        !errors.is_empty(),
+        "expected error: iterator missing next()"
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|e| e.message.contains("missing 'next()'")),
+        "expected 'missing next()' error, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_enumerable_iterator_next_not_boolean() {
+    let source = r#"
+type MyEnum() {
+    iter() => new BadIter2(0);
+}
+
+type BadIter2(current: Number) {
+    current = current;
+    next() => self.current;
+    current() => self.current;
+}
+
+for (x in new MyEnum()) {
+    print(x);
+};
+"#;
+    let errors = analyze(source);
+    assert!(
+        !errors.is_empty(),
+        "expected error: iterator next() must return Boolean"
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|e| e.message.contains("next()' must return Boolean")),
+        "expected 'next() must return Boolean' error, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_enumerable_iter_taking_parameters() {
+    let source = r#"
+type MyEnum() {
+    iter(n: Number) => new BadIter3();
+}
+
+type BadIter3(current: Number) {
+    current = current;
+    next() => true;
+    current() => self.current;
+}
+
+for (x in new MyEnum()) {
+    print(x);
+};
+"#;
+    let errors = analyze(source);
+    assert!(
+        !errors.is_empty(),
+        "expected error: iter() must take no parameters"
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|e| e.message.contains("iter()' must take no parameters")),
+        "expected 'iter() must take no parameters' error, got: {:?}",
+        errors
+    );
+}

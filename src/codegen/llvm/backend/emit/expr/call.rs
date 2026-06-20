@@ -223,6 +223,37 @@ impl LlvmBackend {
         call: &MethodCallExpr,
     ) -> Option<ValueRef> {
         let mut receiver = self.emit_expr(&call.receiver)?;
+
+        if call.method_name == "size" {
+            if receiver.value_type.is_array() {
+                if !call.args.is_empty() {
+                    self.semantic_error("Method 'size' expects 0 arguments");
+                    return None;
+                }
+                let length_ptr = self.next_temp();
+                self.emit_body(format!(
+                    "{length_ptr} = getelementptr i8, i8* {0}, i64 8",
+                    receiver.repr
+                ));
+                let length_ptr_i64 = self.next_temp();
+                self.emit_body(format!(
+                    "{length_ptr_i64} = bitcast i8* {length_ptr} to i64*"
+                ));
+                let length_i64 = self.next_temp();
+                self.emit_body(format!(
+                    "{length_i64} = load i64, i64* {length_ptr_i64}"
+                ));
+                let as_double = self.next_temp();
+                self.emit_body(format!(
+                    "{as_double} = sitofp i64 {length_i64} to double"
+                ));
+                return Some(ValueRef {
+                    value_type: ValueType::Double,
+                    repr: as_double,
+                });
+            }
+        }
+
         let ValueType::Struct(type_id) = receiver.value_type else {
             self.semantic_error(format!(
                 "Method call expects a struct instance receiver, but got {}.",

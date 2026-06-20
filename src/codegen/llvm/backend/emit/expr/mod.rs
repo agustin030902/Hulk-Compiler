@@ -1,3 +1,5 @@
+mod array_index;
+mod array_literal;
 mod as_expr;
 mod binary;
 mod block;
@@ -9,6 +11,7 @@ mod is_expr;
 mod let_in;
 mod literal;
 mod member_access;
+mod new_array;
 mod new_expr;
 mod unary;
 mod variable;
@@ -41,5 +44,8 @@ pub(in crate::codegen::llvm) fn emit_expr(
         Expr::Binary(binary) => backend.emit_binary_expr(binary),
         Expr::Is(is_expr) => backend.emit_is_expr(is_expr),
         Expr::As(as_expr) => backend.emit_as_expr(as_expr),
+        Expr::NewArray(new_array) => backend.emit_new_array(new_array),
+        Expr::ArrayIndex(array_index) => backend.emit_array_index(array_index),
+        Expr::ArrayLiteral(array_literal) => backend.emit_array_literal(array_literal),
     }
 }

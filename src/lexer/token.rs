@@ -60,6 +60,9 @@ pub enum TokenKind {
     Inherits,
     Is,
     As,
+    LeftBracket,
+    RightBracket,
+    ThinArrow,
 }
 
 #[derive(Clone, Debug)]

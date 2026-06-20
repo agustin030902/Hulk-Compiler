@@ -8,10 +8,12 @@ use crate::semantic::SemanticAnalyzer;
 
 pub(crate) const ITERABLE_NAME: &str = "Iterable";
 pub(crate) const RANGE_NAME: &str = "Range";
+pub(crate) const ENUMERABLE_NAME: &str = "Enumerable";
 pub(in crate::semantic) const RANGE_NEXT_METHOD: &str = "next";
 pub(in crate::semantic) const RANGE_CURRENT_METHOD: &str = "current";
 pub(in crate::semantic) const ITERABLE_NEXT_METHOD: &str = "next";
 pub(in crate::semantic) const ITERABLE_CURRENT_METHOD: &str = "current";
+pub(in crate::semantic) const ENUMERABLE_ITER_METHOD: &str = "iter";
 
 fn synthetic_span() -> Span {
     Span::new(0, 0)
@@ -105,6 +107,23 @@ pub(in crate::semantic) fn register_builtin_iterable(analyzer: &mut SemanticAnal
         ITERABLE_CURRENT_METHOD,
         Vec::new(),
         current_return,
+    );
+}
+
+pub(in crate::semantic) fn register_builtin_enumerable(analyzer: &mut SemanticAnalyzer) {
+    let enumerable_id = analyzer.type_table.enumerable;
+    analyzer
+        .type_symbols
+        .insert(ENUMERABLE_NAME.to_string(), enumerable_id);
+
+    let iterable_return = type_id_to_semantic(analyzer, analyzer.type_table.iterable);
+
+    register_interface_method(
+        analyzer,
+        enumerable_id,
+        ENUMERABLE_ITER_METHOD,
+        Vec::new(),
+        iterable_return,
     );
 }
 

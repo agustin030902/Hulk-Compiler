@@ -7,6 +7,21 @@ impl<'a> TypeChecker<'a> {
         source: &str,
     ) -> Option<SemanticType> {
         let receiver_type = self.check_expr(&call.receiver, source)?;
+
+        if call.method_name == "size" {
+            if let SemanticType::Array(_) = &receiver_type {
+                if !call.args.is_empty() {
+                    self.analyzer.push_semantic_error(
+                        call.span,
+                        source,
+                        "Method 'size' expects 0 arguments.".to_string(),
+                    );
+                    return None;
+                }
+                return Some(SemanticType::Number);
+            }
+        }
+
         let SemanticType::Struct(receiver_raw) = receiver_type else {
             self.analyzer.push_type_error(
                 call.span,
@@ -30,7 +45,7 @@ impl<'a> TypeChecker<'a> {
                     type_id: m.type_id.0,
                     param_names: vec![],
                     param_types: m.param_types.clone(),
-                    return_type: m.return_type,
+                    return_type: m.return_type.clone(),
                 })
             else {
                 self.analyzer.push_semantic_error(
@@ -137,7 +152,7 @@ impl<'a> TypeChecker<'a> {
                 .analyzer
                 .functions
                 .get(&method_key)
-                .and_then(|entry| entry.param_types.get(index).copied())
+                .and_then(|entry| entry.param_types.get(index).cloned())
                 .unwrap_or(SemanticType::Unknown);
 
             if arg_type == SemanticType::Unknown && expected_type != SemanticType::Unknown {
@@ -159,7 +174,7 @@ impl<'a> TypeChecker<'a> {
 
             if expected_type != SemanticType::Unknown
                 && arg_type != SemanticType::Unknown
-                && !self.types_compatible(expected_type, arg_type)
+                && !self.types_compatible(expected_type.clone(), arg_type.clone())
             {
                 self.analyzer.push_type_error(
                     arg.span(),
@@ -183,7 +198,7 @@ impl<'a> TypeChecker<'a> {
         self.analyzer
             .functions
             .get(&method_key)
-            .map(|entry| entry.return_type)
+            .map(|entry| entry.return_type.clone())
             .or(Some(SemanticType::Unknown))
     }
 

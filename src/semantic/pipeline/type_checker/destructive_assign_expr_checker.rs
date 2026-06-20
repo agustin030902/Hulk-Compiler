@@ -33,7 +33,7 @@ impl<'a> TypeChecker<'a> {
                 let value_type = self.check_expr(&assign.value, source)?;
 
                 if existing != SemanticType::Unknown
-                    && !self.types_compatible(existing, value_type)
+                    && !self.types_compatible(existing.clone(), value_type.clone())
                 {
                     self.analyzer.push_type_error(
                         assign.span,
@@ -54,8 +54,68 @@ impl<'a> TypeChecker<'a> {
                 };
 
                 self.analyzer
-                    .assign_in_scope(scope_index, name.clone(), assigned_type);
+                    .assign_in_scope(scope_index, name.clone(), assigned_type.clone());
                 Some(assigned_type)
+            }
+            AssignTarget::Index { object, index, .. } => {
+                let object_type = self.check_expr(object, source)?;
+                let index_type = self.check_expr(index, source)?;
+
+                if index_type != SemanticType::Number {
+                    self.analyzer.push_type_error(
+                        assign.span,
+                        source,
+                        format!(
+                            "Array index must be Number, but got {}.",
+                            index_type.display_name_with_table(&self.analyzer.type_table)
+                        ),
+                    );
+                    return None;
+                }
+
+                let element_type = match &object_type {
+                    SemanticType::Array(element) => (**element).clone(),
+                    _ => {
+                        self.analyzer.push_type_error(
+                            assign.span,
+                            source,
+                            format!(
+                                "Cannot index into non-array type {}.",
+                                object_type.display_name_with_table(&self.analyzer.type_table)
+                            ),
+                        );
+                        return None;
+                    }
+                };
+
+                let mut value_type = self.check_expr(&assign.value, source)?;
+
+                if value_type == SemanticType::Unknown && element_type != SemanticType::Unknown {
+                    value_type = TypeConstraintEngine::constrain_expr_type(
+                        self,
+                        &assign.value,
+                        element_type.clone(),
+                        source,
+                    );
+                }
+
+                if element_type != SemanticType::Unknown
+                    && value_type != SemanticType::Unknown
+                    && !self.types_compatible(element_type.clone(), value_type.clone())
+                {
+                    self.analyzer.push_type_error(
+                        assign.span,
+                        source,
+                        format!(
+                            "Array element assignment requires type {}, but expression is {}.",
+                            element_type.display_name_with_table(&self.analyzer.type_table),
+                            value_type.display_name_with_table(&self.analyzer.type_table)
+                        ),
+                    );
+                    return None;
+                }
+
+                Some(SemanticType::Unit)
             }
             AssignTarget::Member {
                 object,
@@ -106,14 +166,14 @@ impl<'a> TypeChecker<'a> {
                     value_type = TypeConstraintEngine::constrain_expr_type(
                         self,
                         &assign.value,
-                        expected_type,
+                        expected_type.clone(),
                         source,
                     );
                 }
 
                 if expected_type != SemanticType::Unknown
                     && value_type != SemanticType::Unknown
-                    && !self.types_compatible(expected_type, value_type)
+                    && !self.types_compatible(expected_type.clone(), value_type.clone())
                 {
                     self.analyzer.push_type_error(
                         assign.span,

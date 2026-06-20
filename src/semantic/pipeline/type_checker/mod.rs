@@ -13,6 +13,8 @@ use super::super::{
 };
 use super::{SymbolCollector, TypeConstraintEngine, TypeResolver};
 
+mod array_index_checker;
+mod array_literal_checker;
 mod binary_expr_checker;
 mod block_expr_checker;
 mod builtin_call_expr_checker;
@@ -24,6 +26,7 @@ mod let_in_expr_checker;
 mod literal_expr_checker;
 mod member_access_expr_checker;
 mod method_call_expr_checker;
+mod new_array_checker;
 mod new_expr_checker;
     mod interface_checker;
 mod unary_expr_checker;
@@ -104,7 +107,7 @@ impl<'a> TypeChecker<'a> {
                         .unwrap_or(SemanticType::Unknown)
                 };
 
-                self.analyzer.bind_current_scope(name.clone(), binding_type);
+                self.analyzer.bind_current_scope(name.clone(), binding_type.clone());
                 Some(binding_type)
             }
             Statement::Print { value, span } => self.check_print_argument(value, *span, source),
@@ -129,7 +132,7 @@ impl<'a> TypeChecker<'a> {
 
                 let value_type = self.check_expr(value, source)?;
                 self.analyzer
-                    .assign_in_scope(scope_index, name.clone(), value_type);
+                    .assign_in_scope(scope_index, name.clone(), value_type.clone());
                 Some(value_type)
             }
         }
@@ -157,6 +160,9 @@ impl<'a> TypeChecker<'a> {
             Expr::MethodCall(call) => self.check_method_call(call, source),
             Expr::MemberAccess(access) => self.check_member_access(access, source),
             Expr::New(new_expr) => self.check_new_expr(new_expr, source),
+            Expr::NewArray(new_array) => self.check_new_array(new_array, source),
+            Expr::ArrayIndex(array_index) => self.check_array_index(array_index, source),
+            Expr::ArrayLiteral(array_literal) => self.check_array_literal(array_literal, source),
             Expr::Binary(binary) => self.check_binary_expr(binary, source),
             Expr::Is(is_expr) => self.check_is_expr(is_expr, source),
             Expr::As(as_expr) => self.check_as_expr(as_expr, source),
@@ -177,12 +183,12 @@ impl<'a> TypeChecker<'a> {
 
         if value_type == SemanticType::Unknown {
             value_type =
-                TypeConstraintEngine::constrain_expr_type(self, value, annotation_type, source);
+                TypeConstraintEngine::constrain_expr_type(self, value, annotation_type.clone(), source);
         }
 
-        let SemanticType::Struct(annotation_raw) = annotation_type else {
+        let SemanticType::Struct(annotation_raw) = annotation_type.clone() else {
             if value_type != SemanticType::Unknown && value_type != annotation_type {
-                if self.types_compatible(annotation_type, value_type) {
+                if self.types_compatible(annotation_type.clone(), value_type.clone()) {
                     return annotation_type;
                 }
                 self.analyzer.push_type_error(
@@ -202,7 +208,7 @@ impl<'a> TypeChecker<'a> {
         let annotation_id = TypeId(annotation_raw);
         if !SymbolCollector::is_interface(self.analyzer, annotation_id) {
             if value_type != SemanticType::Unknown && value_type != annotation_type {
-                if self.types_compatible(annotation_type, value_type) {
+                if self.types_compatible(annotation_type.clone(), value_type.clone()) {
                     return annotation_type;
                 }
                 self.analyzer.push_type_error(
@@ -228,7 +234,7 @@ impl<'a> TypeChecker<'a> {
         }
 
         if self
-            .validate_interface_conformance(value_type, annotation_id, source)
+            .validate_interface_conformance(value_type.clone(), annotation_id, source)
             .is_some()
         {
             if let SemanticType::Struct(real_raw) = value_type {
@@ -273,7 +279,7 @@ impl<'a> TypeChecker<'a> {
             return true;
         }
 
-        match (expected, actual) {
+        match (expected, actual.clone()) {
             (SemanticType::Struct(parent), SemanticType::Struct(child)) => {
                 let parent_id = TypeId(parent);
                 if SymbolCollector::is_interface(self.analyzer, parent_id) {
@@ -444,7 +450,7 @@ impl<'a> TypeChecker<'a> {
 
                     if expected_type != SemanticType::Unknown
                         && arg_type != SemanticType::Unknown
-                        && !self.types_compatible(expected_type, arg_type)
+                        && !self.types_compatible(expected_type.clone(), arg_type.clone())
                     {
                         self.analyzer.push_type_error(
                             arg.span(),
@@ -570,7 +576,7 @@ impl<'a> TypeChecker<'a> {
 
             let param_type = param_types
                 .get(index)
-                .copied()
+                .cloned()
                 .unwrap_or(SemanticType::Unknown);
             self.analyzer
                 .bind_current_scope(param.name.clone(), param_type);
@@ -580,7 +586,7 @@ impl<'a> TypeChecker<'a> {
             .analyzer
             .functions
             .get(&key)
-            .map(|signature| signature.return_type)
+            .map(|signature| signature.return_type.clone())
             .unwrap_or(SemanticType::Unknown);
 
         let mut body_type = self
@@ -613,7 +619,7 @@ impl<'a> TypeChecker<'a> {
         for (index, (param, inferred_type)) in method
             .params
             .iter()
-            .zip(inferred_param_types.iter().copied())
+            .zip(inferred_param_types.iter().cloned())
             .enumerate()
         {
             let _ = TypeConstraintEngine::constrain_function_param_type(
@@ -669,7 +675,7 @@ impl<'a> TypeChecker<'a> {
 
             let param_type = param_types
                 .get(index)
-                .copied()
+                .cloned()
                 .unwrap_or(SemanticType::Unknown);
             self.analyzer
                 .bind_current_scope(param.name.clone(), param_type);
@@ -679,7 +685,7 @@ impl<'a> TypeChecker<'a> {
             .analyzer
             .functions
             .get(&function.name)
-            .map(|signature| signature.return_type)
+            .map(|signature| signature.return_type.clone())
             .unwrap_or(SemanticType::Unknown);
 
         let mut body_type = self
@@ -709,7 +715,7 @@ impl<'a> TypeChecker<'a> {
         for (index, (param, inferred_type)) in function
             .params
             .iter()
-            .zip(inferred_param_types.iter().copied())
+            .zip(inferred_param_types.iter().cloned())
             .enumerate()
         {
             let _ = TypeConstraintEngine::constrain_function_param_type(

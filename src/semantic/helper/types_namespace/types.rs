@@ -1,6 +1,6 @@
 use super::TypeTable;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SemanticType {
     Number,
     Boolean,
@@ -9,11 +9,12 @@ pub enum SemanticType {
     Null,
     Function(u32),
     Struct(u32),
+    Array(Box<SemanticType>),
     Unknown,
 }
 
 impl SemanticType {
-    pub(in crate::semantic) fn display_name(self) -> &'static str {
+    pub(in crate::semantic) fn display_name(&self) -> &'static str {
         match self {
             SemanticType::Number => "Number",
             SemanticType::Boolean => "Boolean",
@@ -22,11 +23,12 @@ impl SemanticType {
             SemanticType::Null => "Null",
             SemanticType::Function(_) => "Function",
             SemanticType::Struct(_) => "Struct",
+            SemanticType::Array(_) => "Array",
             SemanticType::Unknown => "Unknown",
         }
     }
 
-    pub(in crate::semantic) fn display_name_with_table(self, table: &TypeTable) -> String {
+    pub(in crate::semantic) fn display_name_with_table(&self, table: &TypeTable) -> String {
         match self {
             SemanticType::Number => "Number".to_string(),
             SemanticType::Boolean => "Boolean".to_string(),
@@ -34,15 +36,18 @@ impl SemanticType {
             SemanticType::Unit => "Unit".to_string(),
             SemanticType::Null => "Null".to_string(),
             SemanticType::Unknown => "Unknown".to_string(),
+            SemanticType::Array(element) => {
+                format!("{}[]", element.display_name_with_table(table))
+            }
             SemanticType::Struct(id) => {
-                let type_id = super::TypeId(id);
+                let type_id = super::TypeId(*id);
                 table
                     .get_struct(type_id)
                     .map(|info| info.name.clone())
                     .unwrap_or_else(|| "Struct".to_string())
             }
             SemanticType::Function(id) => {
-                let type_id = super::TypeId(id);
+                let type_id = super::TypeId(*id);
                 table
                     .get_function(type_id)
                     .map(|info| {
@@ -72,13 +77,21 @@ impl SemanticType {
         "Number, Boolean, String, Unit, Null"
     }
 
-    pub(in crate::semantic) const fn is_nullable(self) -> bool {
+    pub(in crate::semantic) fn is_nullable(&self) -> bool {
         matches!(
             self,
             SemanticType::Null
                 | SemanticType::String
                 | SemanticType::Function(_)
                 | SemanticType::Struct(_)
+                | SemanticType::Array(_)
         )
+    }
+
+    pub(in crate::semantic) fn element_type(&self) -> Option<&SemanticType> {
+        match self {
+            SemanticType::Array(element) => Some(element),
+            _ => None,
+        }
     }
 }

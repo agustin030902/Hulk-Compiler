@@ -119,6 +119,7 @@ impl SemanticAnalyzer {
         builtins::register_builtin_iterable(self);
         builtins::register_builtin_range(self);
         builtins::register_builtin_enumerable(self);
+        builtins::register_builtin_array(self);
         self.errors.clear();
         self.current_method_receiver = None;
         self.current_self_scope_index = None;

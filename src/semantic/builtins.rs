@@ -28,6 +28,8 @@ fn annotation(name: &str) -> TypeAnnotation {
         name: name.to_string(),
         span: synthetic_span(),
         is_splat: false,
+        is_vector: false,
+        vector_dims: 0,
     }
 }
 
@@ -168,7 +170,7 @@ fn register_interface_method(
 
     let param_type_ids: Vec<TypeId> = param_types
         .iter()
-        .copied()
+        .cloned()
         .map(|semantic_type| match semantic_type {
             crate::semantic::SemanticType::Number => analyzer.type_table.number,
             crate::semantic::SemanticType::Boolean => analyzer.type_table.boolean,
@@ -404,4 +406,27 @@ pub(in crate::semantic) fn build_for_desugar(
         body: Box::new(while_loop),
         span: synthetic_span(),
     })
+}
+
+pub const ARRAY_NAME: &str = "Array";
+
+pub fn register_builtin_array(analyzer: &mut SemanticAnalyzer) {
+    let array_id = analyzer.type_table.array;
+    analyzer
+        .type_symbols
+        .insert(ARRAY_NAME.to_string(), array_id);
+}
+
+pub fn build_array_type_decl() -> TypeDecl {
+    TypeDecl {
+        name: ARRAY_NAME.to_string(),
+        name_span: synthetic_span(),
+        params: Vec::new(),
+        parent_name: Some("Object".to_string()),
+        parent_span: Some(synthetic_span()),
+        parent_init_exprs: Vec::new(),
+        attributes: Vec::new(),
+        methods: Vec::new(),
+        span: synthetic_span(),
+    }
 }

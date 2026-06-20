@@ -13,6 +13,15 @@ impl TypeResolver {
         annotation: &TypeAnnotation,
         source: &str,
     ) -> Option<SemanticType> {
+        if annotation.is_vector {
+            let element_type = Self::resolve_named_type(analyzer, &annotation.name)?;
+            let mut result = element_type;
+            for _ in 0..annotation.vector_dims {
+                result = SemanticType::Array(Box::new(result));
+            }
+            return Some(result);
+        }
+
         let resolved_name = if annotation.is_splat {
             format!("Iterable_{}", annotation.name)
         } else {
@@ -74,6 +83,7 @@ impl TypeResolver {
             SemanticType::Unit => analyzer.type_table.unit,
             SemanticType::Null => analyzer.type_table.null,
             SemanticType::Unknown => analyzer.type_table.unknown,
+            SemanticType::Array(_) => analyzer.type_table.array,
             SemanticType::Function(type_id) | SemanticType::Struct(type_id) => TypeId(type_id),
         }
     }

@@ -710,7 +710,10 @@ fn classify_highlight_role(tokens: &[Token], idx: usize) -> HighlightRole {
         | TokenKind::LeftBrace
         | TokenKind::RightBrace
         | TokenKind::LeftParen
-        | TokenKind::RightParen => HighlightRole::Operator,
+        | TokenKind::RightParen
+        | TokenKind::LeftBracket
+        | TokenKind::RightBracket
+        | TokenKind::ThinArrow => HighlightRole::Operator,
         TokenKind::EOF => HighlightRole::Plain,
     }
 }
@@ -903,6 +906,9 @@ fn render_expr_tree(ui: &mut egui::Ui, expr: &Expr, label: &str, query: &str) {
                 query,
             ));
         }
+        Expr::NewArray(_) => todo!(),
+        Expr::ArrayIndex(_) => todo!(),
+        Expr::ArrayLiteral(_) => todo!(),
     }
 }
 
@@ -1047,6 +1053,7 @@ fn render_destructive_assign_tree(
     let target_text = match &assign.target {
         AssignTarget::Variable { name, .. } => name.clone(),
         AssignTarget::Member { member, .. } => format!(".{}", member),
+        AssignTarget::Index { .. } => todo!(),
     };
 
     CollapsingHeader::new(match_rich_text(
@@ -1067,6 +1074,7 @@ fn render_destructive_assign_tree(
                 ui.small(match_rich_text(format!("target member: .{member}"), query));
                 render_expr_tree(ui, object, "target object", query);
             }
+            AssignTarget::Index { .. } => todo!(),
         }
         render_expr_tree(ui, &assign.value, "value", query);
     });

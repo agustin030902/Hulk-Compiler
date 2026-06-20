@@ -147,7 +147,7 @@ impl LlvmBackend {
             let default_val = match info.return_type {
                 ValueType::Double => "0.0".to_string(),
                 ValueType::Bool => "false".to_string(),
-                ValueType::StringPtr | ValueType::Struct(_) | ValueType::Null | ValueType::Function => {
+                ValueType::StringPtr | ValueType::Struct(_) | ValueType::Null | ValueType::Function | ValueType::ArrayPtr | ValueType::ArrayPtrOf(_) => {
                     "null".to_string()
                 }
                 ValueType::Unit => "0".to_string(),

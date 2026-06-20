@@ -102,7 +102,7 @@ impl LlvmBackend {
             ValueType::Unit => {
                 self.semantic_error("Function 'print' expects a non-Unit argument");
             }
-            ValueType::Null | ValueType::Function | ValueType::Struct(_) => {
+            ValueType::Null | ValueType::Function | ValueType::Struct(_) | ValueType::ArrayPtr | ValueType::ArrayPtrOf(_) => {
                 self.semantic_error(format!(
                     "Function 'print' cannot print values of type {}.",
                     self.type_name_for_value_type(value_ref.value_type)

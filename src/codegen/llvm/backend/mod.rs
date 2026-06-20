@@ -317,6 +317,11 @@ impl LlvmBackend {
                 parent_entries[range_id as usize] = object_id.to_string();
             }
         }
+        if let Some(array_id) = self.type_ids.get("Array").copied() {
+            if let Some(object_id) = self.type_ids.get("Object").copied() {
+                parent_entries[array_id as usize] = object_id.to_string();
+            }
+        }
 
         for (name, type_id) in &self.type_ids {
             if let Some(decl) = self.type_decls.get(name) {

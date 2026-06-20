@@ -1,0 +1,2 @@
+let arr: Number[] = {10, 20, 30};
+arr[0];

@@ -40,7 +40,7 @@ impl InterfaceChecker {
                                 name: method_name.to_string(),
                                 type_id: *method_type_id,
                                 param_types: signature.param_types.clone(),
-                                return_type: signature.return_type,
+                                return_type: signature.return_type.clone(),
                             });
                         }
                     }
@@ -91,13 +91,13 @@ impl InterfaceChecker {
                 .iter()
                 .zip(method.param_types.iter())
             {
-                if !Self::variance_param_compatible(analyzer, *impl_t, *proto_t) {
+                if !Self::variance_param_compatible(analyzer, impl_t.clone(), proto_t.clone()) {
                     let _ = source;
                     return None;
                 }
             }
 
-            if !Self::variance_return_compatible(analyzer, impl_signature.return_type, method.return_type) {
+            if !Self::variance_return_compatible(analyzer, impl_signature.return_type.clone(), method.return_type.clone()) {
                 return None;
             }
         }
@@ -139,7 +139,7 @@ impl InterfaceChecker {
                     type_id: m.type_id.0,
                     param_names: vec![],
                     param_types: m.param_types.clone(),
-                    return_type: m.return_type,
+                    return_type: m.return_type.clone(),
                 })
         else {
             analyzer.push_semantic_error(
@@ -185,7 +185,7 @@ impl InterfaceChecker {
             .zip(interface_signature.param_types.iter())
             .enumerate()
         {
-            if !Self::variance_param_compatible(analyzer, *impl_t, *proto_t) {
+            if !Self::variance_param_compatible(analyzer, impl_t.clone(), proto_t.clone()) {
                 analyzer.push_type_error(
                     call_span,
                     source,
@@ -201,7 +201,7 @@ impl InterfaceChecker {
             }
         }
 
-        if !Self::variance_return_compatible(analyzer, impl_signature.return_type, interface_signature.return_type)
+        if !Self::variance_return_compatible(analyzer, impl_signature.return_type.clone(), interface_signature.return_type.clone())
         {
             analyzer.push_type_error(
                 call_span,
@@ -261,7 +261,7 @@ impl InterfaceChecker {
                     let params_compatible = param_types
                         .iter()
                         .zip(parent_signature.param_types.iter())
-                        .all(|(p_t, pp_t)| Self::variance_param_compatible(analyzer, *p_t, *pp_t));
+                        .all(|(p_t, pp_t)| Self::variance_param_compatible(analyzer, p_t.clone(), pp_t.clone()));
                     let arity_matches = param_types.len() == parent_signature.param_types.len();
                     let return_compatible = Self::variance_return_compatible(
                         analyzer,
@@ -340,10 +340,10 @@ impl InterfaceChecker {
         } else {
             (impl_type, interface_type)
         };
-        match (left, right) {
+        match (&left, &right) {
             (SemanticType::Struct(a), SemanticType::Struct(b)) => {
-                let a_id = TypeId(a);
-                let b_id = TypeId(b);
+                let a_id = TypeId(*a);
+                let b_id = TypeId(*b);
                 analyzer
                     .type_table
                     .get_struct(a_id)

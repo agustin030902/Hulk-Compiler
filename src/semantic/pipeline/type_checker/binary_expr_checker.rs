@@ -79,7 +79,7 @@ impl<'a> TypeChecker<'a> {
                     return Some(SemanticType::Unknown);
                 }
 
-                if is_valid_concat_pair(left_type, right_type) {
+                if is_valid_concat_pair(left_type.clone(), right_type.clone()) {
                     Some(SemanticType::String)
                 } else {
                     self.analyzer.push_type_error(
@@ -120,7 +120,7 @@ impl<'a> TypeChecker<'a> {
                     return Some(SemanticType::Unknown);
                 }
 
-                if is_valid_concat_pair(left_type, right_type) {
+                if is_valid_concat_pair(left_type.clone(), right_type.clone()) {
                     Some(SemanticType::String)
                 } else {
                     self.analyzer.push_type_error(
@@ -178,7 +178,7 @@ impl<'a> TypeChecker<'a> {
                     left_type = TypeConstraintEngine::constrain_expr_type(
                         self,
                         &binary.left,
-                        right_type,
+                        right_type.clone(),
                         source,
                     );
                 } else if right_type == SemanticType::Unknown && left_type != SemanticType::Unknown
@@ -186,7 +186,7 @@ impl<'a> TypeChecker<'a> {
                     right_type = TypeConstraintEngine::constrain_expr_type(
                         self,
                         &binary.right,
-                        left_type,
+                        left_type.clone(),
                         source,
                     );
                 }

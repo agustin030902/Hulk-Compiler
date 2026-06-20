@@ -78,12 +78,12 @@ impl TypeConstraintEngine {
             return SemanticType::Unknown;
         };
 
-        match Self::merge_types(current_type, expected) {
+        match Self::merge_types(current_type.clone(), expected) {
             Ok(merged) => {
                 if merged != current_type {
                     checker
                         .analyzer
-                        .assign_in_scope(scope_index, name.to_string(), merged);
+                        .assign_in_scope(scope_index, name.to_string(), merged.clone());
                 }
                 merged
             }
@@ -115,17 +115,17 @@ impl TypeConstraintEngine {
             .analyzer
             .functions
             .get(function_name)
-            .and_then(|signature| signature.param_types.get(param_index).copied())
+            .and_then(|signature| signature.param_types.get(param_index).cloned())
         else {
             return SemanticType::Unknown;
         };
 
-        match Self::merge_types(current_type, inferred) {
+        match Self::merge_types(current_type.clone(), inferred) {
             Ok(merged) => {
                 if merged != current_type
                     && let Some(signature) = checker.analyzer.functions.get_mut(function_name)
                 {
-                    signature.param_types[param_index] = merged;
+                    signature.param_types[param_index] = merged.clone();
                 }
                 merged
             }
@@ -157,17 +157,17 @@ impl TypeConstraintEngine {
             .analyzer
             .functions
             .get(function_name)
-            .map(|signature| signature.return_type)
+            .map(|signature| signature.return_type.clone())
         else {
             return SemanticType::Unknown;
         };
 
-        match Self::merge_types(current_type, inferred) {
+        match Self::merge_types(current_type.clone(), inferred) {
             Ok(merged) => {
                 if merged != current_type
                     && let Some(signature) = checker.analyzer.functions.get_mut(function_name)
                 {
-                    signature.return_type = merged;
+                    signature.return_type = merged.clone();
                 }
                 merged
             }
@@ -232,7 +232,7 @@ impl TypeConstraintEngine {
     ) -> SemanticType {
         let _ =
             Self::constrain_expr_type(checker, &if_expr.condition, SemanticType::Boolean, source);
-        let _ = Self::constrain_expr_type(checker, &if_expr.then_branch, expected, source);
+        let _ = Self::constrain_expr_type(checker, &if_expr.then_branch, expected.clone(), source);
         for branch in &if_expr.elif_branches {
             let _ = Self::constrain_expr_type(
                 checker,
@@ -240,9 +240,9 @@ impl TypeConstraintEngine {
                 SemanticType::Boolean,
                 source,
             );
-            let _ = Self::constrain_expr_type(checker, &branch.body, expected, source);
+            let _ = Self::constrain_expr_type(checker, &branch.body, expected.clone(), source);
         }
-        let _ = Self::constrain_expr_type(checker, &if_expr.else_branch, expected, source);
+        let _ = Self::constrain_expr_type(checker, &if_expr.else_branch, expected.clone(), source);
         expected
     }
 }

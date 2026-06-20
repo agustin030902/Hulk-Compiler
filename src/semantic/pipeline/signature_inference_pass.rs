@@ -52,7 +52,7 @@ impl SignatureInferencePass {
         for (name, signature) in inferred {
             if let Some(entry) = analyzer.functions.get_mut(name) {
                 entry.param_types = signature.param_types.clone();
-                entry.return_type = signature.return_type;
+                entry.return_type = signature.return_type.clone();
             }
         }
         Self::sync_function_type_entries(analyzer);
@@ -76,13 +76,13 @@ impl SignatureInferencePass {
             let param_type_ids = signature
                 .param_types
                 .iter()
-                .copied()
+                .cloned()
                 .map(|semantic_type| {
                     TypeResolver::semantic_type_to_type_id(analyzer, semantic_type)
                 })
                 .collect::<Vec<_>>();
             let return_type_id =
-                TypeResolver::semantic_type_to_type_id(analyzer, signature.return_type);
+                TypeResolver::semantic_type_to_type_id(analyzer, signature.return_type.clone());
 
             if let Some(function_info) = analyzer.type_table.get_function_mut(symbol.type_id) {
                 function_info.params = param_type_ids;
@@ -101,7 +101,7 @@ impl SignatureInferencePass {
                 continue;
             };
 
-            for (index, param_type) in signature.param_types.iter().copied().enumerate() {
+            for (index, param_type) in signature.param_types.iter().cloned().enumerate() {
                 if param_type == SemanticType::Unknown {
                     analyzer.push_type_error(
                         function.params[index].span,
@@ -137,7 +137,7 @@ impl SignatureInferencePass {
                     continue;
                 };
 
-                for (index, param_type) in signature.param_types.iter().copied().enumerate() {
+                for (index, param_type) in signature.param_types.iter().cloned().enumerate() {
                     if param_type == SemanticType::Unknown {
                         analyzer.push_type_error(
                             method.params[index].span,

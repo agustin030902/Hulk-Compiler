@@ -29,10 +29,10 @@ impl<'a> TypeChecker<'a> {
 
         let preferred_type = branch_types.iter().find_map(|(_, value_type)| {
             (*value_type != SemanticType::Unknown && *value_type != SemanticType::Null)
-                .then_some(*value_type)
+                .then_some(value_type.clone())
         });
         let fallback_type = branch_types.iter().find_map(|(_, value_type)| {
-            (*value_type != SemanticType::Unknown).then_some(*value_type)
+            (*value_type != SemanticType::Unknown).then_some(value_type.clone())
         });
 
         let Some(expected_type) = preferred_type.or(fallback_type) else {
@@ -44,7 +44,7 @@ impl<'a> TypeChecker<'a> {
                 *value_type = TypeConstraintEngine::constrain_expr_type(
                     self,
                     branch_expr,
-                    expected_type,
+                    expected_type.clone(),
                     source,
                 );
             }
@@ -57,8 +57,8 @@ impl<'a> TypeChecker<'a> {
             return Some(SemanticType::Unknown);
         }
 
-        for (branch_expr, actual_type) in branch_types.iter().copied() {
-            if !self.types_compatible(expected_type, actual_type) {
+        for (branch_expr, actual_type) in branch_types.iter().cloned() {
+            if !self.types_compatible(expected_type.clone(), actual_type.clone()) {
                 self.analyzer.push_type_error(
                     branch_expr.span(),
                     source,

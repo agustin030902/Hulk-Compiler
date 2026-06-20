@@ -327,12 +327,12 @@ impl SymbolCollector {
 
             let param_type_ids = param_types
                 .iter()
-                .copied()
+                .cloned()
                 .map(|semantic_type| {
                     TypeResolver::semantic_type_to_type_id(analyzer, semantic_type)
                 })
                 .collect::<Vec<_>>();
-            let return_type_id = TypeResolver::semantic_type_to_type_id(analyzer, return_type);
+            let return_type_id = TypeResolver::semantic_type_to_type_id(analyzer, return_type.clone());
             let function_type_id = analyzer
                 .type_table
                 .register_plain_function(param_type_ids, return_type_id);
@@ -405,12 +405,12 @@ impl SymbolCollector {
 
                 let param_type_ids = param_types
                     .iter()
-                    .copied()
+                    .cloned()
                     .map(|semantic_type| {
                         TypeResolver::semantic_type_to_type_id(analyzer, semantic_type)
                     })
                     .collect::<Vec<_>>();
-                let return_type_id = TypeResolver::semantic_type_to_type_id(analyzer, return_type);
+                let return_type_id = TypeResolver::semantic_type_to_type_id(analyzer, return_type.clone());
 
                 if let Some(parent_signature) =
                     Self::find_method_in_parent(analyzer, receiver_type_id, &method.name)
@@ -544,13 +544,13 @@ impl SymbolCollector {
 
                 let param_type_ids = param_types
                     .iter()
-                    .copied()
+                    .cloned()
                     .map(|semantic_type| {
                         TypeResolver::semantic_type_to_type_id(analyzer, semantic_type)
                     })
                     .collect::<Vec<_>>();
                 let return_type_id =
-                    TypeResolver::semantic_type_to_type_id(analyzer, return_type);
+                    TypeResolver::semantic_type_to_type_id(analyzer, return_type.clone());
 
                 let method_type_id = analyzer.type_table.register_method(
                     receiver_type_id,

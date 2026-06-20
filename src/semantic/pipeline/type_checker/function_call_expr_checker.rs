@@ -58,12 +58,12 @@ impl<'a> TypeChecker<'a> {
             let arg_type = self
                 .check_expr(arg, source)
                 .unwrap_or(SemanticType::Unknown);
-            arg_types.push(arg_type);
+            arg_types.push(arg_type.clone());
             let expected_type = self
                 .analyzer
                 .functions
                 .get(&call.name)
-                .and_then(|entry| entry.param_types.get(index).copied())
+                .and_then(|entry| entry.param_types.get(index).cloned())
                 .unwrap_or(SemanticType::Unknown);
 
             if arg_type == SemanticType::Unknown && expected_type != SemanticType::Unknown {
@@ -85,7 +85,7 @@ impl<'a> TypeChecker<'a> {
 
             if expected_type != SemanticType::Unknown
                 && arg_type != SemanticType::Unknown
-                && !self.types_compatible(expected_type, arg_type)
+                && !self.types_compatible(expected_type.clone(), arg_type.clone())
             {
                 self.analyzer.push_type_error(
                     arg.span(),
@@ -130,7 +130,7 @@ impl<'a> TypeChecker<'a> {
                     if let (
                         SemanticType::Struct(exp_raw),
                         SemanticType::Struct(arg_raw),
-                    ) = (signature.param_types.get(index).copied().unwrap_or(SemanticType::Unknown), *arg_type) {
+                    ) = (signature.param_types.get(index).cloned().unwrap_or(SemanticType::Unknown), arg_type.clone()) {
                         let exp_id = TypeId(exp_raw);
                         if SymbolCollector::is_interface(self.analyzer, exp_id)
                             && exp_raw != arg_raw
@@ -154,9 +154,9 @@ impl<'a> TypeChecker<'a> {
                         self.analyzer
                             .lookup_param_real_type(param_name)
                             .map(|tid| SemanticType::Struct(tid.0))
-                            .unwrap_or_else(|| signature.param_types.get(index).copied().unwrap_or(SemanticType::Unknown))
+                            .unwrap_or_else(|| signature.param_types.get(index).cloned().unwrap_or(SemanticType::Unknown))
                     } else {
-                        signature.param_types.get(index).copied().unwrap_or(SemanticType::Unknown)
+                        signature.param_types.get(index).cloned().unwrap_or(SemanticType::Unknown)
                     };
                     self.analyzer
                         .bind_current_scope(param.name.clone(), param_type);
@@ -172,7 +172,7 @@ impl<'a> TypeChecker<'a> {
             self.analyzer
                 .functions
                 .get(&call.name)
-                .map(|entry| entry.return_type)
+                .map(|entry| entry.return_type.clone())
                 .unwrap_or(SemanticType::Unknown),
         )
     }

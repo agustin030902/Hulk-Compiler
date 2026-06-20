@@ -37,7 +37,7 @@ impl<'a> TypeChecker<'a> {
 
         let current_key = SymbolCollector::method_symbol_key(type_id, "current");
         if let Some(sig) = self.analyzer.functions.get(&current_key) {
-            return Some(sig.return_type);
+            return Some(sig.return_type.clone());
         }
 
         let iter_key = SymbolCollector::method_symbol_key(type_id, "iter");
@@ -47,7 +47,7 @@ impl<'a> TypeChecker<'a> {
                 let current_key_inner =
                     SymbolCollector::method_symbol_key(iter_return_id, "current");
                 if let Some(current_sig) = self.analyzer.functions.get(&current_key_inner) {
-                    return Some(current_sig.return_type);
+                    return Some(current_sig.return_type.clone());
                 }
             }
         }

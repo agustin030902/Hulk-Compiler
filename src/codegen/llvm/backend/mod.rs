@@ -309,6 +309,9 @@ impl LlvmBackend {
         if let Some(iterable_id) = self.type_ids.get("Iterable").copied() {
             parent_entries[iterable_id as usize] = "-1".to_string();
         }
+        if let Some(enumerable_id) = self.type_ids.get("Enumerable").copied() {
+            parent_entries[enumerable_id as usize] = "-1".to_string();
+        }
         if let Some(range_id) = self.type_ids.get("Range").copied() {
             if let Some(object_id) = self.type_ids.get("Object").copied() {
                 parent_entries[range_id as usize] = object_id.to_string();

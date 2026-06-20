@@ -702,6 +702,7 @@ NewExpr: Expr = {
         type_name: id.0,
         type_name_span: id.1,
         sizes: vec![size],
+        element_type_dims: 0,
         initializer: Some(LambdaExpr {
             param_name: param.0,
             param_span: param.1,
@@ -714,6 +715,7 @@ NewExpr: Expr = {
         type_name: id.0,
         type_name_span: id.1,
         sizes: vec![size],
+        element_type_dims: 1,
         initializer: None,
         span: Span::new(l, r),
     }),
@@ -721,6 +723,7 @@ NewExpr: Expr = {
         type_name: id.0,
         type_name_span: id.1,
         sizes: vec![size],
+        element_type_dims: 0,
         initializer: None,
         span: Span::new(l, r),
     }),

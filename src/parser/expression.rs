@@ -296,6 +296,7 @@ pub struct NewArrayExpr {
     pub type_name: String,
     pub type_name_span: Span,
     pub sizes: Vec<Expr>,
+    pub element_type_dims: usize,
     pub initializer: Option<LambdaExpr>,
     pub span: Span,
 }

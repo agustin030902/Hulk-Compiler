@@ -18,17 +18,7 @@ impl LlvmBackend {
             SemanticType::Function(_) => ValueType::Function,
             SemanticType::Struct(type_id) => ValueType::Struct(type_id),
             SemanticType::Array(inner) => {
-                let inner_tag = match *inner {
-                    SemanticType::Number => ElementTag::Double,
-                    SemanticType::Boolean => ElementTag::Bool,
-                    SemanticType::String => ElementTag::StringPtr,
-                    SemanticType::Unit => ElementTag::Unit,
-                    SemanticType::Null => ElementTag::Null,
-                    SemanticType::Function(id) => ElementTag::Function,
-                    SemanticType::Struct(id) => ElementTag::Struct(id),
-                    SemanticType::Array(_) => ElementTag::Array,
-                    SemanticType::Unknown => ElementTag::Array,
-                };
+                let inner_tag = Self::semantic_type_to_element_tag(inner.as_ref());
                 ValueType::ArrayPtrOf(inner_tag)
             }
             SemanticType::Unknown => {
@@ -56,6 +46,20 @@ impl LlvmBackend {
             TypeInfo::Unknown => SemanticType::Unknown,
             TypeInfo::Function(_) => SemanticType::Function(type_id.0),
             TypeInfo::Type(_) => SemanticType::Struct(type_id.0),
+        }
+    }
+
+    pub(in crate::codegen::llvm) fn semantic_type_to_element_tag(st: &SemanticType) -> ElementTag {
+        match st {
+            SemanticType::Number => ElementTag::Double,
+            SemanticType::Boolean => ElementTag::Bool,
+            SemanticType::String => ElementTag::StringPtr,
+            SemanticType::Unit => ElementTag::Unit,
+            SemanticType::Null => ElementTag::Null,
+            SemanticType::Function(_) => ElementTag::Function,
+            SemanticType::Struct(id) => ElementTag::Struct(*id),
+            SemanticType::Array(_) => ElementTag::Array,
+            SemanticType::Unknown => ElementTag::Double,
         }
     }
 

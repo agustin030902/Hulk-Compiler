@@ -1,0 +1,96 @@
+function array_sum(a: Number[]): Number {
+    let total = 0, i = 0 in {
+        while (i < a.size()) {
+            total := total + a[i];
+            i := i + 1;
+        };
+        total;
+    };
+}
+
+let matrix: Number[][] = new Number[][3] in {
+    let i = 0 in
+        while (i < 3) {
+            matrix[i] := new Number[3];
+            let j = 0 in
+                while (j < 3) {
+                    matrix[i][j] := i * 3 + j;
+                    j := j + 1;
+                };
+            i := i + 1;
+        };
+    if (matrix[0][0] == 0) print("ok") else print("fail");
+    if (matrix[1][2] == 5) print("ok") else print("fail");
+    if (matrix[2][1] == 7) print("ok") else print("fail");
+    if (matrix[2][2] == 8) print("ok") else print("fail");
+};
+
+
+let a: Number[] = new Number[5]{ i -> i * 2 } in {
+    if (a[0] == 0) print("ok") else print("fail");
+    if (a[1] == 2) print("ok") else print("fail");
+    if (a[2] == 4) print("ok") else print("fail");
+    if (a[3] == 6) print("ok") else print("fail");
+    if (a[4] == 8) print("ok") else print("fail");
+};
+
+let a: Number[] = new Number[5] in {
+    a[0] := 10;
+    a[1] := 20;
+    a[2] := 30;
+    a[3] := 40;
+    a[4] := 50;
+    if (a[0] == 10) print("ok") else print("fail");
+    if (a[2] == 30) print("ok") else print("fail");
+    if (a[4] == 50) print("ok") else print("fail");
+};
+
+let a: Number[] = {10, 20, 30} in {
+    if (a[0] == 10) print("ok") else print("fail");
+    if (a[1] == 20) print("ok") else print("fail");
+    if (a[2] == 30) print("ok") else print("fail");
+    if (a.size() == 3) print("ok") else print("fail");
+};
+
+let a: Number[] = {10, 20, 30} in {
+    if (a[0] == 10) print("ok") else print("fail");
+    if (a[1] == 20) print("ok") else print("fail");
+    if (a[2] == 30) print("ok") else print("fail");
+    if (a.size() == 3) print("ok") else print("fail");
+};
+
+let arr: Number[] = new Number[5] in {
+    let i = 0 in
+        while (i < 5) {
+            arr[i] := i * i;
+            i := i + 1;
+        };
+    if (arr[0] == 0) print("ok") else print("fail");
+    if (arr[1] == 1) print("ok") else print("fail");
+    if (arr[2] == 4) print("ok") else print("fail");
+    if (arr[3] == 9) print("ok") else print("fail");
+    if (arr[4] == 16) print("ok") else print("fail");
+};
+
+let arr: Number[] = new Number[4]{ i -> i + 1 } in {
+    if (array_sum(arr) == 10) print("ok") else print("fail");
+};
+
+{
+    let a: Number[] = new Number[10] in
+        if (a.size() == 10) print("ok") else print("fail");
+    let b: Number[] = new Number[1] in
+        if (b.size() == 1) print("ok") else print("fail");
+    let c: Number[] = new Number[100] in
+        if (c.size() == 100) print("ok") else print("fail");
+};
+
+let a: Number[] = new Number[5]{ i -> i + 1 } in {
+    let total = 0, j = 0 in {
+        while (j < a.size()) {
+            total := total + a[j];
+            j := j + 1;
+        };
+        if (total == 15) print("ok") else print("fail");
+    };
+};

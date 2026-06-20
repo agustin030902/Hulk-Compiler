@@ -1,0 +1,14 @@
+let matrix: Number[][] = new Number[][3] in {
+    let i = 0 in
+        while (i < 3) {
+            matrix[i] := new Number[3];
+            let j = 0 in
+                while (j < 3) {
+                    matrix[i][j] := i * 3 + j;
+                    j := j + 1;
+                };
+            i := i + 1;
+        };
+    if (matrix[0][0] == 0) print("ok") else print("fail");
+    if (matrix[1][2] == 5) print("ok") else print("fail");
+};

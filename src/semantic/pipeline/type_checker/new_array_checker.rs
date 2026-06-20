@@ -8,7 +8,7 @@ impl<'a> TypeChecker<'a> {
         expr: &NewArrayExpr,
         source: &str,
     ) -> Option<SemanticType> {
-        let element_type = TypeResolver::resolve_named_type(self.analyzer, &expr.type_name)?;
+        let mut element_type = TypeResolver::resolve_named_type(self.analyzer, &expr.type_name)?;
 
         for size in &expr.sizes {
             let size_type = self.check_expr(size, source)?;
@@ -23,6 +23,10 @@ impl<'a> TypeChecker<'a> {
                 );
                 return None;
             }
+        }
+
+        for _ in 0..expr.element_type_dims {
+            element_type = SemanticType::Array(Box::new(element_type));
         }
 
         if let Some(initializer) = &expr.initializer {

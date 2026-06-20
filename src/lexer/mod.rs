@@ -90,6 +90,8 @@ enum LogosTokenKind {
     Divide,
     #[token("%")]
     Mod,
+    #[token("->")]
+    ThinArrow,
     #[token("==")]
     EqualEqual,
     #[token("!=")]
@@ -114,6 +116,10 @@ enum LogosTokenKind {
     RightParen,
     #[token(".")]
     Dot,
+    #[token("[")]  
+    LeftBracket,
+    #[token("]")]
+    RightBracket,
     #[token("{")]
     LeftBrace,
     #[token("}")]
@@ -205,10 +211,13 @@ impl LogosTokenKind {
             LogosTokenKind::LeftParen => (TokenKind::LeftParen, lexeme.to_string()),
             LogosTokenKind::RightParen => (TokenKind::RightParen, lexeme.to_string()),
             LogosTokenKind::Dot => (TokenKind::Dot, lexeme.to_string()),
+            LogosTokenKind::LeftBracket => (TokenKind::LeftBracket, lexeme.to_string()),
+            LogosTokenKind::RightBracket => (TokenKind::RightBracket, lexeme.to_string()),
             LogosTokenKind::LeftBrace => (TokenKind::LeftBrace, lexeme.to_string()),
             LogosTokenKind::RightBrace => (TokenKind::RightBrace, lexeme.to_string()),
             LogosTokenKind::Comma => (TokenKind::Comma, lexeme.to_string()),
             LogosTokenKind::Semicolon => (TokenKind::Semicolon, lexeme.to_string()),
+            LogosTokenKind::ThinArrow => (TokenKind::ThinArrow, lexeme.to_string()),
             LogosTokenKind::Assign => (TokenKind::Assign, lexeme.to_string()),
             LogosTokenKind::Add => (TokenKind::Add, lexeme.to_string()),
             LogosTokenKind::String => {

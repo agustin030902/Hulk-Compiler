@@ -1,9 +1,30 @@
-use crate::parser::expression::ArrayIndexExpr;
+use crate::parser::expression::{ArrayIndexExpr, Expr};
 
 use super::super::super::LlvmBackend;
 use crate::codegen::llvm::helper::state::{ValueRef, ValueType};
 
 impl LlvmBackend {
+    fn infer_array_index_result_type(&self, object: &Expr) -> ValueType {
+        if let Expr::ArrayIndex(inner) = object {
+            match &inner.object.as_ref() {
+                Expr::Variable { name, .. } => {
+                    if let Some(info) = self.lookup_var(name) {
+                        return match info.value_type {
+                            ValueType::ArrayPtrOf(crate::codegen::llvm::helper::state::ElementTag::Array) => {
+                                ValueType::Double
+                            }
+                            ValueType::ArrayPtr => ValueType::Double,
+                            _ => info.value_type,
+                        };
+                    }
+                }
+                Expr::ArrayIndex(_) => return self.infer_array_index_result_type(&inner.object),
+                _ => {}
+            }
+        }
+        ValueType::Double
+    }
+
     pub(in crate::codegen::llvm) fn emit_array_index(
         &mut self,
         expr: &ArrayIndexExpr,
@@ -91,9 +112,9 @@ impl LlvmBackend {
             "{elem_ptr} = getelementptr i8, i8* {data_ptr}, i64 {offset_i64}"
         ));
 
-        let result_type = match object.value_type {
+        let result_type = match &object.value_type {
             ValueType::ArrayPtrOf(tag) => tag.to_value_type(),
-            _ => ValueType::ArrayPtr,
+            _ => self.infer_array_index_result_type(&expr.object),
         };
 
         let elem_val = match result_type {

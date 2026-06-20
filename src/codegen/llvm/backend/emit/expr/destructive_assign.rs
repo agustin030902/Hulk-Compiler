@@ -96,7 +96,9 @@ impl LlvmBackend {
                 self.emit_body(format!(
                     "{elem_ptr} = getelementptr i8, i8* {data_ptr}, i64 {offset_i64}"
                 ));
-                let elem_type = object_ref.value_type.array_element_type().unwrap_or(ValueType::ArrayPtr);
+                let elem_type = object_ref.value_type.array_element_type().unwrap_or_else(|| {
+                    self.infer_target_array_element_type(&object)
+                });
 
                 match elem_type {
                     ValueType::Double => {

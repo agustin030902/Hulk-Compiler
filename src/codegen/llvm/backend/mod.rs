@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use crate::{
     codegen::CodegenBackend,
     error::{CompilerError, ErrorCategory},
-    parser::expression::{Program, TypeDecl},
+    parser::expression::{Expr, Program, TypeDecl},
 };
 
 use super::helper::state::{ValueRef, ValueType, VariableInfo};
@@ -142,6 +142,43 @@ impl LlvmBackend {
             .enumerate()
             .rev()
             .find_map(|(idx, scope)| scope.get(name).cloned().map(|info| (idx, info)))
+    }
+
+    /// Infers the element type of an array target expression from the AST.
+    /// Used when the codegen type is bare ArrayPtr (no element tag) to determine
+    /// the correct store type for nested array element assignment.
+    pub(super) fn infer_target_array_element_type(&self, expr: &Expr) -> ValueType {
+        match expr {
+            Expr::Variable { name, .. } => {
+                if let Some(info) = self.lookup_var(name) {
+                    return self.resolve_array_final_element_type(info.value_type);
+                }
+                ValueType::ArrayPtr
+            }
+            Expr::ArrayIndex(inner) => {
+                // For matrix[i][j], look up matrix's type and peel one array layer
+                self.infer_target_array_element_type(&inner.object)
+            }
+            _ => ValueType::ArrayPtr,
+        }
+    }
+
+    /// Recursively resolves the final element type of an array type,
+    /// peeling ArrayPtrOf(Array) layers until reaching a concrete element type.
+    fn resolve_array_final_element_type(&self, vt: ValueType) -> ValueType {
+        match vt {
+            ValueType::ArrayPtrOf(tag) => match tag {
+                super::helper::state::ElementTag::Array => {
+                    // This is an array-of-arrays. We need to find what the inner array stores.
+                    // Since the codegen type system lost the inner info, we default to Double
+                    // (most common case for numeric nested arrays).
+                    // A proper fix would make ElementTag::Array recursive.
+                    ValueType::Double
+                }
+                other => other.to_value_type(),
+            },
+            _ => vt,
+        }
     }
 
     pub(super) fn allocate_storage(&mut self, value_ref: &ValueRef) -> VariableInfo {

@@ -1,0 +1,23 @@
+type Animal { }
+type Bird inherits Animal { }
+type Dog inherits Animal { }
+
+function identify(a: Animal): Unit {
+    if (a is Bird) {
+        print("It's a Bird");
+    } else {
+        if (a is Dog) {
+            print("It's a Dog");
+        } else {
+            print("Unknown");
+        }
+    }
+}
+
+let b: Animal = new Bird();
+let d: Animal = new Dog();
+identify(b);
+identify(d);
+print(b is Bird);
+print(d is Dog);
+print(b as Animal is Bird);

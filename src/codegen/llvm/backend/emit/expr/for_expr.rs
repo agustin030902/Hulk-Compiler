@@ -3,7 +3,7 @@ use crate::parser::expression::{
 };
 
 use super::super::super::LlvmBackend;
-use crate::codegen::llvm::helper::state::ValueRef;
+use crate::codegen::llvm::helper::state::{ValueRef, ValueType};
 use crate::parser::expression::Span;
 
 impl LlvmBackend {
@@ -90,19 +90,52 @@ impl LlvmBackend {
     }
 
     fn has_iter_method(&mut self, expr: &Expr) -> bool {
-        let Expr::Variable { name, .. } = expr else {
+        let type_id = self.resolve_expr_type_id(expr);
+        let Some(tid) = type_id else {
             return false;
         };
-        let Some(var_type) = self.lookup_variable_type(name) else {
-            return false;
-        };
-        let crate::codegen::llvm::helper::state::ValueType::Struct(type_id) = var_type else {
-            return false;
-        };
-        self.lookup_method_key(type_id, "iter").is_some()
+        self.lookup_method_key(tid, "iter").is_some()
     }
 
-    fn lookup_variable_type(&mut self, name: &str) -> Option<crate::codegen::llvm::helper::state::ValueType> {
+    fn resolve_expr_type_id(&mut self, expr: &Expr) -> Option<u32> {
+        match expr {
+            Expr::Variable { name, .. } => {
+                let var_type = self.lookup_variable_type(name)?;
+                match var_type {
+                    ValueType::Struct(type_id) => Some(type_id),
+                    _ => None,
+                }
+            }
+            Expr::New(new_expr) => {
+                self.type_ids
+                    .get(&new_expr.type_name)
+                    .copied()
+            }
+            Expr::MethodCall(call) => {
+                let value_ref = self.emit_method_call(call)?;
+                match value_ref.value_type {
+                    ValueType::Struct(type_id) => Some(type_id),
+                    _ => None,
+                }
+            }
+            Expr::FunctionCall(call) => {
+                let value_ref = self.emit_function_call(call)?;
+                match value_ref.value_type {
+                    ValueType::Struct(type_id) => Some(type_id),
+                    _ => None,
+                }
+            }
+            _ => {
+                let value_ref = self.emit_expr(expr)?;
+                match value_ref.value_type {
+                    ValueType::Struct(type_id) => Some(type_id),
+                    _ => None,
+                }
+            }
+        }
+    }
+
+    fn lookup_variable_type(&mut self, name: &str) -> Option<ValueType> {
         for scope in self.scopes.iter().rev() {
             if let Some(info) = scope.get(name) {
                 return Some(info.value_type);

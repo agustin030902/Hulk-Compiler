@@ -1,0 +1,21 @@
+type OnceIterator(val: Number,max : Number) {
+    val = val;
+	max = max;
+    next() => { self.val := self.val + 1; self.val <= self.max; };
+    current() => self.val;
+}
+
+type MultiRange(n: Number,max : Number) {
+    n = n;
+	max = max;
+    iter() => new OnceIterator(self.n,self.max);
+}
+
+print("=== Enumerable: multiple for loops ===");
+let r = new MultiRange(10,20);
+for (x in r) {
+    print(x);
+};
+for (x in r) {
+    print(x);
+};

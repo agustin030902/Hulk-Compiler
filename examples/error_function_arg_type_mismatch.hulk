@@ -1,0 +1,2 @@
+function add(x: Number, y: Number): Number => x + y;
+add(1, "two");

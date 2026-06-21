@@ -1,0 +1,12 @@
+type Animal { }
+type Dog inherits Animal { }
+
+interface DogProvider {
+    provide(): Dog;
+}
+
+type AnimalProvider {
+    provide(): Animal => new Animal();
+}
+
+let p: DogProvider = new AnimalProvider();

@@ -1,0 +1,14 @@
+type MyIterator(val: Number) {
+    val = val;
+    next() => { self.val := self.val + 1; self.val <= 5; };
+    current() => self.val;
+}
+
+type MyRange(start: Number) {
+    start = start;
+    iter() => new MyIterator(self.start);
+}
+
+for (x in new MyRange(1)) {
+    print(x);
+};

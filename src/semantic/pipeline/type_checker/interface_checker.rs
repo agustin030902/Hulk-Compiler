@@ -349,7 +349,7 @@ impl InterfaceChecker {
                     .get_struct(a_id)
                     .zip(analyzer.type_table.get_struct(b_id))
                     .is_some_and(|(info_a, info_b)| !info_a.is_interface && !info_b.is_interface)
-                    && Self::is_subtype(analyzer, b_id, a_id)
+                    && Self::is_subtype(analyzer, a_id, b_id)
             }
             (SemanticType::Struct(_), _) => false,
             _ => {

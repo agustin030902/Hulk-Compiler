@@ -49,20 +49,29 @@ impl LlvmBackend {
                 ));
 
                 let ok_label = self.next_label("as.ok");
+                let fail_label = self.next_label("as.fail");
                 let end_label = self.next_label("as.end");
 
                 self.emit_body(format!(
-                    "br i1 {is_subtype}, label %{ok_label}, label %{ok_label}"
+                    "br i1 {is_subtype}, label %{ok_label}, label %{fail_label}"
                 ));
 
                 self.emit_body(format!("{ok_label}:"));
                 self.emit_body(format!("br label %{end_label}"));
 
+                self.emit_body(format!("{fail_label}:"));
+                self.emit_body(format!("br label %{end_label}"));
+
                 self.emit_body(format!("{end_label}:"));
+                let repr = &expr_value.repr;
+                let result = self.next_temp();
+                self.emit_body(format!(
+                    "{result} = phi i8* [{repr}, %{ok_label}], [null, %{fail_label}]"
+                ));
 
                 Some(ValueRef {
                     value_type: ValueType::Struct(target_type_id),
-                    repr: expr_value.repr,
+                    repr: result,
                 })
             }
             _ => Some(ValueRef {

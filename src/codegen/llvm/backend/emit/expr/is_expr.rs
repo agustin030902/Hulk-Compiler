@@ -55,12 +55,10 @@ impl LlvmBackend {
                 self.emit_body(format!(
                     "{result} = call i1 @hulk_is_subtype(i64 {tag}, i64 {target_type_id})"
                 ));
-                let bool_result = self.next_temp();
-                self.emit_body(format!("{bool_result} = zext i1 {result} to i8"));
 
                 Some(ValueRef {
                     value_type: ValueType::Bool,
-                    repr: bool_result,
+                    repr: result,
                 })
             }
             _ => {

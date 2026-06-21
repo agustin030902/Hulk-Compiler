@@ -115,7 +115,7 @@ impl<'a> TypeChecker<'a> {
                 value,
                 ..
             } => {
-                let Some(scope_index) = self.analyzer.find_scope_index(name) else {
+                let Some((scope_index, existing)) = self.analyzer.lookup_with_scope_index(name) else {
                     self.analyzer.push_semantic_error(
                         *name_span,
                         source,
@@ -127,7 +127,33 @@ impl<'a> TypeChecker<'a> {
                     return None;
                 };
 
+                if self.is_self_binding(name, scope_index) {
+                    self.analyzer.push_semantic_error(
+                        *name_span,
+                        source,
+                        "`self` is not a valid assignment target.".to_string(),
+                    );
+                    return None;
+                }
+
                 let value_type = self.check_expr(value, source)?;
+
+                if existing != SemanticType::Unknown
+                    && !self.types_compatible(existing, value_type)
+                {
+                    self.analyzer.push_type_error(
+                        *name_span,
+                        source,
+                        format!(
+                            "Variable '{}' has type '{}' but is assigned a value of type '{}'.",
+                            name,
+                            existing.display_name_with_table(&self.analyzer.type_table),
+                            value_type.display_name_with_table(&self.analyzer.type_table),
+                        ),
+                    );
+                    return None;
+                }
+
                 self.analyzer
                     .assign_in_scope(scope_index, name.clone(), value_type);
                 Some(value_type)

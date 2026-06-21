@@ -331,28 +331,28 @@ print(a + b + c + d + e);
     let llvm_ir = fs::read_to_string(&output_path)
         .expect("compiler should write llvm output file on success");
     assert!(
-        llvm_ir.contains("@llvm.sin.f64"),
-        "IR should include sin intrinsic, got:\n{}",
+        llvm_ir.contains("declare double @sin(double)"),
+        "IR should declare sin function, got:\n{}",
         llvm_ir
     );
     assert!(
-        llvm_ir.contains("@llvm.cos.f64"),
-        "IR should include cos intrinsic, got:\n{}",
+        llvm_ir.contains("declare double @cos(double)"),
+        "IR should declare cos function, got:\n{}",
         llvm_ir
     );
     assert!(
-        llvm_ir.contains("@llvm.sqrt.f64"),
-        "IR should include sqrt intrinsic, got:\n{}",
+        llvm_ir.contains("declare double @sqrt(double)"),
+        "IR should declare sqrt function, got:\n{}",
         llvm_ir
     );
     assert!(
-        llvm_ir.contains("@llvm.exp.f64"),
-        "IR should include exp intrinsic, got:\n{}",
+        llvm_ir.contains("declare double @exp(double)"),
+        "IR should declare exp function, got:\n{}",
         llvm_ir
     );
     assert!(
-        llvm_ir.contains("@llvm.log.f64"),
-        "IR should include log intrinsic, got:\n{}",
+        llvm_ir.contains("declare double @log(double)"),
+        "IR should declare log function, got:\n{}",
         llvm_ir
     );
 }
@@ -408,8 +408,8 @@ print(a);
     let llvm_ir = fs::read_to_string(&output_path)
         .expect("compiler should write llvm output file on success");
     assert!(
-        llvm_ir.contains("@llvm.pow.f64"),
-        "IR should include pow intrinsic, got:\n{}",
+        llvm_ir.contains("declare double @pow(double, double)"),
+        "IR should declare pow function, got:\n{}",
         llvm_ir
     );
 }

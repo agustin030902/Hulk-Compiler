@@ -261,6 +261,22 @@ Shadowing dentro de `let-in`.
 - Usa un valor `Unit` en una operación aritmética
 - Error esperado: `Operator '+' expects Number and Number, but got Unit and Number`
 
+### `is_basic_ok.hulk`
+Operador `is` para verificar tipo dinámico.
+- `x is Bird` retorna `true` si x es instancia de Bird
+- `x is Animal` retorna `true` si Bird hereda de Animal
+- Retorna `Boolean`
+
+### `as_basic_ok.hulk`
+Operador `as` para downcast.
+- `x as Animal` retorna x con tipo estático Animal
+- Error en runtime si el tipo dinámico no conforma
+
+### `is_unknown_type_error.hulk`
+**Tipo de error:** Semantic - Unknown Type
+- `is` con un tipo no declarado
+- Error esperado: tipo desconocido en expresión `is`
+
 ## Cómo ejecutar los ejemplos
 
 ### Ejecutar un archivo individual:

@@ -886,9 +886,6 @@ El compilador de HULK es un proyecto completo que demuestra:
 ### Teoría de Compiladores
 
 - **Aho, Lam, Sethi, Ullman**: "Compilers: Principles, Techniques, and Tools" (2nd ed.). El "Dragon Book". Referencia fundamental para el diseño del pipeline.
-- **Appel, Andrew W.**: "Modern Compiler Implementation in ML/Java/C". Útil para entender la generación de código y el manejo de registros.
-- **Pierce, Benjamin C.**: "Types and Programming Languages". Referencia para sistemas de tipos, subtipado y varianza.
-- **Peyton Jones, Simon**: "Implementing Functional Languages: A Tutorial". Útil para entender cómo compilar lenguajes con alto nivel de abstracción.
 
 ### Lenguajes Influyentes
 

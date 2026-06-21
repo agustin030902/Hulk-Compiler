@@ -8,8 +8,6 @@ mod error;
 mod lexer;
 #[path = "../parser/mod.rs"]
 mod parser;
-#[path = "../runner/mod.rs"]
-mod runner;
 #[path = "../semantic/mod.rs"]
 mod semantic;
 
@@ -1344,12 +1342,13 @@ fn run_with_lli(lli_path: &str, ll_path: &PathBuf) -> Result<String, String> {
 }
 
 fn run_with_clang(ll_path: &PathBuf) -> Result<String, String> {
-    use runner::platform::Platform;
+    let exe_path = if cfg!(target_os = "windows") {
+        PathBuf::from("artifacts/gui_output.exe")
+    } else {
+        PathBuf::from("artifacts/gui_output")
+    };
 
-    let exe_base = PathBuf::from("artifacts/gui_output");
-    let exe_path = Platform::as_executable_path(&exe_base);
-
-    let compile = Command::new(Platform::clang_command())
+    let compile = Command::new("clang")
         .arg(ll_path)
         .arg("-o")
         .arg(&exe_path)

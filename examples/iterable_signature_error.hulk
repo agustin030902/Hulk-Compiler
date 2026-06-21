@@ -1,0 +1,8 @@
+type BadNext {
+    next(x: Number) => true;
+    current() => 42;
+}
+
+for (x in new BadNext()) {
+    print(x);
+};

@@ -1,0 +1,7 @@
+type BrokenIterator {
+    current() => 42;
+}
+
+for (x in new BrokenIterator()) {
+    print(x);
+};

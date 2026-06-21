@@ -1,0 +1,2 @@
+function sum_to(n: Number): Number => if (n <= 0) 0 else n + sum_to(n - 1);
+print(sum_to(10));

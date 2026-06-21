@@ -120,3 +120,143 @@ print(n);
         errors
     );
 }
+
+#[test]
+fn rejects_type_with_current_but_no_next() {
+    let source = r#"
+type NoNext {
+    current() => 42;
+}
+for (x in new NoNext()) {
+    print(x);
+};
+"#;
+
+    let errors = analyze(source);
+    assert!(
+        errors.iter().any(|e| e.message.contains("next")),
+        "expected error about missing next(), got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_next_with_wrong_return_type() {
+    let source = r#"
+type BadNext {
+    next() => 42;
+    current() => 42;
+}
+for (x in new BadNext()) {
+    print(x);
+};
+"#;
+
+    let errors = analyze(source);
+    assert!(
+        errors.iter().any(|e| e.message.contains("next")),
+        "expected error about wrong next() signature, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_next_with_parameters() {
+    let source = r#"
+type NextWithArgs {
+    next(x: Number) => true;
+    current() => 42;
+}
+for (x in new NextWithArgs()) {
+    print(x);
+};
+"#;
+
+    let errors = analyze(source);
+    assert!(
+        errors.iter().any(|e| e.message.contains("next")),
+        "expected error about wrong next() signature, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_current_with_parameters() {
+    let source = r#"
+type CurrentWithArgs {
+    next() => true;
+    current(x: Number) => 42;
+}
+for (x in new CurrentWithArgs()) {
+    print(x);
+};
+"#;
+
+    let errors = analyze(source);
+    assert!(
+        errors.iter().any(|e| e.message.contains("current")),
+        "expected error about wrong current() signature, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn allows_user_enumerable_type() {
+    let source = r#"
+type MyIterator {
+    val = 0;
+    next() => { self.val := self.val + 1; self.val <= 3; };
+    current() => self.val;
+}
+type MyEnumerable {
+    iter() => new MyIterator();
+}
+for (x in new MyEnumerable()) {
+    print(x);
+};
+"#;
+
+    let errors = analyze(source);
+    assert!(
+        errors.is_empty(),
+        "expected no semantic errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn rejects_iter_with_wrong_return_type() {
+    let source = r#"
+type BadEnumerable {
+    iter() => 42;
+}
+for (x in new BadEnumerable()) {
+    print(x);
+};
+"#;
+
+    let errors = analyze(source);
+    assert!(
+        !errors.is_empty(),
+        "expected semantic error for bad iter() return type"
+    );
+}
+
+#[test]
+fn rejects_iter_with_parameters() {
+    let source = r#"
+type IterableWithArgs {
+    iter(x: Number) => new IterableWithArgs();
+}
+for (x in new IterableWithArgs()) {
+    print(x);
+};
+"#;
+
+    let errors = analyze(source);
+    assert!(
+        errors.iter().any(|e| e.message.contains("iter")),
+        "expected error about wrong iter() signature, got: {:?}",
+        errors
+    );
+}

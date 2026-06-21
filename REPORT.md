@@ -1,4 +1,4 @@
-# Reporte Técnico: Compilador del Lenguaje HULK
+# ())Reporte Técnico: Compilador del Lenguaje HULK
 
 ## 1. Introducción
 
@@ -42,7 +42,6 @@ El proyecto se organiza en siete módulos principales dentro de `src/`, cada uno
 - `codegen/`: Generación de código LLVM IR en formato texto.
 - `compiler/`: Orquestación del pipeline completo.
 - `error/`: Definición unificada de errores del compilador.
-- `runner/`: Ejecución del código generado (compilación con clang + lanzamiento).
 
 La separación en módulos refleja fielmente la arquitectura por capas. Cada módulo define una interfaz pública clara y oculta los detalles internos. Esto hizo posible, por ejemplo, reemplazar el backend de generación de código sin afectar al resto del compilador.
 
@@ -159,7 +158,7 @@ let __hulk_iter__ = (si tiene iter: expr.iter() sino expr) in
 
 **¿Por qué esta arquitectura?** Separar el desazúcar en codegen permite que el semántico pueda verificar ambos protocolos sin generar código intermedio. Y mantener el `ForExpr` en el AST facilita futuras optimizaciones (como desenrollado de bucles o transformaciones específicas para `for`).
 
-El nombre `__hulk_iter__` se elige con doble guion bajo para minimizar la probabilidad de colisión con variables del usuario. Es una convención estándar en compiladores.
+El nombre `__hulk_iter__` se elige con doble guion bajo porque HULK no permite que las variables del usuario comiencen con `_`. Esto garantiza que no puede haber colisión con ninguna variable escrita por el programador.
 
 ---
 
@@ -224,6 +223,16 @@ Esta estrategia en cascada es clave porque permite que dos tipos de objetos func
 - **Tipos `Iterable`**: Tienen `next()` y `current()` directamente. El tipo en sí es el iterador.
 - **Tipos `Enumerable`**: Tienen `iter()` que retorna un iterador separado. El tipo delega la iteración a un objeto distinto.
 
+La verificación no se limita a comprobar la existencia de los métodos, sino que también valida sus firmas:
+
+1. `current()` debe tomar **cero parámetros** y retornar el tipo del elemento.
+2. `next()` debe tomar **cero parámetros** y retornar `Boolean`.
+3. `iter()` debe tomar **cero parámetros** y retornar un tipo que a su vez tenga `next()` y `current()`.
+
+Si un método existe pero tiene una firma incorrecta (por ejemplo, `next(x: Number)` o `current() => 42` con retorno `Number`), se reporta un error descriptivo que indica exactamente qué falla.
+
+Además, la resolución de métodos **recorre la cadena de herencia** mediante `lookup_method_in_hierarchy`. Si un tipo `Iterable_Number` extiende `Iterable` y no redeclara `next()`, el compilador busca `next()` en el padre `Iterable`. Esto permite que las interfaces auto-generadas por la notación splat (`T*`) funcionen correctamente sin redeclarar todos los métodos.
+
 La separación entre `Iterable` y `Enumerable` refleja un diseño bien fundamentado: un tipo `Enumerable` puede crear múltiples iteradores independientes (cada llamada a `iter()` crea un nuevo iterador con su propio estado), mientras que un `Iterable` tiene un solo estado de iteración. Esto es análogo a la diferencia entre `Iterator` e `IntoIterator` en Rust, o entre `Iterable` y `Collection` en Java.
 
 ### 5.5 Inferencia de tipos: el algoritmo iterativo
@@ -244,7 +253,7 @@ La inferencia de tipos en HULK no es Hindley-Milner puro. En lugar de usar un al
 
 Sin embargo, para el alcance académico del proyecto, el enfoque iterativo es más que suficiente. La mayoría de los programas de prueba convergen en 2 o 3 iteraciones.
 
-### 5.5 El corazón de la unificación: `merge_types`
+### 5.6 El corazón de la unificación: `merge_types`
 
 La función `merge_types` es el núcleo de la inferencia. Toma dos tipos —el tipo actual de un símbolo (posiblemente `Unknown`) y el tipo inferido desde el contexto— y produce un tipo unificado, o un error si son incompatibles.
 
@@ -259,7 +268,7 @@ merge_types(current, inferred):
 
 La regla de nulabilidad merece explicación. En HULK, `Null` puede asignarse a tipos que son punteros o referencias: `String`, `Struct`, `Function`. No puede asignarse a `Number`, `Boolean` o `Unit`. Esto refleja una decisión de diseño: en lugar de hacer que todos los tipos sean nulables , HULK permite nulabilidad solo para tipos que naturalmente son punteros. Esto evita la necesidad de unwrapping explícito y reduce los errores por null pointer.
 
-### 5.6 Varianza en interfaces: ¿por qué es necesaria?
+### 5.7 Varianza en interfaces: ¿por qué es necesaria?
 
 Cuando un tipo implementa una interfaz, las firmas de los métodos no tienen que coincidir exactamente. El sistema de varianza define las reglas de compatibilidad:
 
@@ -275,13 +284,20 @@ Cuando un tipo implementa una interfaz, las firmas de los métodos no tienen que
 
 Nuestra implementación usa varianza estructural automática, que es la opción más flexible. Esto significa que un tipo que "casi" implementa una interfaz (pero con tipos más específicos en retornos o más generales en parámetros) puede ser aceptado sin modificaciones.
 
-### 5.7 El sistema de scopes
+### 5.8 El sistema de scopes
 
 El manejo de scopes (ámbitos) es más interesante de lo que parece a simple vista. Usamos una pila de `HashMap<String, SemanticType>`, donde cada `push()` crea un nuevo ámbito y `pop()` lo destruye.
 
-**La decisión clave fue: ¿cómo manejar las asignaciones destructivas (`:=`)?** En HULK, `:=` modifica una variable existente pero puede cambiar su tipo... hasta cierto punto. Si una variable se declara como `let x = 5`, su tipo es `Number`. Luego `x := "hola"` debería ser un error de tipos. Pero si la variable no tiene anotación, ¿puede `:=` cambiar su tipo? Decidimos que **no**: el tipo de una variable se fija en su declaración y `:=` solo puede asignar valores del mismo tipo.
+**La decisión clave fue: ¿cómo manejar las asignaciones?** En HULK, tanto `=` como `:=` modifican una variable existente, pero con restricciones estrictas de tipos. Si una variable se declara como `let x = 5`, su tipo es `Number`. Luego `x := "hola"` **y** `x = "hola"` son ambos errores de tipos. El tipo de una variable se fija en su declaración y ninguna forma de asignación puede cambiarlo.
 
-Esto se implementa en `assign_in_scope`: cuando se modifica una variable con `:=`, se busca el scope original donde se declaró y se actualiza su tipo. Pero si el tipo del nuevo valor no coincide con el tipo original, se reporta error.
+La diferencia entre `=` y `:=` radica en otros aspectos:
+
+- **`=` (asignación regular)**: Permite asignar a variables ya declaradas en cualquier scope accesible. No puede declarar variables nuevas.
+- **`:=` (asignación destructiva)**: Modifica variables dentro de bloques anidados (`let-in`, `while`, `for`). El tipo del nuevo valor debe ser compatible con el tipo original, verificado por `types_compatible()`.
+
+Ambos verifican compatibilidad de tipos antes de permitir la asignación. Si el tipo existente no es `Unknown` (inferido) y el tipo del nuevo valor no es compatible, se reporta un error de tipo descriptivo.
+
+Esto se implementa en `assign_in_scope` y `destructive_assign_expr_checker`: cuando se modifica una variable, se busca el scope original donde se declaró y se verifica que el tipo del nuevo valor sea compatible con el tipo original mediante `types_compatible()`. Si no lo es, se reporta un error de tipo.
 
 **Alternativa considerada**: Permitir que `:=` cambie el tipo de la variable (tipado como en Python). Esto habría complicado el sistema de tipos y debilitado las garantías estáticas. Lo descartamos porque HULK es un lenguaje de tipado estático.
 
@@ -361,8 +377,8 @@ Elegimos la cascada por simplicidad de implementación. En un compilador académ
 
 El `for` se genera en `emit_for_expr` (codegen/llvm/backend/emit/expr/for_expr.rs). La lógica es la siguiente:
 
-1. **Detectar el protocolo**: Si el objeto tiene un método `iter()`, se llama primero a `iter()` para obtener un iterador. Si no, el objeto es el iterador directamente.
-2. **Generar el `while` equivalent**: El `for` se traduce a un `while` que llama a `next()` como condición, y dentro del cual se llama a `current()` para obtener el elemento actual.
+1. **Detectar el protocolo**: La función `has_iter_method` determina si el objeto tiene un método `iter()`. Para esto resuelve el tipo de la expresión mediante `resolve_expr_type_id`, que maneja variables, expresiones `new`, llamadas a métodos, llamadas a funciones y cualquier otra expresión evaluándola para obtener su tipo. Una vez obtenido el `type_id`, se busca `iter()` en la jerarquía de métodos. Si existe, se llama a `iter()` para obtener un iterador. Si no, el objeto es el iterador directamente.
+2. **Generar el `while` equivalente**: El `for` se traduce a un `while` que llama a `next()` como condición, y dentro del cual se llama a `current()` para obtener el elemento actual.
 3. **Crear el scope**: Se crea un scope con el iterador (`__hulk_iter__`) y el elemento (`x`).
 
 La generación produce un patrón que puede visualizarse como:
@@ -393,7 +409,7 @@ La función es O(d) donde d es la profundidad de la herencia. Como la herencia e
 
 **Alternativa**: Una alternativa consiste en asignar identificadores que codifiquen explícitamente la posición de cada tipo dentro de la jerarquía. Por ejemplo, es posible numerar los nodos mediante recorridos del árbol y almacenar intervalos que permitan determinar relaciones de ancestro-descendiente en tiempo constante. Con este enfoque, la comprobación de subtipado podría realizarse en O(1). Sin embargo, estas representaciones requieren recalcular la numeración cuando cambia la estructura de la jerarquía y añaden complejidad adicional al compilador. Dado que el coste O(d) resulta suficientemente pequeño para los tamaños de programa considerados en este proyecto, optamos por la solución basada en la cadena de padres por su simplicidad y facilidad de implementación.
 
-### 6.6 Jerarquía de valores en LLVM
+### 6.7 Jerarquía de valores en LLVM
 
 Una decisión de diseño importante fue unificar todos los números como `double` (f64) en LLVM. Esto significa que `42` (entero) y `3.14` (flotante) se representan igual.
 
@@ -765,7 +781,7 @@ Cuando un método del hijo sobrescribe un método del padre, el método del padr
 
 ### 7.6 Otras Características
 
-#### 7.7.1 Operadores `is` y `as`
+#### 7.6.1 Operadores `is` y `as`
 
 `is` verifica si un objeto es de un tipo determinado en tiempo de ejecución. `as` realiza una conversión segura: si el objeto es del tipo destino, retorna el objeto convertido; si no, retorna `null`.
 
@@ -773,7 +789,7 @@ Cuando un método del hijo sobrescribe un método del padre, el método del padr
 
 **¿Son estas operaciones seguras?** `is` es completamente segura (solo lee). `as` es segura porque retorna `null` si la conversión falla; el programador debe verificar el resultado antes de usarlo. Esto sigue el patrón de lenguajes como TypeScript o C#.
 
-#### 7.7.2 Funciones Built-in y Constantes
+#### 7.6.2 Funciones Built-in y Constantes
 
 Las funciones matemáticas (`sin`, `cos`, `sqrt`, `exp`, `log`) se traducen directamente a las funciones correspondientes de la biblioteca matemática de C. No realizamos ninguna comprobación de dominio (ej: `sqrt(-1)` produce NaN, no un error).
 
@@ -836,7 +852,7 @@ El compilador de HULK es un proyecto completo que demuestra:
 
 ### 9.2 Lecciones Aprendidas
 
-**Sobre la arquitectura**: La separación en dos pasadas (Collect + Check) fue una decisión acertada que simplificó el manejo del hoisting y la inferencia. Sin embargo, la decisión de realizar el desazucarado del `for` en el parser fue controvertida: simplificó el semántico y el codegen, pero hizo que la implementación del `for` fuera menos flexible.
+**Sobre la arquitectura**: La separación en dos pasadas (Collect + Check) fue una decisión acertada que simplificó el manejo del hoisting y la inferencia. El desazucarado del `for` se realizó inicialmente en el parser, pero luego fue migrado a codegen para soportar la distinción entre `Iterable` y `Enumerable`. Esta migración fue más trabajosa de lo esperado, pero valió la pena porque hizo que la arquitectura fuera más flexible y extensible.
 
 **Sobre la generación de código**: Emitir LLVM IR como texto fue más accesible que usar `inkwell`, pero nos privó de validación temprana. Varios bugs se descubrieron solo cuando `clang` rechazaba el IR generado, y depurar esos errores era más difícil que si hubiéramos tenido bindings de tipos.
 
@@ -889,9 +905,8 @@ El compilador de HULK es un proyecto completo que demuestra:
 
 ### Lenguajes Influyentes
 
-- **Go**: Inspiración para las interfaces estructurales. El artículo "Go's Declaration Syntax" explica por qué Go eligió interfaces estructurales sobre nominales.
-- **Rust**: Inspiración para la sintaxis de `let-in`, el manejo de `self`, y la filosofía de "zero-cost abstractions" aunque HULK no las implemente completamente.
-- **Swift**: Inspiración para el manejo de protocolos con varianza y la sintaxis de `as?`/`is`.
+- **Go**: Inspiración para las interfaces estructurales.
+- **Swift**: Inspiración para el manejo de protocolos con varianza y la sintaxis de `as`/`is`.
 - **Python**: Inspiración para la sintaxis general del lenguaje y el bucle `for-in`.
 - **Haskell**: Inspiración para la naturaleza expresiva del lenguaje y el `let-in` con múltiples bindings.
 

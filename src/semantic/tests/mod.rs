@@ -10,6 +10,7 @@ mod string_escape;
 mod type_annotations;
 mod types;
 mod types_namespace_integration;
+mod variance;
 mod while_expr;
 
 use crate::{error::ErrorCategory, lexer::Lexer, parser::Parser};

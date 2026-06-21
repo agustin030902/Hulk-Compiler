@@ -1,0 +1,19 @@
+type Animal { }
+type Dog inherits Animal { }
+type Cat inherits Animal { }
+
+interface Walker {
+    walk(): Animal;
+}
+
+interface Feeder {
+    feed(animal: Dog): Unit;
+}
+
+type FriendlyDog {
+    walk(): Dog => new Dog();
+    feed(animal: Animal): Unit => print("fed");
+}
+
+let w: Walker = new FriendlyDog();
+let f: Feeder = new FriendlyDog();

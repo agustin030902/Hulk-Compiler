@@ -1,0 +1,12 @@
+type Animal { }
+type Dog inherits Animal { }
+
+interface Feeder {
+    feed(animal: Animal): Unit;
+}
+
+type PickyFeeder {
+    feed(animal: Dog): Unit => print("fed dog");
+}
+
+let f: Feeder = new PickyFeeder();

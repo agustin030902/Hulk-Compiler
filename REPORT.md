@@ -1,4 +1,4 @@
-# ())Reporte Técnico: Compilador del Lenguaje HULK
+# Reporte Técnico: Compilador del Lenguaje HULK
 
 ## 1. Introducción
 
@@ -90,9 +90,9 @@ El lexer debe reportar errores con posición precisa. `logos` facilita esto porq
 
 ### 3.4 Strings y secuencias de escape
 
-El manejo de strings ilustra bien la tensión entre simplicidad y corrección. Los strings en HULK se delimitan con comillas dobles y soportan secuencias de escape (`\"`, `\n`, `\t`). Decidimos que el lexer capture el string crudo (con comillas incluidas) y que el parser realice el unescaping.
+El manejo de strings ilustra bien la tensión entre simplicidad y corrección. Los strings en HULK se delimitan con comillas dobles y soportan secuencias de escape (`\"`, `\n`, `\t`). El lexer realiza el unescaping directamente: la función `unescape_string_contents` procesa las secuencias de escape y produce un `TokenKind::String(value)` con el contenido ya transformado. Si una secuencia de escape es inválida, el lexer reporta un error léxico y produce un token `Unknown`, permitiendo la recuperación de errores.
 
-**¿Por qué esta división?** Porque el unescaping requiere validación (rechazar secuencias inválidas) y transformación (convertir `\n` en un salto de línea real). Esta lógica pertenece más al ámbito sintáctico que al léxico. Además, mantener el string crudo permite reportar errores de escape con la posición exacta del carácter problemático.
+**¿Por qué hacerlo en el lexer?** Porque el unescaping requiere validación (rechazar secuencias inválidas) y transformación (convertir `\n` en un salto de línea real). Al hacerlo en el lexer, el parser recibe strings ya procesados y no necesita lógica adicional de transformación. Además, el lexer puede reportar errores de escape con la posición exacta del carácter problemático usando la información de span que ya maneja.
 
 ---
 
@@ -124,7 +124,7 @@ Assignment → LogicalOr → LogicalAnd → Equality → AsExpr → Comparison �
 
 Este diseño no es arbitrario. Cada nivel corresponde a una familia de operadores con la misma precedencia. Los niveles se ordenan de menor a mayor precedencia: lo que está más arriba en la cadena "agarra menos" (se evalúa después). Por ejemplo, `+` está en `Term`, `*` está en `Factor`. Como `Term` aparece antes que `Factor` en la cadena, `*` tiene mayor precedencia que `+`, y `a + b * c` se parsea como `a + (b * c)`.
 
-**La asociatividad** se controla mediante la estructura de recursión. Los operadores izquierdo-asociativos (`+`, `-`, `*`, `/`, `@`, `@@`) usan recursión izquierda: `Term: Term "+" Factor`. Los operadores derecho-asociativos (`^`, `:=`) usan recursión derecha: `Power: Primary "^" Unary`. LALRPOP maneja la recursión izquierda directamente, lo cual es una ventaja frente a generadores PEG que requieren transformación.
+**La asociatividad** se controla mediante la estructura de recursión. Los operadores izquierdo-asociativos (`+`, `-`, `*`, `/`, `%`, `@`, `@@`) usan recursión izquierda: `Term: Term "+" Factor`. Los operadores derecho-asociativos (`^`, `:=`) usan recursión derecha: `Power: Primary "^" Unary`. LALRPOP maneja la recursión izquierda directamente, lo cual es una ventaja frente a generadores PEG que requieren transformación.
 
 ### 4.4 Hoisting en el parser
 
@@ -473,8 +473,8 @@ La varianza es el aspecto técnicamente más sutil de las interfaces estructural
 
 Nuestra implementación permite:
 
-- **Covarianza en retornos**: Si la interfaz retorna `Animal`, la implementación puede retornar `Dog`.
-- **Contravarianza en parámetros**: Si la interfaz acepta `Dog`, la implementación puede aceptar `Animal`.
+- **Covarianza en retornos**: Si la interfaz retorna `Animal`, la implementación puede retornar `Dog` (un subtipo). Quien espera un `Animal` está contento recibiendo un `Dog`.
+- **Contravarianza en parámetros**: Si la interfaz acepta `Dog`, la implementación puede aceptar `Animal` (un supertipo). El implementador debe ser **más tolerante** que la interfaz: debe aceptar al menos lo que la interfaz acepta, posiblemente más.
 
 **¿Por qué es correcta la covarianza en retornos?** Porque quien espera un `Animal` está contento recibiendo un `Dog`. Todo `Dog` es un `Animal`, así que no hay sorpresas.
 
@@ -533,7 +533,7 @@ Si `Range` fuera `Enumerable`, la segunda iteración funcionaría porque `r.iter
 
 #### 7.2.2 El desazucarado y sus implicaciones
 
-Como explicamos en la Sección 4.5, el `for` se transforma en tiempo de parseo a `while` + `let-in`. Esto tiene implicaciones profundas en cómo se comporta el iterador.
+Como explicamos en la Sección 4.5, el `for` se desazucara en la generación de código (codegen) a `while` + `let-in`. Esto tiene implicaciones profundas en cómo se comporta el iterador.
 
 **Problema: materialización completa vs generación incremental.** Consideremos:
 
@@ -785,19 +785,19 @@ Cuando un método del hijo sobrescribe un método del padre, el método del padr
 
 `is` verifica si un objeto es de un tipo determinado en tiempo de ejecución. `as` realiza una conversión segura: si el objeto es del tipo destino, retorna el objeto convertido; si no, retorna `null`.
 
-**Implementación**: Ambos usan la función `hulk_is_subtype` en LLVM IR. `is` simplemente compara el `type_id` del objeto contra el tipo consultado. `as` hace la misma verificación y, si es verdadera, retorna el mismo puntero; si no, retorna `null`.
+**Implementación**: Ambos usan la función `hulk_is_subtype` en LLVM IR. `is` simplemente compara el `type_id` del objeto contra el tipo consultado. `as` hace la misma verificación y utiliza un `phi` node en LLVM IR para retornar el puntero original si el subtype check es verdadero, o `null` si es falso.
 
 **¿Son estas operaciones seguras?** `is` es completamente segura (solo lee). `as` es segura porque retorna `null` si la conversión falla; el programador debe verificar el resultado antes de usarlo. Esto sigue el patrón de lenguajes como TypeScript o C#.
 
 #### 7.6.2 Funciones Built-in y Constantes
 
-Las funciones matemáticas (`sin`, `cos`, `sqrt`, `exp`, `log`) se traducen directamente a las funciones correspondientes de la biblioteca matemática de C. No realizamos ninguna comprobación de dominio (ej: `sqrt(-1)` produce NaN, no un error).
+Las funciones matemáticas (`sin`, `cos`, `sqrt`, `exp`) se traducen directamente a las funciones correspondientes de la biblioteca matemática de C. `log` toma dos argumentos (base, valor) y calcula `ln(valor) / ln(base)` usando la función `log` de C internamente. No realizamos ninguna comprobación de dominio (ej: `sqrt(-1)` produce NaN, no un error).
 
 `print` usa `printf` con formatos especializados según el tipo:
 
 - Números: `%g` (notación general de punto flotante).
 - Strings: `%s`.
-- Booleanos: `%d` (0/1), con traducción a "true"/"false".
+- Booleanos: `%d` (0/1). Los booleanos se imprimen como enteros 0 o 1, no como "true"/"false". Aunque se definieron constantes `@.bool.true` y `@.bool.false` en el IR, actualmente no se usan en la impresión.
 
 `rand` usa la función `rand()` de C, normalizando el resultado al intervalo [0, 1).
 
@@ -837,7 +837,7 @@ Las funciones matemáticas (`sin`, `cos`, `sqrt`, `exp`, `log`) se traducen dire
 
 **Strings ineficientes**: La concatenación con `@` usa `asprintf`, que asigna memoria en cada operación. No hay string builder ni optimización de concatenaciones en cadena.
 
-**Pruebas incompletas**: Aunque hay ~50 archivos de prueba, no cubren todos los casos borde (ej: herencia profunda, dispatch con herencia de implementaciones, muchos tipos implementando una interfaz).
+**Pruebas incompletas**: Aunque hay ~120 archivos de ejemplo en `examples/` y más de 100 pruebas unitarias en el código fuente, no cubren todos los casos borde (ej: herencia profunda, dispatch con herencia de implementaciones, muchos tipos implementando una interfaz, varianza con tipos diferentes).
 
 ## 9. Conclusiones y Trabajo Futuro
 

@@ -281,40 +281,23 @@ print(!(x >= y));
 }
 
 #[test]
-fn writes_llvm_ir_for_reassignment_with_type_change() {
+fn rejects_llvm_ir_for_reassignment_with_type_change() {
     let source = r#"
 let x = 45;
 x = true;
 print(x);
 "#;
-    let output_path = unique_output_path("valid_reassignment_ir");
-
     let mut compiler = Compiler::new();
     let report = compiler.compile(
         source,
         &CompileOptions {
-            output_path: output_path.clone(),
+            output_path: unique_output_path("reject_type_change_ir"),
         },
     );
 
     assert!(
-        report.errors.is_empty(),
-        "expected successful compilation, got errors: {:?}",
-        report.errors
-    );
-    assert_eq!(report.output_kind, Some(OutputKind::LlvmIr));
-
-    let llvm_ir = fs::read_to_string(&output_path)
-        .expect("compiler should write llvm output file on success");
-    assert!(
-        llvm_ir.contains("alloca i1"),
-        "reassignment to boolean should allocate bool storage, got:\n{}",
-        llvm_ir
-    );
-    assert!(
-        llvm_ir.contains("zext i1"),
-        "printing reassigned boolean should convert i1 to i32, got:\n{}",
-        llvm_ir
+        !report.errors.is_empty(),
+        "expected type error for reassignment with type change"
     );
 }
 

@@ -283,7 +283,7 @@ fn rejects_equality_with_mismatched_types() {
 }
 
 #[test]
-fn allows_reassignment_even_when_type_changes() {
+fn rejects_reassignment_with_type_change() {
     let source = r#"
 let x = 45;
 x = true;
@@ -292,8 +292,12 @@ print(x);
 
     let errors = analyze_source(source);
     assert!(
-        errors.is_empty(),
-        "expected no semantic errors, got: {:?}",
+        !errors.is_empty(),
+        "expected type error for reassignment with type change"
+    );
+    assert!(
+        errors.iter().any(|e| e.message.contains("has type")),
+        "expected error about type mismatch, got: {:?}",
         errors
     );
 }

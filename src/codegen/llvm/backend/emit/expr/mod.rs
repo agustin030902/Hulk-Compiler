@@ -1,4 +1,5 @@
 mod as_expr;
+mod base_call;
 mod binary;
 mod block;
 mod call;
@@ -41,5 +42,6 @@ pub(in crate::codegen::llvm) fn emit_expr(
         Expr::Binary(binary) => backend.emit_binary_expr(binary),
         Expr::Is(is_expr) => backend.emit_is_expr(is_expr),
         Expr::As(as_expr) => backend.emit_as_expr(as_expr),
+        Expr::BaseCall(call) => backend.emit_base_call(call),
     }
 }

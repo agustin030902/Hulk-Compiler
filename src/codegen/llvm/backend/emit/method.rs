@@ -36,18 +36,23 @@ impl LlvmBackend {
 
         let saved_body = std::mem::take(&mut self.body_lines);
         let saved_scopes = std::mem::take(&mut self.scopes);
+        let saved_type_id = self.current_type_id;
+        let saved_method_name = self.current_method_name.take();
+        let saved_self_ref = self.current_self_ref.take();
         self.push_scope();
 
         let self_ptr_name = self.next_temp();
         self.emit_body(format!("{self_ptr_name} = alloca i8*"));
         self.emit_body(format!("store i8* %self, i8** {self_ptr_name}"));
-        self.bind_current_scope(
-            "self".to_string(),
-            VariableInfo {
-                ptr_name: self_ptr_name,
-                value_type: ValueType::Struct(type_id),
-            },
-        );
+        let self_var_info = VariableInfo {
+            ptr_name: self_ptr_name,
+            value_type: ValueType::Struct(type_id),
+        };
+        self.bind_current_scope("self".to_string(), self_var_info.clone());
+
+        self.current_type_id = Some(type_id);
+        self.current_method_name = Some(method.name.clone());
+        self.current_self_ref = Some(self_var_info);
 
         self.push_scope();
 
@@ -81,6 +86,9 @@ impl LlvmBackend {
         let Some(result) = self.emit_expr(&method.body) else {
             self.scopes = saved_scopes;
             self.body_lines = saved_body;
+            self.current_type_id = saved_type_id;
+            self.current_method_name = saved_method_name;
+            self.current_self_ref = saved_self_ref;
             return;
         };
 
@@ -94,12 +102,18 @@ impl LlvmBackend {
             ));
             self.scopes = saved_scopes;
             self.body_lines = saved_body;
+            self.current_type_id = saved_type_id;
+            self.current_method_name = saved_method_name;
+            self.current_self_ref = saved_self_ref;
             return;
         }
 
         let function_body = std::mem::take(&mut self.body_lines);
         self.scopes = saved_scopes;
         self.body_lines = saved_body;
+        self.current_type_id = saved_type_id;
+        self.current_method_name = saved_method_name;
+        self.current_self_ref = saved_self_ref;
 
         let return_type = info.return_type.llvm_type();
         self.emit_function_line(String::new());

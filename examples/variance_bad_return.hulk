@@ -1,7 +1,7 @@
 type Animal { }
 type Dog inherits Animal { }
 
-interface DogProvider {
+protocol DogProvider {
     provide(): Dog;
 }
 

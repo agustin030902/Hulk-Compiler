@@ -20,6 +20,7 @@ pub struct SemanticAnalyzer {
     pub(super) type_table: TypeTable,
     pub(super) errors: Vec<CompilerError>,
     pub(super) current_method_receiver: Option<TypeId>,
+    pub(super) current_method_name: Option<String>,
     pub(super) current_self_scope_index: Option<usize>,
     pub(super) suppress_errors: bool,
     pub(super) interface_real_types: HashMap<String, TypeId>,

@@ -94,7 +94,7 @@ print(value + 1);
 #[test]
 fn allows_method_call_on_interface_typed_parameter_with_concrete_argument() {
     let source = r#"
-    interface Printable { show(): String; }
+    protocol Printable { show(): String; }
 type Person {
     name: String = "John";
     show(): String => self.name;
@@ -114,7 +114,7 @@ print(mostrar(new Person()));
 #[test]
 fn allows_method_call_on_interface_param_with_multiple_concrete_types() {
     let source = r#"
-    interface Greetable { greet(): String; }
+    protocol Greetable { greet(): String; }
 type Person {
     name: String = "Alice";
     greet(): String => "Hello " @ self.name;
@@ -139,7 +139,7 @@ print(send_greeting(new Robot()));
 #[test]
 fn allows_same_interface_param_function_called_with_different_types() {
     let source = r#"
-    interface Printable { show(): String; }
+    protocol Printable { show(): String; }
 type Person { show(): String => "Person"; }
 type Robot { show(): String => "Robot"; }
 function mostrar(p: Printable): Unit => print(p.show());

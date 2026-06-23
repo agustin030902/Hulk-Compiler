@@ -1,4 +1,4 @@
-interface Printable { show(): String; }
+protocol Printable { show(): String; }
 type Person {
     name: String = "John";
     show(): String => self.name;

@@ -220,7 +220,7 @@ La primera pasada recorre las declaraciones del programa y construye las tablas 
 **¿Qué registra exactamente?** Cinco categorías de símbolos:
 
 1. **Tipos** (`type`): Se registra el nombre, la relación de herencia, y los parámetros del constructor. Se detectan ciclos de herencia recorriendo la cadena de padres en busca del hijo.
-2. **Interfaces** (`interface`): Similar a tipos, pero se valida que una interfaz solo pueda extender otras interfaces (no tipos concretos). Esto es intencional: las interfaces definen comportamiento, no estructura.
+2. **Interfaces** (`protocol`): Similar a tipos, pero se valida que una interfaz solo pueda extender otras interfaces (no tipos concretos). Esto es intencional: las interfaces definen comportamiento, no estructura.
 3. **Funciones globales**: Se registran con nombres de parámetros y, si existen, anotaciones de tipo. Sin anotación, se registran como `Unknown`.
 4. **Métodos de tipos**: Se registran con su firma y se valida que no haya sobrescritura con firma incompatible con el padre.
 5. **Métodos de interfaces**: Similar a métodos de tipos, pero con la validación adicional de que todos los parámetros tengan anotaciones de tipo explícitas (una interfaz no puede tener métodos con tipos inferidos, porque la interfaz es el contrato público).
@@ -511,7 +511,7 @@ Si permitimos contravarianza en retornos (un `DogWalker` que retorna `Animal` cu
 Las interfaces pueden extender otras interfaces:
 
 ```
-interface Runner extends Walker {
+protocol Runner extends Walker {
     run(): String;
 }
 ```
@@ -623,7 +623,7 @@ El sistema de tipos debe saber que los elementos de `numbers` son `Number`, no `
 **Solución**: La notación `T*` (splat) no es un simple azúcar sintáctico. El compilador, durante la fase de `SymbolCollector`, escanea todas las anotaciones `T*` y genera automáticamente interfaces `Iterable_T` que extienden `Iterable` con `current(): T` sobrecargado:
 
 ```
-interface Iterable_Number extends Iterable {
+protocol Iterable_Number extends Iterable {
     current(): Number;  // Refina el tipo de retorno
 }
 ```
@@ -793,9 +793,21 @@ Si tratamos un `Point3D*` como `Point*`, el código que accede a `self.x` en off
 
 #### 7.5.3 Self y llamadas a métodos heredados
 
-Cuando un método del hijo sobrescribe un método del padre, el método del padre puede seguir siendo útil. En muchos lenguajes, se puede llamar al método del padre con `super.metodo()`. HULK no tiene `super`, lo que es una limitación conocida. El programador no puede reutilizar la implementación del padre y extenderla; debe reimplementar todo.
+Cuando un método del hijo sobrescribe un método del padre, el método del padre puede seguir siendo útil. En muchos lenguajes, se puede llamar al método del padre con `super.metodo()`. HULK ofrece `base()` como alternativa, que invoca directamente la implementación del método en el tipo padre.
 
-**¿Por qué no implementar `super`?** Requiere que el compilador distinga entre llamadas a métodos de instancia y llamadas a métodos de la superclase. La generación de código tendría que saltarse el dispatch dinámico y llamar directamente al método del padre. No es técnicamente difícil, pero no lo consideramos prioritario.
+```hulk
+type Printer(prefix: String) {
+    prefix = prefix;
+    format(msg: String): String { self.prefix @ msg; }
+}
+
+type FancyPrinter(prefix: String, suffix: String) inherits Printer(prefix) {
+    suffix = suffix;
+    format(msg: String): String { base(msg) @ self.suffix; }
+}
+```
+
+`base()` se parsea como un `BaseCallExpr` en el parser. Semánticamente, el type checker resuelve el método del padre con el mismo nombre y valida que los argumentos coincidan en cantidad y tipos. En codegen, se emite una llamada directa al método del padre (por ejemplo, `@Printer_format`), saltándose el dispatch dinámico — exactamente el comportamiento que `super` tendría en otros lenguajes.
 
 ---
 

@@ -33,6 +33,9 @@ pub struct LlvmBackend {
     pub(super) label_counter: usize,
     pub(super) string_counter: usize,
     pub(crate) current_block: String,
+    pub(super) current_type_id: Option<u32>,
+    pub(super) current_method_name: Option<String>,
+    pub(super) current_self_ref: Option<VariableInfo>,
 }
 
 impl LlvmBackend {
@@ -56,6 +59,9 @@ impl LlvmBackend {
         self.temp_counter = 0;
         self.label_counter = 0;
         self.string_counter = 0;
+        self.current_type_id = None;
+        self.current_method_name = None;
+        self.current_self_ref = None;
         self.push_scope();
     }
 

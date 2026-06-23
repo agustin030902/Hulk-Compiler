@@ -901,6 +901,24 @@ fn render_expr_tree(ui: &mut egui::Ui, expr: &Expr, label: &str, query: &str) {
                 query,
             ));
         }
+        Expr::BaseCall(call) => {
+            ui.label(match_rich_text(
+                format!(
+                    "{label}: base({}) [{}]",
+                    call.args.len(),
+                    span_text(call.span)
+                ),
+                query,
+            ));
+            for (i, arg) in call.args.iter().enumerate() {
+                CollapsingHeader::new(match_rich_text(format!("arg {i}"), query)).show(
+                    ui,
+                    |ui| {
+                        render_expr_tree(ui, arg, "expr", query);
+                    },
+                );
+            }
+        }
     }
 }
 

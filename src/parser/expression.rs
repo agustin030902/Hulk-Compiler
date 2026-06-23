@@ -155,6 +155,7 @@ pub enum Expr {
     If(IfExpr),
     Is(IsExpr),
     As(AsExpr),
+    BaseCall(BaseCallExpr),
     Literal { value: Literal, span: Span },
     Variable { name: String, span: Span },
 }
@@ -177,6 +178,7 @@ impl Expr {
             Expr::If(if_expr) => if_expr.span,
             Expr::Is(is_expr) => is_expr.span,
             Expr::As(as_expr) => as_expr.span,
+            Expr::BaseCall(call) => call.span,
             Expr::Literal { span, .. } => *span,
             Expr::Variable { span, .. } => *span,
         }
@@ -248,6 +250,12 @@ pub struct BuiltinCallExpr {
 pub struct FunctionCallExpr {
     pub name: String,
     pub name_span: Span,
+    pub args: Vec<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct BaseCallExpr {
     pub args: Vec<Expr>,
     pub span: Span,
 }

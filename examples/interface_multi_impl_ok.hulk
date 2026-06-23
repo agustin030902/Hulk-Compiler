@@ -1,4 +1,4 @@
-interface Printable { show(): String; }
+protocol Printable { show(): String; }
 type Person { show(): String => "Person"; }
 type Robot { show(): String => "Robot"; }
 function mostrar(p: Printable): Unit => print(p.show());

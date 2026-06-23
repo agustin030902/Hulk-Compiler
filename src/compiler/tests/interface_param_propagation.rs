@@ -18,7 +18,7 @@ fn unique_output_path(test_name: &str) -> PathBuf {
 #[test]
 fn writes_llvm_ir_dispatching_concrete_method_for_interface_param() {
     let source = r#"
-    interface Printable { show(): String; }
+protocol Printable { show(): String; }
     type Person {
         name: String = "John";
         show(): String => self.name;
@@ -61,7 +61,7 @@ fn writes_llvm_ir_dispatching_concrete_method_for_interface_param() {
 #[test]
 fn writes_llvm_ir_for_interface_param_with_multiple_concrete_calls() {
     let source = r#"
-    interface Printable { show(): String; }
+protocol Printable { show(): String; }
     type Person { show(): String => "Person"; }
     type Robot { show(): String => "Robot"; }
     function mostrar(p: Printable): Unit => print(p.show());

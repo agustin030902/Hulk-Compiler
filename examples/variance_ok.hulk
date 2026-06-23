@@ -2,11 +2,11 @@ type Animal { }
 type Dog inherits Animal { }
 type Cat inherits Animal { }
 
-interface Walker {
+protocol Walker {
     walk(): Animal;
 }
 
-interface Feeder {
+protocol Feeder {
     feed(animal: Dog): Unit;
 }
 

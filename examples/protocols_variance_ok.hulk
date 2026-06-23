@@ -1,4 +1,4 @@
-interface Walker {
+protocol Walker {
     walk(): Animal;
     greet(other: Animal): String;
 }

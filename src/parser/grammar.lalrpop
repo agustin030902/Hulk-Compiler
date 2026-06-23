@@ -1,6 +1,6 @@
 use crate::lexer::TokenKind;
 use crate::parser::expression::{
-    AsExpr, AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction,
+    AsExpr, AssignTarget, BaseCallExpr, BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction,
     DestructiveAssignExpr, ElifBranch, Expr, ForExpr, FunctionCallExpr, FunctionDecl, FunctionParam, IfExpr,
     IsExpr, LetBinding, LetInExpr, Literal, MemberAccessExpr, MethodCallExpr, MethodDecl, NewExpr,
     Program, ProgramItem, InterfaceDecl, InterfaceMethodDecl, Span, Statement, TypeAnnotation,
@@ -17,7 +17,7 @@ extern {
         "let" => TokenKind::Let,
         "function" => TokenKind::Function,
         "type" => TokenKind::Type,
-        "interface" => TokenKind::Interface,
+        "protocol" => TokenKind::Interface,
         "extends" => TokenKind::Extends,
         "new" => TokenKind::New,
         "while" => TokenKind::While,
@@ -105,7 +105,7 @@ Declaration: ProgramItem = {
 };
 
 InterfaceDecl: InterfaceDecl = {
-    <l:@L> "interface" <id:IdentifierWithSpan> <inheritance:InterfaceInheritance> "{" <methods:InterfaceMembers> "}" <r:@R> => {
+    <l:@L> "protocol" <id:IdentifierWithSpan> <inheritance:InterfaceInheritance> "{" <methods:InterfaceMembers> "}" <r:@R> => {
         let (parent_name, parent_span) = inheritance;
         InterfaceDecl {
             name: id.0,
@@ -788,12 +788,21 @@ PrimaryAtom: Expr = {
 };
 
 FunctionCallExpr: Expr = {
-    <l:@L> <id:IdentifierWithSpan> "(" <args:CallArgs> ")" <r:@R> => Expr::FunctionCall(FunctionCallExpr {
-        name: id.0,
-        name_span: id.1,
-        args,
-        span: Span::new(l, r),
-    }),
+    <l:@L> <id:IdentifierWithSpan> "(" <args:CallArgs> ")" <r:@R> => {
+        if id.0 == "base" {
+            Expr::BaseCall(BaseCallExpr {
+                args,
+                span: Span::new(l, r),
+            })
+        } else {
+            Expr::FunctionCall(FunctionCallExpr {
+                name: id.0,
+                name_span: id.1,
+                args,
+                span: Span::new(l, r),
+            })
+        }
+    },
 };
 
 NewExpr: Expr = {

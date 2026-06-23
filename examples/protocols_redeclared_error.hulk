@@ -1,8 +1,8 @@
-interface Showable {
+protocol Showable {
     show(): String;
 }
 
-interface Showable {
+protocol Showable {
     display(): String;
 }
 

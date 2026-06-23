@@ -32,7 +32,7 @@ fn allows_covariant_return_type() {
     let source = r#"
     type Animal { }
     type Dog inherits Animal { }
-    interface Walker {
+    protocol Walker {
         walk(): Animal;
     }
     type FourLeggedWalker {
@@ -54,7 +54,7 @@ fn allows_contravariant_parameter_type() {
     let source = r#"
     type Animal { }
     type Dog inherits Animal { }
-    interface Feeder {
+    protocol Feeder {
         feed(animal: Dog): Unit;
     }
     type GenericFeeder {
@@ -74,7 +74,7 @@ fn allows_contravariant_parameter_type() {
 #[test]
 fn allows_exact_signature_match() {
     let source = r#"
-    interface Walker {
+    protocol Walker {
         walk(): Number;
     }
     type SimpleWalker {
@@ -96,7 +96,7 @@ fn rejects_covariant_parameter_type() {
     let source = r#"
     type Animal { }
     type Dog inherits Animal { }
-    interface Feeder {
+    protocol Feeder {
         feed(animal: Animal): Unit;
     }
     type PickyFeeder {
@@ -122,7 +122,7 @@ fn rejects_contravariant_return_type() {
     let source = r#"
     type Animal { }
     type Dog inherits Animal { }
-    interface DogProvider {
+    protocol DogProvider {
         provide(): Dog;
     }
     type AnimalProvider {

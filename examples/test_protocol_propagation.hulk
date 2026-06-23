@@ -1,4 +1,4 @@
-interface Printable {
+protocol Printable {
     show(): String;
 }
 

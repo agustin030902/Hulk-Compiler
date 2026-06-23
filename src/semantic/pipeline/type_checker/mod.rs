@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
 use crate::parser::expression::{
-    AsExpr, AssignTarget, BinaryExpr, BinaryOp, BlockExpr, BuiltinFunction, DestructiveAssignExpr,
-    ElifBranch, Expr, ForExpr, FunctionCallExpr, FunctionDecl, IfExpr, IsExpr, LetInExpr, Literal,
-    MethodCallExpr, MethodDecl, NewExpr, Program, InterfaceDecl, Span, Statement, TypeDecl,
-    UnaryExpr, UnaryOp, WhileExpr,
+    AsExpr, AssignTarget, BaseCallExpr, BinaryExpr, BinaryOp, BlockExpr, BuiltinFunction,
+    DestructiveAssignExpr, ElifBranch, Expr, ForExpr, FunctionCallExpr, FunctionDecl, IfExpr,
+    IsExpr, LetInExpr, Literal, MethodCallExpr, MethodDecl, NewExpr, Program, InterfaceDecl,
+    Span, Statement, TypeDecl, UnaryExpr, UnaryOp, WhileExpr,
 };
 
 use super::super::{
@@ -13,6 +13,7 @@ use super::super::{
 };
 use super::{SymbolCollector, TypeConstraintEngine, TypeResolver};
 
+mod base_call_expr_checker;
 mod binary_expr_checker;
 mod block_expr_checker;
 mod builtin_call_expr_checker;
@@ -186,6 +187,7 @@ impl<'a> TypeChecker<'a> {
             Expr::Binary(binary) => self.check_binary_expr(binary, source),
             Expr::Is(is_expr) => self.check_is_expr(is_expr, source),
             Expr::As(as_expr) => self.check_as_expr(as_expr, source),
+            Expr::BaseCall(call) => self.check_base_call(call, source),
         }
     }
 
@@ -571,12 +573,14 @@ impl<'a> TypeChecker<'a> {
             .unwrap_or_else(|| vec![SemanticType::Unknown; method.params.len()]);
 
         let previous_receiver = self.analyzer.current_method_receiver;
+        let previous_method_name = self.analyzer.current_method_name.clone();
         let previous_self_scope = self.analyzer.current_self_scope_index;
 
         self.analyzer.push_scope();
         self.analyzer
             .bind_current_scope("self".to_string(), SemanticType::Struct(receiver_type_id.0));
         self.analyzer.current_method_receiver = Some(receiver_type_id);
+        self.analyzer.current_method_name = Some(method.name.clone());
         self.analyzer.current_self_scope_index = self.analyzer.find_scope_index("self");
 
         self.analyzer.push_scope();
@@ -634,6 +638,7 @@ impl<'a> TypeChecker<'a> {
         self.analyzer.pop_scope();
         self.analyzer.pop_scope();
         self.analyzer.current_method_receiver = previous_receiver;
+        self.analyzer.current_method_name = previous_method_name;
         self.analyzer.current_self_scope_index = previous_self_scope;
 
         for (index, (param, inferred_type)) in method

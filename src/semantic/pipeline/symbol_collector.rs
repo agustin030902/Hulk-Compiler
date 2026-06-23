@@ -585,7 +585,7 @@ impl SymbolCollector {
         InterfaceChecker::check_interface_variance(analyzer, interface_decls, source);
     }
 
-    fn find_method_in_parent(
+    pub(in crate::semantic) fn find_method_in_parent(
         analyzer: &SemanticAnalyzer,
         type_id: TypeId,
         method_name: &str,

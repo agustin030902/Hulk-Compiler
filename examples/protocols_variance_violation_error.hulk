@@ -1,4 +1,4 @@
-interface Producer {
+protocol Producer {
     produce(): Object;
 }
 

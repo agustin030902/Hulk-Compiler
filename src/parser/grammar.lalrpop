@@ -17,7 +17,7 @@ extern {
         "let" => TokenKind::Let,
         "function" => TokenKind::Function,
         "type" => TokenKind::Type,
-        "interface" => TokenKind::Interface,
+        "protocol" => TokenKind::Interface,
         "extends" => TokenKind::Extends,
         "new" => TokenKind::New,
         "while" => TokenKind::While,
@@ -105,7 +105,7 @@ Declaration: ProgramItem = {
 };
 
 InterfaceDecl: InterfaceDecl = {
-    <l:@L> "interface" <id:IdentifierWithSpan> <inheritance:InterfaceInheritance> "{" <methods:InterfaceMembers> "}" <r:@R> => {
+    <l:@L> "protocol" <id:IdentifierWithSpan> <inheritance:InterfaceInheritance> "{" <methods:InterfaceMembers> "}" <r:@R> => {
         let (parent_name, parent_span) = inheritance;
         InterfaceDecl {
             name: id.0,

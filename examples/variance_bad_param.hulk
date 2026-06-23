@@ -1,7 +1,7 @@
 type Animal { }
 type Dog inherits Animal { }
 
-interface Feeder {
+protocol Feeder {
     feed(animal: Animal): Unit;
 }
 

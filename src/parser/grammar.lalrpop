@@ -329,7 +329,6 @@ Statement: Statement = {
         value,
         span: Span::new(l, r),
     },
-    ForStatement,
     <l:@L> <id:IdentifierWithSpan> "=" <value:Expr> <r:@R> => Statement::Assign {
         name: id.0,
         name_span: id.1,
@@ -342,33 +341,48 @@ Statement: Statement = {
     },
 };
 
-ForStatement: Statement = {
+ForExpr: Expr = {
     <l:@L> "for" "(" <id:IdentifierWithSpan> "in" <iter:Expr> ")" <body:BlockExpr> <r:@R> =>? {
         let Expr::Block(body_block) = body else {
             return Err(lalrpop_util::ParseError::User {
                 error: "for body must be a block".to_string(),
             });
         };
-        Ok(Statement::Expr {
-            value: Expr::For(ForExpr {
-                id: id.0,
-                id_span: id.1,
-                iter: Box::new(iter),
-                body: body_block,
-                span: Span::new(l, r),
-            }),
+        Ok(Expr::For(ForExpr {
+            id: id.0,
+            id_span: id.1,
+            iter: Box::new(iter),
+            body: body_block,
             span: Span::new(l, r),
-        })
+        }))
     },
 };
 
 Expr: Expr = {
-    Conditional,
+    BaseExpr,
+    ExtExpr,
 };
 
-Conditional: Expr = {
+BaseExpr: Expr = {
+    Assignment,
+};
+
+ExtExpr: Expr = {
+    OrTail,
+};
+
+FlowAtom: Expr = {
     IfExpr,
+    WhileExpr,
+    ForExpr,
     LetIn,
+};
+
+BindingValue: Expr = {
+    IfExpr,
+    WhileExpr,
+    ForExpr,
+    Assignment,
 };
 
 LetIn: Expr = {
@@ -377,7 +391,6 @@ LetIn: Expr = {
         body: Box::new(body),
         span: Span::new(l, r),
     }),
-    Assignment,
 };
 
 LetBindings: Vec<LetBinding> = {
@@ -392,7 +405,7 @@ LetBindings: Vec<LetBinding> = {
 };
 
 LetBinding: LetBinding = {
-    <l:@L> <id:IdentifierWithSpan> <annotation:OptionalTypeAnnotation> "=" <value:Expr> <r:@R> => LetBinding {
+    <l:@L> <id:IdentifierWithSpan> <annotation:OptionalTypeAnnotation> "=" <value:BindingValue> <r:@R> => LetBinding {
         name: id.0,
         type_annotation: annotation,
         value,
@@ -415,7 +428,7 @@ OptionalTypeAnnotation: Option<TypeAnnotation> = {
 };
 
 Assignment: Expr = {
-    <l:@L> <target_expr:AssignmentTargetExpr> ":=" <value:Assignment> <r:@R> =>? {
+    <l:@L> <target_expr:AssignmentTargetExpr> ":=" <value:Expr> <r:@R> =>? {
         let target = match target_expr {
             Expr::Variable { name, span } => AssignTarget::Variable {
                 name,
@@ -601,8 +614,149 @@ Power: Expr = {
     Primary,
 };
 
+OrTail: Expr = {
+    <l:@L> <left:LogicalOr> "||" <right:AndTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Or,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    AndTail,
+};
+
+AndTail: Expr = {
+    <l:@L> <left:LogicalAnd> "&&" <right:EqTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::And,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    EqTail,
+};
+
+EqTail: Expr = {
+    <l:@L> <left:Equality> "==" <right:AsTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Equal,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Equality> "!=" <right:AsTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::NotEqual,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    AsTail,
+};
+
+AsTail: Expr = {
+    CmpTail,
+};
+
+CmpTail: Expr = {
+    <l:@L> <left:Comparison> "<" <right:AddTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Less,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Comparison> ">" <right:AddTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Greater,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Comparison> "<=" <right:AddTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::LessEqual,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Comparison> ">=" <right:AddTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::GreaterEqual,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    AddTail,
+};
+
+AddTail: Expr = {
+    <l:@L> <left:Term> "+" <right:MulTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Add,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Term> "@" <right:MulTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Concat,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Term> "@@" <right:MulTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::ConcatSpace,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Term> "-" <right:MulTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Sub,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    MulTail,
+};
+
+MulTail: Expr = {
+    <l:@L> <left:Factor> "*" <right:UnaryTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Mul,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Factor> "/" <right:UnaryTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Div,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    <l:@L> <left:Factor> "%" <right:UnaryTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Mod,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    UnaryTail,
+};
+
+UnaryTail: Expr = {
+    <l:@L> "!" <expr:UnaryTail> <r:@R> => Expr::Unary(UnaryExpr {
+        op: UnaryOp::Not,
+        expr: Box::new(expr),
+        span: Span::new(l, r),
+    }),
+    <l:@L> "-" <expr:UnaryTail> <r:@R> => Expr::Unary(UnaryExpr {
+        op: UnaryOp::Neg,
+        expr: Box::new(expr),
+        span: Span::new(l, r),
+    }),
+    PowTail,
+};
+
+PowTail: Expr = {
+    <l:@L> <left:Primary> "^" <right:UnaryTail> <r:@R> => Expr::Binary(BinaryExpr {
+        left: Box::new(left),
+        op: BinaryOp::Pow,
+        right: Box::new(right),
+        span: Span::new(l, r),
+    }),
+    FlowAtom,
+};
+
 Primary: Expr = {
-    WhileExpr,
     BlockExpr,
     PostfixExpr,
 };

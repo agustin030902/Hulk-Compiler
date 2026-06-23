@@ -1,0 +1,15 @@
+let a = 5 + if (true) 3 else 10;
+print(a);
+
+let b = (if(false) 20 else 30) + 1;
+print(b);
+
+let evens = 0;
+evens := evens + if (true) 1 else 0;
+print(evens);
+
+let c = 10 + if (false) 100 else 5;
+print(c);
+
+let d = if (true) 42 else 0;
+print(d);

@@ -1,0 +1,19 @@
+// Los arreglos se pasan a funciones con anotación T[].
+function sum(a: Number[]): Number {
+    let total = 0, i = 0 in {
+        while (i < a.size()) {
+            total := total + a[i];
+            i := i + 1;
+        };
+        total;
+    };
+}
+
+function fill_progression(n: Number): Number[] {
+    new Number[n]{ i -> i + 1 };
+}
+
+{
+    print(sum({2, 4, 6}));            // 12
+    print(sum(fill_progression(10))); // 55
+}

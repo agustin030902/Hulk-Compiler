@@ -1,0 +1,6 @@
+// Lambdas: valores función con anotación (Number) -> Number.
+let double: (Number) -> Number = function (x: Number): Number -> x * 2 in
+let inc: (Number) -> Number = function (x: Number): Number -> x + 1 in {
+    print(double(21));      // 42
+    print(inc(double(10))); // 21
+};

@@ -1,0 +1,9 @@
+// Arreglos anidados (matriz 2D): new Number[][n] crea n filas nulas
+// que luego se rellenan con new Number[n].
+let matrix: Number[][] = new Number[][2] in {
+    matrix[0] := new Number[2]{ j -> j + 1 };      // [1, 2]
+    matrix[1] := new Number[2]{ j -> (j + 1) * 10 }; // [10, 20]
+    print(matrix[0][0] + matrix[0][1]); // 3
+    print(matrix[1][0] + matrix[1][1]); // 30
+    print(matrix.size());               // 2
+};

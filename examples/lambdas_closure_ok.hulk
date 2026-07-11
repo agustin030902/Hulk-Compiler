@@ -1,0 +1,11 @@
+// Closures reales: la lambda captura `n` por valor al crearse.
+function make_adder(n: Number): (Number) -> Number {
+    function (x: Number): Number -> x + n;
+}
+
+let add5: (Number) -> Number = make_adder(5) in
+let add10: (Number) -> Number = make_adder(10) in {
+    print(add5(3));        // 8
+    print(add10(3));       // 13
+    print(add5(add10(1))); // 16
+};

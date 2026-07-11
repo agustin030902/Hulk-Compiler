@@ -1,0 +1,15 @@
+// Semántica call-by-name: el argumento `body` se sustituye sin evaluar,
+// así que se re-ejecuta en cada vuelta del while. Con una función normal
+// (call-by-value) el contador solo subiría una vez.
+define repeat(times: Number, body: Number): Number {
+    let i: Number = times in
+        while (i > 0) {
+            i := i - 1;
+            body;
+        };
+}
+
+let count = 0 in {
+    repeat(5, count := count + 1);
+    print(count); // 5
+};

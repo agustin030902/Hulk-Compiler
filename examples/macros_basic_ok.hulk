@@ -1,0 +1,14 @@
+// Macros define: forma flecha y forma bloque, macros que llaman macros.
+define double(x: Number): Number -> x * 2;
+define triple(x: Number): Number -> x * 3;
+define six_times(x: Number): Number -> double(triple(x));
+
+define abs_val(x: Number): Number {
+    if (x < 0) -x else x;
+}
+
+{
+    print(double(21));    // 42
+    print(six_times(7));  // 42
+    print(abs_val(-42));  // 42
+}

@@ -1,0 +1,11 @@
+// Higiene: el `tmp` interno de la macro se renombra a un nombre fresco al
+// expandir, así que no colisiona con el `tmp` del sitio de llamada.
+define swap_add(a: Number, b: Number): Number {
+    let tmp: Number = a in
+        tmp + b;
+}
+
+let tmp = 100 in {
+    print(swap_add(3, 4)); // 7
+    print(tmp);            // 100 (intacto)
+};

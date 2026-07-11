@@ -1,0 +1,12 @@
+// Arreglos con constructor: new T[n] (ceros) y new T[n]{ i -> expr }.
+let zeros: Number[] = new Number[3] in
+let squares: Number[] = new Number[5]{ i -> i * i } in {
+    print(zeros[0] + zeros[1] + zeros[2]); // 0
+    let total = 0, j = 0 in {
+        while (j < squares.size()) {
+            total := total + squares[j];
+            j := j + 1;
+        };
+        print(total); // 0+1+4+9+16 = 30
+    };
+};

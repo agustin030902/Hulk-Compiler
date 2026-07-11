@@ -4,6 +4,22 @@ Esta carpeta contiene archivos de prueba (`.hulk`) para validar el compilador Hu
 
 ## Archivos de Ejemplo Válidos (OK)
 
+### Features nuevas: arrays, macros y lambdas
+
+- `arrays_basic_ok.hulk` — literal `{10, 20, 30}`, indexación, mutación con `:=` y `size()`.
+- `arrays_init_ok.hulk` — `new Number[n]` (ceros) y `new Number[n]{ i -> expr }`.
+- `arrays_matrix_ok.hulk` — arreglos anidados `Number[][]` (matriz 2D).
+- `arrays_pass_function_ok.hulk` — arreglos como parámetro y retorno de funciones.
+- `macros_basic_ok.hulk` — `define` en forma flecha y bloque; macros que llaman macros.
+- `macros_call_by_name_ok.hulk` — semántica call-by-name: el argumento se re-evalúa en cada uso.
+- `macros_hygiene_ok.hulk` — los locals de la macro se renombran y no capturan el sitio de llamada.
+- `lambdas_basic_ok.hulk` — valores función con anotación `(Number) -> Number`.
+- `lambdas_closure_ok.hulk` — closures reales con captura por valor (`make_adder`).
+- `lambdas_higher_order_ok.hulk` — lambdas como argumento y composición de closures.
+- `lambdas_over_arrays_ok.hulk` — las tres features combinadas (macro + arreglo + lambda).
+- `arrays_index_type_error.hulk` / `lambdas_arity_error.hulk` — casos de error semántico.
+
+
 ### `recursive_number_fibonacci.hulk`
 Recursión numérica con `if/elif/else`.
 - `fib(n)` clásico

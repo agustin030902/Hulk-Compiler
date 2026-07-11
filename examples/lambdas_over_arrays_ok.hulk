@@ -1,0 +1,20 @@
+// Las tres features juntas: una macro genera el arreglo, una lambda lo
+// transforma elemento a elemento.
+define squares_upto(n: Number): Number[] -> new Number[n]{ i -> i * i };
+
+function map_sum(a: Number[], f: (Number) -> Number): Number {
+    let total = 0, i = 0 in {
+        while (i < a.size()) {
+            total := total + f(a[i]);
+            i := i + 1;
+        };
+        total;
+    };
+}
+
+{
+    let a: Number[] = squares_upto(5) in {
+        print(map_sum(a, function (x: Number): Number -> x));     // 30
+        print(map_sum(a, function (x: Number): Number -> x * 2)); // 60
+    };
+}

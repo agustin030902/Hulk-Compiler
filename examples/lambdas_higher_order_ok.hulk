@@ -1,0 +1,17 @@
+// Funciones de orden superior: lambdas como argumento y composición
+// (el closure resultante captura otros closures).
+function apply(f: (Number) -> Number, x: Number): Number {
+    f(x);
+}
+
+function compose(f: (Number) -> Number, g: (Number) -> Number): (Number) -> Number {
+    function (x: Number): Number -> f(g(x));
+}
+
+let double: (Number) -> Number = function (x: Number): Number -> x * 2 in
+let inc: (Number) -> Number = function (x: Number): Number -> x + 1 in
+let double_then_inc: (Number) -> Number = compose(inc, double) in {
+    print(apply(double, 21));   // 42
+    print(double_then_inc(5));  // 11
+    print(apply(function (x: Number): Number -> x * x, 6)); // 36
+};

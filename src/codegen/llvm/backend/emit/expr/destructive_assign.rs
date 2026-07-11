@@ -106,6 +106,9 @@ impl LlvmBackend {
                     repr: value_ref.repr,
                 })
             }
+            AssignTarget::Index { object, index, .. } => {
+                self.emit_index_assign(object, index, &assign.value)
+            }
         }
     }
 }

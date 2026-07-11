@@ -1,5 +1,7 @@
+mod array;
 mod as_expr;
 mod base_call;
+mod lambda;
 mod binary;
 mod block;
 mod call;
@@ -43,5 +45,9 @@ pub(in crate::codegen::llvm) fn emit_expr(
         Expr::Is(is_expr) => backend.emit_is_expr(is_expr),
         Expr::As(as_expr) => backend.emit_as_expr(as_expr),
         Expr::BaseCall(call) => backend.emit_base_call(call),
+        Expr::ArrayLiteral(literal) => backend.emit_array_literal(literal),
+        Expr::NewArray(new_array) => backend.emit_new_array(new_array),
+        Expr::Index(index_expr) => backend.emit_index_expr(index_expr),
+        Expr::Lambda(lambda) => backend.emit_lambda(lambda),
     }
 }

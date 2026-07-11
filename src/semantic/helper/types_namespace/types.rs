@@ -9,23 +9,12 @@ pub enum SemanticType {
     Null,
     Function(u32),
     Struct(u32),
+    /// Arreglo `T[]`; el u32 es el TypeId de la entrada `TypeInfo::Array`.
+    Array(u32),
     Unknown,
 }
 
 impl SemanticType {
-    pub(in crate::semantic) fn display_name(self) -> &'static str {
-        match self {
-            SemanticType::Number => "Number",
-            SemanticType::Boolean => "Boolean",
-            SemanticType::String => "String",
-            SemanticType::Unit => "Unit",
-            SemanticType::Null => "Null",
-            SemanticType::Function(_) => "Function",
-            SemanticType::Struct(_) => "Struct",
-            SemanticType::Unknown => "Unknown",
-        }
-    }
-
     pub(in crate::semantic) fn display_name_with_table(self, table: &TypeTable) -> String {
         match self {
             SemanticType::Number => "Number".to_string(),
@@ -54,6 +43,32 @@ impl SemanticType {
                     })
                     .unwrap_or_else(|| "Function".to_string())
             }
+            SemanticType::Array(id) => {
+                let elem = table.get_array_elem(super::TypeId(id));
+                match elem {
+                    Some(elem_id) => {
+                        let elem_type = Self::from_type_id_shallow(elem_id, table);
+                        format!("{}[]", elem_type.display_name_with_table(table))
+                    }
+                    None => "Array".to_string(),
+                }
+            }
+        }
+    }
+
+    /// Conversión superficial TypeId → SemanticType para nombres de arreglos.
+    fn from_type_id_shallow(type_id: super::TypeId, table: &TypeTable) -> SemanticType {
+        use super::TypeInfo;
+        match table.get(type_id) {
+            TypeInfo::Number => SemanticType::Number,
+            TypeInfo::Boolean => SemanticType::Boolean,
+            TypeInfo::String => SemanticType::String,
+            TypeInfo::Unit => SemanticType::Unit,
+            TypeInfo::Null => SemanticType::Null,
+            TypeInfo::Unknown => SemanticType::Unknown,
+            TypeInfo::Type(_) => SemanticType::Struct(type_id.0),
+            TypeInfo::Function(_) => SemanticType::Function(type_id.0),
+            TypeInfo::Array { .. } => SemanticType::Array(type_id.0),
         }
     }
 
@@ -68,10 +83,6 @@ impl SemanticType {
         }
     }
 
-    pub(in crate::semantic) const fn annotation_names() -> &'static str {
-        "Number, Boolean, String, Unit, Null"
-    }
-
     pub(in crate::semantic) const fn is_nullable(self) -> bool {
         matches!(
             self,
@@ -79,6 +90,7 @@ impl SemanticType {
                 | SemanticType::String
                 | SemanticType::Function(_)
                 | SemanticType::Struct(_)
+                | SemanticType::Array(_)
         )
     }
 }

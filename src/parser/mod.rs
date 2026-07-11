@@ -6,10 +6,12 @@ use crate::{
 };
 
 pub mod expression;
+pub mod macro_expander;
 #[cfg(test)]
 mod tests;
 
 pub use expression::Program;
+pub use macro_expander::MacroExpander;
 
 lalrpop_mod!(
     #[allow(clippy::all)]
@@ -121,6 +123,7 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::Boolean(v) => format!("boolean({})", v),
         TokenKind::Let => "let".to_string(),
         TokenKind::Function => "function".to_string(),
+        TokenKind::Define => "define".to_string(),
         TokenKind::Type => "type".to_string(),
         TokenKind::Interface => "protocol".to_string(),
         TokenKind::Extends => "extends".to_string(),
@@ -144,6 +147,7 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::As => "as".to_string(),
         TokenKind::Assign => "=".to_string(),
         TokenKind::Arrow => "=>".to_string(),
+        TokenKind::ThinArrow => "->".to_string(),
         TokenKind::Add => "+".to_string(),
         TokenKind::Power => "^".to_string(),
         TokenKind::Concat => "@".to_string(),
@@ -169,6 +173,8 @@ fn token_label(token: &TokenKind) -> String {
         TokenKind::RightBrace => "}".to_string(),
         TokenKind::LeftParen => "(".to_string(),
         TokenKind::RightParen => ")".to_string(),
+        TokenKind::LeftBracket => "[".to_string(),
+        TokenKind::RightBracket => "]".to_string(),
         TokenKind::Dot => ".".to_string(),
         TokenKind::Unknown => "unknown".to_string(),
         TokenKind::If => "if".to_string(),

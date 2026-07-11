@@ -7,6 +7,34 @@ impl<'a> TypeChecker<'a> {
         source: &str,
     ) -> Option<SemanticType> {
         let receiver_type = self.check_expr(&call.receiver, source)?;
+
+        // Los arreglos exponen un único método intrínseco: size(): Number.
+        if let SemanticType::Array(_) = receiver_type {
+            if call.method_name == "size" {
+                if !call.args.is_empty() {
+                    self.analyzer.push_semantic_error(
+                        call.span,
+                        source,
+                        format!(
+                            "Method 'size' expects 0 argument(s), but got {}.",
+                            call.args.len()
+                        ),
+                    );
+                    return None;
+                }
+                return Some(SemanticType::Number);
+            }
+            self.analyzer.push_semantic_error(
+                call.method_name_span,
+                source,
+                format!(
+                    "Method '{}' is not declared for arrays. Only 'size' is available.",
+                    call.method_name
+                ),
+            );
+            return None;
+        }
+
         let SemanticType::Struct(receiver_raw) = receiver_type else {
             self.analyzer.push_type_error(
                 call.span,

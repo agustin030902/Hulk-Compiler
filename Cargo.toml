@@ -4,6 +4,12 @@ version = "0.1.0"
 edition = "2024"
 default-run = "Hulk-Compiler"
 
+# Núcleo del compilador como librería, compartido por ambos binarios
+# (Hulk-Compiler y gui) para evitar recompilar los módulos por separado.
+[lib]
+name = "hulk_compiler"
+path = "src/lib.rs"
+
 [dependencies]
 logos = "0.14"
 lalrpop-util = "0.22"

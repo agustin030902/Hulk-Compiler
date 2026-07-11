@@ -1,4 +1,3 @@
-use crate::lexer::Lexer;
 
 use super::{parse_program, Expr, Statement};
 

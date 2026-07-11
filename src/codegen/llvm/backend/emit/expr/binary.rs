@@ -242,7 +242,7 @@ impl LlvmBackend {
                 None
             }
             ValueType::Null => unreachable!("null equality should be handled before type dispatch"),
-            ValueType::Function | ValueType::Struct(_) => {
+            ValueType::Function(_) | ValueType::Struct(_) | ValueType::Array(_) => {
                 self.semantic_error("Equality operators do not support Function/Struct values");
                 None
             }

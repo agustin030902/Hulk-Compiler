@@ -1,4 +1,4 @@
-use crate::{error::ErrorCategory, lexer::Lexer, parser::Parser, semantic::SemanticAnalyzer};
+use crate::{lexer::Lexer, parser::Parser, semantic::SemanticAnalyzer};
 
 fn analyze(source: &str) -> Vec<crate::error::CompilerError> {
     let mut lexer = Lexer::new(source.to_string());

@@ -57,6 +57,48 @@ impl LlvmBackend {
             .map(|(name, type_id)| (name.clone(), type_id.0))
             .collect();
 
+        self.type_parents = analyzer
+            .type_symbols()
+            .values()
+            .filter_map(|type_id| {
+                analyzer
+                    .type_table()
+                    .get_struct(*type_id)
+                    .and_then(|info| info.parent)
+                    .map(|parent| (type_id.0, parent.0))
+            })
+            .collect();
+
+        for (function_id, param_ids, return_id) in
+            analyzer.type_table().plain_function_entries()
+        {
+            let params = param_ids
+                .iter()
+                .map(|param_id| {
+                    Self::lower_semantic_type_quiet(
+                        self.semantic_type_from_type_id(&analyzer, *param_id),
+                    )
+                })
+                .collect::<Option<Vec<_>>>();
+            let return_type = Self::lower_semantic_type_quiet(
+                self.semantic_type_from_type_id(&analyzer, return_id),
+            );
+            if let (Some(params), Some(return_type)) = (params, return_type) {
+                self.function_types
+                    .insert(function_id.0, (params, return_type));
+            }
+        }
+
+        for (array_id, elem_id) in analyzer.type_table().array_entries() {
+            let elem_semantic = self.semantic_type_from_type_id(&analyzer, elem_id);
+            let Some(elem_value_type) =
+                self.lower_semantic_type(elem_semantic, "array element type")
+            else {
+                return false;
+            };
+            self.array_elems.insert(array_id.0, elem_value_type);
+        }
+
         if !self.load_struct_layouts(&analyzer) {
             return false;
         }
@@ -124,13 +166,16 @@ impl LlvmBackend {
                 return Some(key);
             }
 
-            current = self
-                .type_ids
-                .iter()
-                .find_map(|(name, id)| (*id == type_id).then_some(name.as_str()))
-                .and_then(|name| self.type_decls.get(name))
-                .and_then(|decl| decl.parent_name.as_ref())
-                .and_then(|parent_name| self.type_ids.get(parent_name).copied());
+            // type_parents cubre también interfaces (incluidas las splat
+            // sintetizadas), que no aparecen en type_decls.
+            current = self.type_parents.get(&type_id).copied().or_else(|| {
+                self.type_ids
+                    .iter()
+                    .find_map(|(name, id)| (*id == type_id).then_some(name.as_str()))
+                    .and_then(|name| self.type_decls.get(name))
+                    .and_then(|decl| decl.parent_name.as_ref())
+                    .and_then(|parent_name| self.type_ids.get(parent_name).copied())
+            });
         }
 
         None

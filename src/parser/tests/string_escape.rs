@@ -106,6 +106,10 @@ fn token(kind: TokenKind, start: usize, end: usize) -> Token {
         TokenKind::RightParen => ")".to_string(),
         TokenKind::Dot => ".".to_string(),
         TokenKind::Unknown => "unknown".to_string(),
+        TokenKind::Define => "define".to_string(),
+        TokenKind::ThinArrow => "->".to_string(),
+        TokenKind::LeftBracket => "[".to_string(),
+        TokenKind::RightBracket => "]".to_string(),
         TokenKind::EOF => String::new(),
     };
 

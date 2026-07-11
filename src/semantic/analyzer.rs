@@ -58,10 +58,6 @@ impl SemanticAnalyzer {
         &self.flat_param_real_types
     }
 
-    pub fn current_param_real_types(&self) -> Option<&HashMap<String, TypeId>> {
-        self.param_real_types.last()
-    }
-
     pub(super) fn push_param_real_types(&mut self) {
         self.param_real_types.push(HashMap::new());
     }

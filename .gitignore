@@ -2,6 +2,9 @@
 
 # Generated outputs
 /artifacts/
+/hulk
+/output
+temp.ll
 *.vsix
 
 # Local playground inputs/samples

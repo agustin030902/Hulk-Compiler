@@ -11,8 +11,12 @@ pub(in crate::codegen::llvm) enum ValueType {
     StringPtr,
     Unit,
     Null,
-    Function,
+    /// Valor función (closure); el u32 es el TypeId semántico de la firma.
+    Function(u32),
     Struct(u32),
+    /// Arreglo `T[]`; el u32 es el TypeId semántico de la entrada Array,
+    /// el backend guarda el ValueType del elemento en `array_elems`.
+    Array(u32),
 }
 
 impl ValueType {
@@ -23,8 +27,9 @@ impl ValueType {
             ValueType::StringPtr => "i8*",
             ValueType::Unit => "i8",
             ValueType::Null => "i8*",
-            ValueType::Function => "i8*",
+            ValueType::Function(_) => "i8*",
             ValueType::Struct(_) => "i8*",
+            ValueType::Array(_) => "i8*",
         }
     }
 
@@ -35,8 +40,9 @@ impl ValueType {
             ValueType::StringPtr => "String",
             ValueType::Unit => "Unit",
             ValueType::Null => "Null",
-            ValueType::Function => "Function",
+            ValueType::Function(_) => "Function",
             ValueType::Struct(_) => "Struct",
+            ValueType::Array(_) => "Array",
         }
     }
 }

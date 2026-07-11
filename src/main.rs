@@ -1,13 +1,6 @@
-mod compiler;
-mod error;
-mod codegen;
-mod lexer;
-mod parser;
-mod semantic;
-
 use std::{env, fs, path::PathBuf, process::Command};
 
-use compiler::{Compiler, CompileOptions};
+use hulk_compiler::compiler::{Compiler, CompileOptions};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -69,20 +62,29 @@ fn main() {
     };
 
     // Archivo temporal con el LLVM IR
-    fs::write("temp.ll", ir)
-        .expect("failed to write temporary LLVM IR");
+    if let Err(e) = fs::write("temp.ll", ir) {
+        eprintln!("(0,0) SEMANTIC: failed to write temporary LLVM IR: {}", e);
+        std::process::exit(3);
+    }
 
     // Generar ejecutable final requerido por el contrato
-    let status = Command::new("clang")
-    .args([
-        "-Wno-override-module",
-        "temp.ll",
-        "-lm",
-        "-o",
-        "output",
-    ])
-    .status()
-    .expect("failed to run clang");
+    let status = match Command::new("clang")
+        .args([
+            "-Wno-override-module",
+            "temp.ll",
+            "-lm",
+            "-o",
+            "output",
+        ])
+        .status()
+    {
+        Ok(status) => status,
+        Err(e) => {
+            let _ = fs::remove_file("temp.ll");
+            eprintln!("(0,0) SEMANTIC: failed to run clang: {}", e);
+            std::process::exit(3);
+        }
+    };
 
     // Limpiar archivo temporal
     let _ = fs::remove_file("temp.ll");

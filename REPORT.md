@@ -43,6 +43,8 @@ El proyecto se organiza en siete módulos principales dentro de `src/`, cada uno
 - `compiler/`: Orquestación del pipeline completo.
 - `error/`: Definición unificada de errores del compilador.
 
+El núcleo se expone como librería (`src/lib.rs`, crate `hulk_compiler`) compartida por los dos binarios: el compilador de línea de comandos (`src/main.rs`) y la GUI (`src/bin/gui/`, organizada a su vez en módulos: `app` para el estado y los paneles, `theme` para las paletas seleccionables, `highlight` para el resaltado usando el lexer real, `ast_view` para el árbol interactivo del AST y `runner` para la ejecución del IR).
+
 La separación en módulos refleja fielmente la arquitectura por capas. Cada módulo define una interfaz pública clara y oculta los detalles internos. Esto hizo posible, por ejemplo, reemplazar el backend de generación de código sin afectar al resto del compilador.
 
 ### 2.3 ¿Por qué Rust?
@@ -391,7 +393,7 @@ Nuestra solución es la **cascada por type tag**:
 
 Elegimos la cascada por simplicidad de implementación. En un compilador académico, la claridad del código del compilador es más importante que la eficiencia del código generado. Además, la cascada es más fácil de entender y depurar que las vtables o la monomorfización.
 
-**Una limitación importante**: Actualmente, la cascada no maneja correctamente la herencia de implementaciones. Si `DogWalker` extiende `WalkerBase`, y alguien llama a `walk()` a través de la interfaz en un `DogWalker` concreto, la cascada busca el método en `DogWalker`. Pero si `DogWalker` no implementa `walk()` (lo hereda de `WalkerBase`), la cascada no encontrará el método y llamará al stub de la interfaz, que probablemente no haga lo correcto. Esto es un bug conocido que requiere refactorización del sistema de dispatch.
+**Herencia de implementaciones (resuelto)**: Una versión anterior de la cascada buscaba el método solo en el HashMap directo del tipo concreto, de modo que si `DogWalker` heredaba `walk()` de `WalkerBase` sin sobrescribirlo, el dispatch no lo encontraba. Actualmente el backend mantiene un mapa `type_parents` extraído del `TypeTable` semántico (que cubre tipos, interfaces declaradas, builtin y las splat sintetizadas), y `lookup_method_key` sube por esa jerarquía hasta encontrar la implementación heredada. La cascada genera una rama por cada tipo concreto aunque el método provenga de un ancestro, y la rama default —inalcanzable en programas bien tipados— produce el valor por defecto del tipo de retorno en vez de llamar a un stub que podría no existir para interfaces sintetizadas.
 
 ### 6.5 Generación del bucle `for`: del AST a LLVM
 
@@ -829,13 +831,31 @@ Las funciones matemáticas (`sin`, `cos`, `sqrt`, `exp`) se traducen directament
 
 - Números: `%g` (notación general de punto flotante).
 - Strings: `%s`.
-- Booleanos: `%d` (0/1). Los booleanos se imprimen como enteros 0 o 1, no como "true"/"false". Aunque se definieron constantes `@.bool.true` y `@.bool.false` en el IR, actualmente no se usan en la impresión.
+- Booleanos: `%d` (0/1). Los booleanos se imprimen como enteros 0 o 1, no como "true"/"false". (Las constantes `@.bool.true`/`@.bool.false` que existían sin uso en el preámbulo del IR fueron eliminadas.)
 
 `rand` usa la función `rand()` de C, normalizando el resultado al intervalo [0, 1).
 
 **¿Por qué no construir una biblioteca estándar más grande?** Porque el proyecto se enfoca en el compilador, no en la biblioteca. Las funciones built-in son las mínimas necesarias para que el lenguaje sea usable.
 
 ---
+
+### 7.7 Macros, Arreglos y Lambdas
+
+Estas tres características se añadieron sobre el pipeline existente sin alterar su arquitectura de fases.
+
+#### 7.7.1 Macros (`define`)
+
+Una macro se declara como una función (`define doble(x: Number): Number -> x * 2;` o con cuerpo de bloque) pero **no se compila**: se expande por sustitución textual (call-by-name) a nivel de AST, en un paso que corre entre el parser y el análisis semántico (`src/parser/macro_expander.rs`). Cada ocurrencia de un parámetro se reemplaza por la expresión del argumento sin evaluarla, de modo que `repeat(5, count := count + 1)` re-evalúa el argumento en cada iteración del cuerpo — semántica imposible con una función call-by-value. La higiene se garantiza renombrando a nombres frescos toda variable ligada dentro del cuerpo (let-in, lets de bloque, variables de `for` y parámetros de lambdas), evitando capturas con el sitio de llamada. Las macros pueden llamar a otras macros; la expansión itera con un límite de profundidad (64) que convierte la recursión infinita en error semántico. Como la expansión ocurre antes de la semántica, las fases posteriores ven HULK plano y no necesitan cambios.
+
+#### 7.7.2 Arreglos
+
+Los arreglos son un tipo estructural internado en el `TypeTable` (`TypeInfo::Array { elem }` / `SemanticType::Array`): dos anotaciones `Number[]` comparten el mismo `TypeId`, así que la igualdad de tipos de arreglo es estructural por construcción. Las anotaciones `Number[]` y `Number[][]` se codifican como sufijos en el nombre y las interpreta el `TypeResolver`. Se soportan literales `{10, 20, 30}` (dos o más elementos, para no chocar con la sintaxis de bloques), `new Number[n]` (inicializado a ceros vía `calloc`), `new Number[n]{ i -> expr }` (inicializador por índice compilado a un bucle), arreglos anidados `new Number[][n]`, indexación `a[i]` (también como objetivo de `:=`) y el método intrínseco `a.size()`. La representación en runtime es un bloque de heap `[i64 longitud][elem0][elem1]…` con 8 bytes por elemento (double o puntero); `size()` lee la cabecera.
+
+#### 7.7.3 Lambdas y tipos función
+
+Las lambdas (`function (x: Number): Number -> x * 2`) son closures reales: cada una se eleva a una función LLVM `@hulk_lambda_N(i8* %__env, …)` y su valor en runtime es un puntero a `[fnptr][captura0][captura1]…`. Las variables libres del cuerpo se capturan **por valor** en el momento de creación (recolección de variables libres sobre el AST en `codegen/llvm/backend/emit/expr/lambda.rs`), lo que permite `make_adder(n)` y composición de closures que capturan otros closures. Los tipos función se anotan como `(Number) -> Number` (codificados canónicamente e internados estructuralmente en el `TypeTable` con `function_type_of`, de modo que firmas iguales son el mismo tipo aunque provengan de anotaciones distintas). Llamar `f(x)` donde `f` es una variable de tipo función carga el fnptr de la cabecera del closure y lo invoca pasando el closure como entorno; las variables locales tienen prioridad sobre las funciones globales homónimas.
+
+**Nota gramatical**: la lambda vive en `FlowAtom` (junto a `if`/`while`/`let-in`), no en `PrimaryAtom`. Su cuerpo es greedy (consume la expresión más larga posible), así que permitirla como operando izquierdo de un operador binario haría la gramática ambigua para LALRPOP: `function(…) -> a < b` podría leerse como `(lambda a) < b` o como lambda con cuerpo `a < b`. Al colocarla al final de la cadena abierta de expresiones —el mismo tratamiento que ya recibía `let-in`— la ambigüedad desaparece sin tocar el resto de la gramática.
 
 ## 8. Limitaciones del Proyecto
 
@@ -869,7 +889,7 @@ Las funciones matemáticas (`sin`, `cos`, `sqrt`, `exp`) se traducen directament
 
 **Strings ineficientes**: La concatenación con `@` usa `asprintf`, que asigna memoria en cada operación. No hay string builder ni optimización de concatenaciones en cadena.
 
-**Pruebas incompletas**: Aunque hay ~120 archivos de ejemplo en `examples/` y más de 100 pruebas unitarias en el código fuente, no cubren todos los casos borde (ej: herencia profunda, dispatch con herencia de implementaciones, muchos tipos implementando una interfaz, varianza con tipos diferentes).
+**Pruebas incompletas**: Aunque hay ~120 archivos de ejemplo en `examples/` y más de 100 pruebas unitarias en el código fuente, no cubren todos los casos borde (ej: herencia profunda, muchos tipos implementando una interfaz, varianza con tipos diferentes).
 
 ## 9. Conclusiones y Trabajo Futuro
 

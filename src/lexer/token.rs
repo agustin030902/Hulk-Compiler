@@ -6,6 +6,7 @@ pub enum TokenKind {
     Boolean(String),
     Let,
     Function,
+    Define,
     Type,
     Interface,
     Extends,
@@ -26,6 +27,7 @@ pub enum TokenKind {
     Null,
     Assign,
     Arrow,
+    ThinArrow,
     Add,
     Power,
     Concat,
@@ -51,6 +53,8 @@ pub enum TokenKind {
     RightBrace,
     LeftParen,
     RightParen,
+    LeftBracket,
+    RightBracket,
     Dot,
     Unknown,
     EOF,
@@ -70,10 +74,4 @@ pub struct Token {
     pub column: usize,
     pub start: usize,
     pub end: usize,
-}
-
-impl Token {
-    pub fn kind(&self) -> &TokenKind {
-        &self.kind
-    }
 }

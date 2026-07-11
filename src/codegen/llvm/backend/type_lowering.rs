@@ -15,8 +15,9 @@ impl LlvmBackend {
             SemanticType::String => ValueType::StringPtr,
             SemanticType::Unit => ValueType::Unit,
             SemanticType::Null => ValueType::Null,
-            SemanticType::Function(_) => ValueType::Function,
+            SemanticType::Function(type_id) => ValueType::Function(type_id),
             SemanticType::Struct(type_id) => ValueType::Struct(type_id),
+            SemanticType::Array(type_id) => ValueType::Array(type_id),
             SemanticType::Unknown => {
                 self.semantic_error(format!(
                     "Could not infer a concrete type for {context} before code generation."
@@ -26,6 +27,25 @@ impl LlvmBackend {
         };
 
         Some(lowered)
+    }
+
+    /// Variante silenciosa de `lower_semantic_type`: devuelve None ante un
+    /// tipo desconocido sin registrar error (para entradas de tabla que no
+    /// participan en la generación, p. ej. firmas parcialmente inferidas).
+    pub(in crate::codegen::llvm) fn lower_semantic_type_quiet(
+        semantic_type: SemanticType,
+    ) -> Option<ValueType> {
+        Some(match semantic_type {
+            SemanticType::Number => ValueType::Double,
+            SemanticType::Boolean => ValueType::Bool,
+            SemanticType::String => ValueType::StringPtr,
+            SemanticType::Unit => ValueType::Unit,
+            SemanticType::Null => ValueType::Null,
+            SemanticType::Function(type_id) => ValueType::Function(type_id),
+            SemanticType::Struct(type_id) => ValueType::Struct(type_id),
+            SemanticType::Array(type_id) => ValueType::Array(type_id),
+            SemanticType::Unknown => return None,
+        })
     }
 
     pub(in crate::codegen::llvm) fn semantic_type_from_type_id(
@@ -42,6 +62,7 @@ impl LlvmBackend {
             TypeInfo::Unknown => SemanticType::Unknown,
             TypeInfo::Function(_) => SemanticType::Function(type_id.0),
             TypeInfo::Type(_) => SemanticType::Struct(type_id.0),
+            TypeInfo::Array { .. } => SemanticType::Array(type_id.0),
         }
     }
 
@@ -61,9 +82,11 @@ impl LlvmBackend {
         match value_type {
             ValueType::Double => (8, 8),
             ValueType::Bool => (1, 1),
-            ValueType::StringPtr | ValueType::Null | ValueType::Function | ValueType::Struct(_) => {
-                (8, 8)
-            }
+            ValueType::StringPtr
+            | ValueType::Null
+            | ValueType::Function(_)
+            | ValueType::Struct(_)
+            | ValueType::Array(_) => (8, 8),
             ValueType::Unit => (1, 1),
         }
     }

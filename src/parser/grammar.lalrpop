@@ -1,8 +1,9 @@
 use crate::lexer::TokenKind;
 use crate::parser::expression::{
-    AsExpr, AssignTarget, BaseCallExpr, BinaryExpr, BinaryOp, BlockExpr, BuiltinCallExpr, BuiltinFunction,
-    DestructiveAssignExpr, ElifBranch, Expr, ForExpr, FunctionCallExpr, FunctionDecl, FunctionParam, IfExpr,
-    IsExpr, LetBinding, LetInExpr, Literal, MemberAccessExpr, MethodCallExpr, MethodDecl, NewExpr,
+    ArrayInit, ArrayLiteralExpr, AsExpr, AssignTarget, BaseCallExpr, BinaryExpr, BinaryOp, BlockExpr,
+    BuiltinCallExpr, BuiltinFunction, DestructiveAssignExpr, ElifBranch, Expr, ForExpr, FunctionCallExpr,
+    FunctionDecl, FunctionParam, IfExpr, IndexExpr, IsExpr, LambdaExpr, LetBinding, LetInExpr, Literal, MacroDecl,
+    MemberAccessExpr, MethodCallExpr, MethodDecl, NewArrayExpr, NewExpr,
     Program, ProgramItem, InterfaceDecl, InterfaceMethodDecl, Span, Statement, TypeAnnotation,
     TypeAttribute, TypeDecl, TypeMemberDecl, TypeParam, UnaryExpr, UnaryOp, WhileExpr,
 };
@@ -16,6 +17,7 @@ extern {
     enum TokenKind {
         "let" => TokenKind::Let,
         "function" => TokenKind::Function,
+        "define" => TokenKind::Define,
         "type" => TokenKind::Type,
         "protocol" => TokenKind::Interface,
         "extends" => TokenKind::Extends,
@@ -43,6 +45,7 @@ extern {
         ":=" => TokenKind::DestructiveAssign,
         ":" => TokenKind::Colon,
         "=>" => TokenKind::Arrow,
+        "->" => TokenKind::ThinArrow,
         "=" => TokenKind::Assign,
         "+" => TokenKind::Add,
         "^" => TokenKind::Power,
@@ -65,6 +68,8 @@ extern {
         ";" => TokenKind::Semicolon,
         "(" => TokenKind::LeftParen,
         ")" => TokenKind::RightParen,
+        "[" => TokenKind::LeftBracket,
+        "]" => TokenKind::RightBracket,
         "." => TokenKind::Dot,
         "{" => TokenKind::LeftBrace,
         "}" => TokenKind::RightBrace,
@@ -82,17 +87,20 @@ pub Program: Program = {
         let mut interfaces = Vec::new();
         let mut types = Vec::new();
         let mut functions = Vec::new();
+        let mut macros = Vec::new();
         for item in items {
             match item {
                 ProgramItem::Interface(p) => interfaces.push(p),
                 ProgramItem::Type(t) => types.push(t),
                 ProgramItem::Function(f) => functions.push(f),
+                ProgramItem::Macro(m) => macros.push(m),
             }
         }
         Program {
             types,
             interfaces,
             functions,
+            macros,
             statements,
         }
     },
@@ -102,6 +110,28 @@ Declaration: ProgramItem = {
     <p:InterfaceDecl> => ProgramItem::Interface(p),
     <t:TypeDecl> => ProgramItem::Type(t),
     <f:FunctionDecl> => ProgramItem::Function(f),
+    <m:MacroDecl> => ProgramItem::Macro(m),
+};
+
+MacroDecl: MacroDecl = {
+    <l:@L> "define" <id:IdentifierWithSpan> "(" <params:FunctionParams> ")" <return_annotation:OptionalTypeAnnotation> "->" <body:Expr> ";" <r:@R> => MacroDecl {
+        name: id.0,
+        name_span: id.1,
+        params,
+        return_type_annotation: return_annotation,
+        body,
+        span: Span::new(l, r),
+    },
+    <l:@L> "define" <id:IdentifierWithSpan> "(" <params:FunctionParams> ")" <return_annotation:OptionalTypeAnnotation> <body:BlockExpr> <r:@R> => {
+        MacroDecl {
+            name: id.0,
+            name_span: id.1,
+            params,
+            return_type_annotation: return_annotation,
+            body,
+            span: Span::new(l, r),
+        }
+    },
 };
 
 InterfaceDecl: InterfaceDecl = {
@@ -148,10 +178,33 @@ RequiredTypeAnnotation: TypeAnnotation = {
         span: Span::new(l, r),
         is_splat: true,
     },
-    <l:@L> <name:"identifier"> <r:@R> => TypeAnnotation {
-        name,
+    <l:@L> <name:"identifier"> <dims:ArrayDim*> <r:@R> => TypeAnnotation {
+        name: format!("{}{}", name, "[]".repeat(dims.len())),
         span: Span::new(l, r),
         is_splat: false,
+    },
+};
+
+// Sufijo de dimensión en anotaciones de tipo: `Number[]`, `Number[][]`.
+// Las dimensiones se codifican en el nombre y el TypeResolver las interpreta.
+ArrayDim: () = {
+    "[" "]" => (),
+};
+
+// Nombre de tipo dentro de anotaciones compuestas: identifica primitivos,
+// tipos de usuario, arreglos y tipos función anidados. Los tipos función se
+// codifican como texto canónico `(A,B)->C`, que el TypeResolver interpreta.
+TypeName: String = {
+    <name:"identifier"> <dims:ArrayDim*> => format!("{}{}", name, "[]".repeat(dims.len())),
+    <f:FunctionTypeName> => f,
+};
+
+FunctionTypeName: String = {
+    "(" ")" "->" <ret:TypeName> => format!("()->{}", ret),
+    "(" <first:TypeName> <rest:("," <TypeName>)*> ")" "->" <ret:TypeName> => {
+        let mut params = vec![first];
+        params.extend(rest);
+        format!("({})->{}", params.join(","), ret)
     },
 };
 
@@ -376,12 +429,17 @@ FlowAtom: Expr = {
     WhileExpr,
     ForExpr,
     LetIn,
+    // La lambda vive aquí (no en PrimaryAtom): su cuerpo es greedy, así que
+    // —igual que let-in— solo puede cerrar una cadena de operadores, nunca
+    // ser operando izquierdo. Eso elimina la ambigüedad de colgado.
+    LambdaExpr,
 };
 
 BindingValue: Expr = {
     IfExpr,
     WhileExpr,
     ForExpr,
+    LambdaExpr,
     Assignment,
 };
 
@@ -419,7 +477,12 @@ OptionalTypeAnnotation: Option<TypeAnnotation> = {
         span: Span::new(l, r),
         is_splat: true,
     }),
-    <l:@L> ":" <name:"identifier"> <r:@R> => Some(TypeAnnotation {
+    <l:@L> ":" <name:"identifier"> <dims:ArrayDim*> <r:@R> => Some(TypeAnnotation {
+        name: format!("{}{}", name, "[]".repeat(dims.len())),
+        span: Span::new(l, r),
+        is_splat: false,
+    }),
+    <l:@L> ":" <name:FunctionTypeName> <r:@R> => Some(TypeAnnotation {
         name,
         span: Span::new(l, r),
         is_splat: false,
@@ -440,9 +503,14 @@ Assignment: Expr = {
                 member_span: access.member_span,
                 span: access.span,
             },
+            Expr::Index(index) => AssignTarget::Index {
+                object: index.object,
+                index: index.index,
+                span: index.span,
+            },
             _ => {
                 return Err(lalrpop_util::ParseError::User {
-                    error: "Invalid assignment target for ':='. Expected a variable or member access.".to_string(),
+                    error: "Invalid assignment target for ':='. Expected a variable, member access or index.".to_string(),
                 });
             }
         };
@@ -758,7 +826,21 @@ PowTail: Expr = {
 
 Primary: Expr = {
     BlockExpr,
+    ArrayLiteralExpr,
     PostfixExpr,
+};
+
+// Literal de arreglo `{a, b, ...}`: requiere al menos dos elementos para
+// distinguirse de un bloque `{ expr }` con una sola sentencia.
+ArrayLiteralExpr: Expr = {
+    <l:@L> "{" <first:Expr> <rest:("," <Expr>)+> "}" <r:@R> => {
+        let mut elements = vec![first];
+        elements.extend(rest);
+        Expr::ArrayLiteral(ArrayLiteralExpr {
+            elements,
+            span: Span::new(l, r),
+        })
+    },
 };
 
 PostfixExpr: Expr = {
@@ -775,6 +857,11 @@ PostfixExpr: Expr = {
         member_span: id.1,
         span: Span::new(l, r),
     }),
+    <l:@L> <object:PostfixExpr> "[" <index:Expr> "]" <r:@R> => Expr::Index(IndexExpr {
+        object: Box::new(object),
+        index: Box::new(index),
+        span: Span::new(l, r),
+    }),
     PrimaryAtom,
 };
 
@@ -785,6 +872,17 @@ PrimaryAtom: Expr = {
     <literal:LiteralExpr> => literal,
     <variable:VariableExpr> => variable,
     "(" <expr:Expr> ")" => expr,
+};
+
+// Lambda: `function (x: Number): Number -> cuerpo`. El cuerpo se extiende
+// tanto como sea posible (hasta `,`, `)` o `;` según el contexto).
+LambdaExpr: Expr = {
+    <l:@L> "function" "(" <params:FunctionParams> ")" <return_annotation:OptionalTypeAnnotation> "->" <body:Expr> <r:@R> => Expr::Lambda(LambdaExpr {
+        params,
+        return_type_annotation: return_annotation,
+        body: Box::new(body),
+        span: Span::new(l, r),
+    }),
 };
 
 FunctionCallExpr: Expr = {
@@ -812,6 +910,24 @@ NewExpr: Expr = {
         args,
         span: Span::new(l, r),
     }),
+    // `new Number[n]`, `new Number[][n]`, `new Number[n]{ i -> expr }`.
+    // Las dimensiones interiores (`[]` antes del tamaño) se acumulan en el
+    // nombre del tipo de elemento: `new Number[][3]` crea 3 `Number[]`.
+    <l:@L> "new" <id:IdentifierWithSpan> <dims:ArrayDim*> "[" <size:Expr> "]" <init:ArrayInitSuffix?> <r:@R> => Expr::NewArray(NewArrayExpr {
+        elem_type_name: format!("{}{}", id.0, "[]".repeat(dims.len())),
+        elem_type_span: id.1,
+        size: Box::new(size),
+        init,
+        span: Span::new(l, r),
+    }),
+};
+
+ArrayInitSuffix: ArrayInit = {
+    "{" <id:IdentifierWithSpan> "->" <body:Expr> "}" => ArrayInit {
+        var_name: id.0,
+        var_span: id.1,
+        body: Box::new(body),
+    },
 };
 
 CallArgs: Vec<Expr> = {

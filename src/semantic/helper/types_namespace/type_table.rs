@@ -95,6 +95,71 @@ impl TypeTable {
         id
     }
 
+    /// Interna un tipo función estructural `(params) -> ret` (sin receptor).
+    /// Dos anotaciones `(Number)->Number` comparten el mismo TypeId.
+    pub fn function_type_of(&mut self, params: Vec<TypeId>, return_type: TypeId) -> TypeId {
+        for (index, info) in self.types.iter().enumerate() {
+            if let TypeInfo::Function(existing) = info {
+                if existing.receiver.is_none()
+                    && existing.params == params
+                    && existing.return_type == return_type
+                {
+                    return TypeId(index as u32);
+                }
+            }
+        }
+        self.register_plain_function(params, return_type)
+    }
+
+    /// Todas las entradas de tipo función sin receptor: (id, params, retorno).
+    pub fn plain_function_entries(&self) -> Vec<(TypeId, Vec<TypeId>, TypeId)> {
+        self.types
+            .iter()
+            .enumerate()
+            .filter_map(|(index, info)| match info {
+                TypeInfo::Function(f) if f.receiver.is_none() => {
+                    Some((TypeId(index as u32), f.params.clone(), f.return_type))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Interna el tipo de arreglo `elem[]`: si ya existe una entrada con el
+    /// mismo tipo de elemento la reutiliza, de modo que dos `Number[]` sean
+    /// el mismo TypeId (la igualdad de tipos de arreglo es estructural).
+    pub fn array_of(&mut self, elem: TypeId) -> TypeId {
+        for (index, info) in self.types.iter().enumerate() {
+            if let TypeInfo::Array { elem: existing } = info {
+                if *existing == elem {
+                    return TypeId(index as u32);
+                }
+            }
+        }
+        let id = TypeId(self.types.len() as u32);
+        self.types.push(TypeInfo::Array { elem });
+        id
+    }
+
+    pub fn get_array_elem(&self, id: TypeId) -> Option<TypeId> {
+        match self.get(id) {
+            TypeInfo::Array { elem } => Some(*elem),
+            _ => None,
+        }
+    }
+
+    /// Todas las entradas de arreglo registradas: (id del arreglo, id del elemento).
+    pub fn array_entries(&self) -> Vec<(TypeId, TypeId)> {
+        self.types
+            .iter()
+            .enumerate()
+            .filter_map(|(index, info)| match info {
+                TypeInfo::Array { elem } => Some((TypeId(index as u32), *elem)),
+                _ => None,
+            })
+            .collect()
+    }
+
     pub fn register_plain_function(&mut self, params: Vec<TypeId>, return_type: TypeId) -> TypeId {
         self.register_function(FunctionTypeInfo::new_function(params, return_type))
     }
@@ -144,12 +209,15 @@ impl TypeTable {
         }
     }
 
+    // Wrappers usados por la suite de tests.
+    #[allow(dead_code)]
     pub fn is_method(&self, id: TypeId) -> bool {
         self.get_function(id)
             .map(FunctionTypeInfo::is_method)
             .unwrap_or(false)
     }
 
+    #[allow(dead_code)]
     pub fn is_function(&self, id: TypeId) -> bool {
         self.get_function(id)
             .map(FunctionTypeInfo::is_function)

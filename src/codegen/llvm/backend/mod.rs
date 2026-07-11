@@ -27,6 +27,14 @@ pub struct LlvmBackend {
     pub(super) type_decls: HashMap<String, TypeDecl>,
     pub(super) struct_layouts: HashMap<u32, StructLayout>,
     pub(super) method_dispatch: HashMap<(u32, String), String>,
+    // Jerarquía completa (tipos e interfaces, incluidas las splat sintetizadas)
+    // extraída del TypeTable semántico; type_decls solo cubre tipos del AST.
+    pub(super) type_parents: HashMap<u32, u32>,
+    // TypeId semántico del arreglo → ValueType de sus elementos.
+    pub(super) array_elems: HashMap<u32, ValueType>,
+    // TypeId semántico de firma función → (params, retorno) para closures.
+    pub(super) function_types: HashMap<u32, (Vec<ValueType>, ValueType)>,
+    pub(super) lambda_counter: usize,
     pub(super) interface_real_types: HashMap<String, u32>,
     pub(super) param_real_types: HashMap<String, u32>,
     pub(super) temp_counter: usize,
@@ -54,6 +62,10 @@ impl LlvmBackend {
         self.type_decls.clear();
         self.struct_layouts.clear();
         self.method_dispatch.clear();
+        self.type_parents.clear();
+        self.array_elems.clear();
+        self.function_types.clear();
+        self.lambda_counter = 0;
         self.interface_real_types.clear();
         self.param_real_types.clear();
         self.temp_counter = 0;
@@ -199,8 +211,9 @@ impl LlvmBackend {
             value_type,
             super::helper::state::ValueType::Null
                 | super::helper::state::ValueType::StringPtr
-                | super::helper::state::ValueType::Function
+                | super::helper::state::ValueType::Function(_)
                 | super::helper::state::ValueType::Struct(_)
+                | super::helper::state::ValueType::Array(_)
         )
     }
 
@@ -230,6 +243,48 @@ impl LlvmBackend {
                 super::helper::state::ValueType::Struct(parent),
                 super::helper::state::ValueType::Struct(child),
             ) => self.is_subtype_struct(child, parent),
+            // Tipos función: igualdad estructural de firmas — entradas
+            // internadas distintas con la misma forma son el mismo tipo.
+            (
+                super::helper::state::ValueType::Function(left),
+                super::helper::state::ValueType::Function(right),
+            ) => self.function_types_equal(left, right),
+            _ => false,
+        }
+    }
+
+    pub(super) fn function_types_equal(&self, left: u32, right: u32) -> bool {
+        if left == right {
+            return true;
+        }
+        let (Some((params_a, ret_a)), Some((params_b, ret_b))) = (
+            self.function_types.get(&left),
+            self.function_types.get(&right),
+        ) else {
+            return false;
+        };
+        if params_a.len() != params_b.len() {
+            return false;
+        }
+        params_a
+            .iter()
+            .zip(params_b.iter())
+            .all(|(x, y)| self.value_types_structurally_equal(*x, *y))
+            && self.value_types_structurally_equal(*ret_a, *ret_b)
+    }
+
+    fn value_types_structurally_equal(&self, left: ValueType, right: ValueType) -> bool {
+        if left == right {
+            return true;
+        }
+        match (left, right) {
+            (ValueType::Function(a), ValueType::Function(b)) => self.function_types_equal(a, b),
+            (ValueType::Array(a), ValueType::Array(b)) => {
+                match (self.array_elems.get(&a), self.array_elems.get(&b)) {
+                    (Some(x), Some(y)) => self.value_types_structurally_equal(*x, *y),
+                    _ => false,
+                }
+            }
             _ => false,
         }
     }
@@ -271,24 +326,12 @@ impl LlvmBackend {
             return true;
         }
 
-        let mut cursor = self
-            .type_ids
-            .iter()
-            .find_map(|(name, type_id)| (*type_id == child).then_some(name.as_str()))
-            .and_then(|name| self.type_decls.get(name))
-            .and_then(|decl| decl.parent_name.clone());
-
-        while let Some(parent_name) = cursor {
-            let Some(parent_id) = self.type_ids.get(&parent_name).copied() else {
-                return false;
-            };
+        let mut cursor = self.type_parents.get(&child).copied();
+        while let Some(parent_id) = cursor {
             if parent_id == parent {
                 return true;
             }
-            cursor = self
-                .type_decls
-                .get(&parent_name)
-                .and_then(|decl| decl.parent_name.clone());
+            cursor = self.type_parents.get(&parent_id).copied();
         }
 
         false
@@ -331,6 +374,14 @@ impl LlvmBackend {
                         parent_entries[*type_id as usize] = parent_id.to_string();
                     }
                 }
+            }
+        }
+
+        // Completar con la jerarquía semántica (interfaces declaradas, builtin
+        // y splat sintetizadas) para que `is` funcione también sobre ellas.
+        for (child, parent) in &self.type_parents {
+            if (*child as usize) < parent_entries.len() && parent_entries[*child as usize] == "-1" {
+                parent_entries[*child as usize] = parent.to_string();
             }
         }
 

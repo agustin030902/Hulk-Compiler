@@ -133,6 +133,57 @@ impl<'a> TypeChecker<'a> {
                     Some(value_type)
                 }
             }
+            AssignTarget::Index { object, index, .. } => {
+                let object_type = self.check_expr(object, source)?;
+
+                let index_type = self
+                    .check_expr(index, source)
+                    .unwrap_or(SemanticType::Unknown);
+                if index_type != SemanticType::Unknown && index_type != SemanticType::Number {
+                    self.analyzer.push_type_error(
+                        index.span(),
+                        source,
+                        format!(
+                            "Array index must be a Number, but got {}.",
+                            index_type.display_name_with_table(&self.analyzer.type_table)
+                        ),
+                    );
+                }
+
+                let Some(elem_type) = Self::array_element_type(self.analyzer, object_type)
+                else {
+                    if object_type != SemanticType::Unknown {
+                        self.analyzer.push_type_error(
+                            object.span(),
+                            source,
+                            format!(
+                                "Indexed assignment requires an array, but got {}.",
+                                object_type.display_name_with_table(&self.analyzer.type_table)
+                            ),
+                        );
+                    }
+                    return None;
+                };
+
+                let value_type = self.check_expr(&assign.value, source)?;
+                if elem_type != SemanticType::Unknown
+                    && value_type != SemanticType::Unknown
+                    && !self.types_compatible(elem_type, value_type)
+                {
+                    self.analyzer.push_type_error(
+                        assign.span,
+                        source,
+                        format!(
+                            "Indexed assignment ':=' requires element type {}, but expression is {}.",
+                            elem_type.display_name_with_table(&self.analyzer.type_table),
+                            value_type.display_name_with_table(&self.analyzer.type_table)
+                        ),
+                    );
+                    return None;
+                }
+
+                Some(elem_type)
+            }
         }
     }
 }

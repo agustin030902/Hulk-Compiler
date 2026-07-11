@@ -6,6 +6,12 @@ impl<'a> TypeChecker<'a> {
         call: &FunctionCallExpr,
         source: &str,
     ) -> Option<SemanticType> {
+        // Una variable local con tipo función (lambda o parámetro función)
+        // tiene prioridad sobre las funciones globales: `f(x)` con `f` ligada.
+        if let Some(SemanticType::Function(function_raw)) = self.analyzer.lookup(&call.name) {
+            return self.check_function_value_call(call, TypeId(function_raw), source);
+        }
+
         let Some(symbol) = self.analyzer.function_symbols.get(&call.name).cloned() else {
             self.analyzer.push_semantic_error(
                 call.name_span,
@@ -175,5 +181,66 @@ impl<'a> TypeChecker<'a> {
                 .map(|entry| entry.return_type)
                 .unwrap_or(SemanticType::Unknown),
         )
+    }
+
+    /// Llamada a un valor función (variable ligada a una lambda o parámetro
+    /// de tipo función): valida aridad y tipos contra la firma estructural.
+    fn check_function_value_call(
+        &mut self,
+        call: &FunctionCallExpr,
+        function_id: TypeId,
+        source: &str,
+    ) -> Option<SemanticType> {
+        let Some(info) = self.analyzer.type_table.get_function(function_id).cloned() else {
+            self.analyzer.push_semantic_error(
+                call.name_span,
+                source,
+                format!("'{}' is not callable.", call.name),
+            );
+            return None;
+        };
+
+        if info.params.len() != call.args.len() {
+            self.analyzer.push_semantic_error(
+                call.span,
+                source,
+                format!(
+                    "Function value '{}' expects {} argument(s), but got {}.",
+                    call.name,
+                    info.params.len(),
+                    call.args.len()
+                ),
+            );
+            return None;
+        }
+
+        for (index, (arg, param_id)) in call.args.iter().zip(info.params.iter()).enumerate() {
+            let expected = TypeResolver::type_id_to_semantic_type(self.analyzer, *param_id);
+            let arg_type = self
+                .check_expr(arg, source)
+                .unwrap_or(SemanticType::Unknown);
+            if expected != SemanticType::Unknown
+                && arg_type != SemanticType::Unknown
+                && !self.types_compatible(expected, arg_type)
+            {
+                self.analyzer.push_type_error(
+                    arg.span(),
+                    source,
+                    format!(
+                        "Function value '{}' argument #{} expects {}, but got {}.",
+                        call.name,
+                        index + 1,
+                        expected.display_name_with_table(&self.analyzer.type_table),
+                        arg_type.display_name_with_table(&self.analyzer.type_table)
+                    ),
+                );
+                return None;
+            }
+        }
+
+        Some(TypeResolver::type_id_to_semantic_type(
+            self.analyzer,
+            info.return_type,
+        ))
     }
 }

@@ -11,6 +11,8 @@ pub enum TypeInfo {
     Unknown,
     Type(StructTypeInfo),
     Function(FunctionTypeInfo),
+    /// Arreglo homogéneo `T[]`; `elem` es el tipo de los elementos.
+    Array { elem: TypeId },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,6 +53,7 @@ impl FunctionTypeInfo {
         self.receiver.is_some()
     }
 
+    #[allow(dead_code)]
     pub const fn is_function(&self) -> bool {
         self.receiver.is_none()
     }

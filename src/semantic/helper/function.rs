@@ -42,6 +42,8 @@ impl FunctionSymbol {
         self.receiver.is_some()
     }
 
+    // Usado por la suite de tests.
+    #[allow(dead_code)]
     pub const fn is_function(&self) -> bool {
         self.receiver.is_none()
     }

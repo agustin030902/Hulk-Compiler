@@ -1,5 +1,5 @@
 use crate::parser::expression::{
-    FunctionDecl, FunctionParam, InterfaceDecl, Statement, TypeAnnotation, TypeDecl,
+    FunctionDecl, FunctionParam, InterfaceDecl, Statement, TypeDecl,
 };
 
 use super::super::{

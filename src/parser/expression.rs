@@ -15,6 +15,7 @@ pub struct Program {
     pub types: Vec<TypeDecl>,
     pub interfaces: Vec<InterfaceDecl>,
     pub functions: Vec<FunctionDecl>,
+    pub macros: Vec<MacroDecl>,
     pub statements: Vec<Statement>,
 }
 
@@ -23,6 +24,19 @@ pub enum ProgramItem {
     Interface(InterfaceDecl),
     Type(TypeDecl),
     Function(FunctionDecl),
+    Macro(MacroDecl),
+}
+
+/// Declaración `define`: se expande por sustitución (call-by-name) antes del
+/// análisis semántico, así que nunca llega a las fases posteriores.
+#[derive(Debug, Clone)]
+pub struct MacroDecl {
+    pub name: String,
+    pub name_span: Span,
+    pub params: Vec<FunctionParam>,
+    pub return_type_annotation: Option<TypeAnnotation>,
+    pub body: Expr,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -156,6 +170,10 @@ pub enum Expr {
     Is(IsExpr),
     As(AsExpr),
     BaseCall(BaseCallExpr),
+    ArrayLiteral(ArrayLiteralExpr),
+    NewArray(NewArrayExpr),
+    Index(IndexExpr),
+    Lambda(LambdaExpr),
     Literal { value: Literal, span: Span },
     Variable { name: String, span: Span },
 }
@@ -179,10 +197,59 @@ impl Expr {
             Expr::Is(is_expr) => is_expr.span,
             Expr::As(as_expr) => as_expr.span,
             Expr::BaseCall(call) => call.span,
+            Expr::ArrayLiteral(literal) => literal.span,
+            Expr::NewArray(new_array) => new_array.span,
+            Expr::Index(index) => index.span,
+            Expr::Lambda(lambda) => lambda.span,
             Expr::Literal { span, .. } => *span,
             Expr::Variable { span, .. } => *span,
         }
     }
+}
+
+/// Literal de arreglo: `{10, 20, 30}` (dos o más elementos, para no chocar
+/// con la sintaxis de bloques).
+#[derive(Debug, Clone)]
+pub struct ArrayLiteralExpr {
+    pub elements: Vec<Expr>,
+    pub span: Span,
+}
+
+/// `new Number[n]` (ceros por defecto), `new Number[n]{ i -> expr }`
+/// (inicializador por índice) y `new Number[][n]` (arreglo de arreglos).
+/// `elem_type_name` conserva los sufijos `[]` de las dimensiones interiores.
+#[derive(Debug, Clone)]
+pub struct NewArrayExpr {
+    pub elem_type_name: String,
+    pub elem_type_span: Span,
+    pub size: Box<Expr>,
+    pub init: Option<ArrayInit>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArrayInit {
+    pub var_name: String,
+    pub var_span: Span,
+    pub body: Box<Expr>,
+}
+
+/// Acceso indexado `a[i]`; también es un objetivo válido de `:=`.
+#[derive(Debug, Clone)]
+pub struct IndexExpr {
+    pub object: Box<Expr>,
+    pub index: Box<Expr>,
+    pub span: Span,
+}
+
+/// Lambda `function (x: Number): Number -> cuerpo`. Captura por valor las
+/// variables libres del cuerpo (closure real en codegen).
+#[derive(Debug, Clone)]
+pub struct LambdaExpr {
+    pub params: Vec<FunctionParam>,
+    pub return_type_annotation: Option<TypeAnnotation>,
+    pub body: Box<Expr>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -228,6 +295,11 @@ pub enum AssignTarget {
         member_span: Span,
         span: Span,
     },
+    Index {
+        object: Box<Expr>,
+        index: Box<Expr>,
+        span: Span,
+    },
 }
 
 impl AssignTarget {
@@ -235,6 +307,7 @@ impl AssignTarget {
         match self {
             AssignTarget::Variable { name_span, .. } => *name_span,
             AssignTarget::Member { span, .. } => *span,
+            AssignTarget::Index { span, .. } => *span,
         }
     }
 }

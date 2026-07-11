@@ -127,6 +127,14 @@ impl LlvmBackend {
         &mut self,
         call: &FunctionCallExpr,
     ) -> Option<ValueRef> {
+        // Una variable local de tipo función (closure) tiene prioridad sobre
+        // las funciones globales: `f(x)` con `f` ligada a una lambda.
+        if let Some(var_info) = self.lookup_var(&call.name) {
+            if let ValueType::Function(function_type_id) = var_info.value_type {
+                return self.emit_closure_call(&var_info, function_type_id, &call.args, &call.name);
+            }
+        }
+
         let Some(info) = self.functions.get(&call.name).cloned() else {
             self.semantic_error(format!("Function '{}' is not declared", call.name));
             return None;
@@ -223,6 +231,19 @@ impl LlvmBackend {
         call: &MethodCallExpr,
     ) -> Option<ValueRef> {
         let mut receiver = self.emit_expr(&call.receiver)?;
+
+        // Método intrínseco de arreglos: size(): Number.
+        if let ValueType::Array(_) = receiver.value_type {
+            if call.method_name == "size" && call.args.is_empty() {
+                return Some(self.emit_array_size(&receiver));
+            }
+            self.semantic_error(format!(
+                "Method '{}' is not declared for arrays. Only 'size' is available.",
+                call.method_name
+            ));
+            return None;
+        }
+
         let ValueType::Struct(type_id) = receiver.value_type else {
             self.semantic_error(format!(
                 "Method call expects a struct instance receiver, but got {}.",
@@ -358,10 +379,12 @@ impl LlvmBackend {
             return None;
         }
 
+        // lookup_method_key sube por la jerarquía: un tipo que hereda el
+        // método sin sobrescribirlo también recibe su rama de dispatch.
         let mut concrete_impls: Vec<(u32, String)> = self.type_ids.iter()
             .filter(|(name, _)| self.type_decls.contains_key(name.as_str()))
             .filter_map(|(_, tid)| {
-                self.method_dispatch.get(&(*tid, call.method_name.clone()))
+                self.lookup_method_key(*tid, &call.method_name)
                     .map(|key| (*tid, key.clone()))
             })
             .collect();
@@ -392,6 +415,10 @@ impl LlvmBackend {
         let done_label = self.next_label("dispatch.done");
         let default_label = self.next_label("dispatch.default");
         let mut branch_results: Vec<(String, String)> = Vec::new();
+
+        if concrete_impls.is_empty() {
+            self.emit_body(format!("br label %{default_label}"));
+        }
 
         for (i, (concrete_tid, method_key)) in concrete_impls.iter().enumerate() {
             let Some(concrete_info) = self.functions.get(method_key).cloned() else {
@@ -440,19 +467,18 @@ impl LlvmBackend {
             }
         }
 
+        // Rama default (inalcanzable en programas bien tipados): produce el
+        // valor por defecto del tipo de retorno en vez de llamar al stub de la
+        // interfaz, que no existe para interfaces builtin o sintetizadas.
         self.emit_body(format!("{default_label}:"));
         let default_result = if interface_info.return_type != ValueType::Unit {
-            let t = self.next_temp();
-            self.emit_body(format!(
-                "{t} = call {return_type} @{}({arg_str})",
-                interface_info.llvm_name
-            ));
-            Some(t)
+            let default_val = match interface_info.return_type {
+                ValueType::Double => "0.0".to_string(),
+                ValueType::Bool => "false".to_string(),
+                _ => "null".to_string(),
+            };
+            Some(default_val)
         } else {
-            self.emit_body(format!(
-                "call {return_type} @{}({arg_str})",
-                interface_info.llvm_name
-            ));
             None
         };
         let default_terminal = self.current_block.clone();

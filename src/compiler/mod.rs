@@ -74,7 +74,7 @@ impl Compiler {
             return self.finalize_diagnostics(tokens, ast, parser_errors, options);
         }
     
-        let program = match ast {
+        let mut program = match ast {
             Some(p) => p,
             None => {
                 return self.finalize_diagnostics(
@@ -91,6 +91,13 @@ impl Compiler {
             }
         };
     
+        // Expansión de macros `define`: sustitución call-by-name a nivel de
+        // AST, de modo que semántica y codegen solo ven HULK plano.
+        let macro_errors = crate::parser::MacroExpander::expand_program(&mut program);
+        if !macro_errors.is_empty() {
+            return self.finalize_diagnostics(tokens, Some(program), macro_errors, options);
+        }
+
         let semantic_errors = self.semantic_analyzer.analyze(&program, source);
         if !semantic_errors.is_empty() {
             return self.finalize_diagnostics(tokens, Some(program), semantic_errors, options);
@@ -101,12 +108,13 @@ impl Compiler {
         // =========================
         match self.llvm_backend.generate(&program) {
             Ok(llvm_ir) => {
-                // 👇 AQUÍ LO PONES (DEBUG)
-                #[cfg(debug_assertions)]
-                {
+                // Volcado del IR opt-in: activar con la env var HULK_DUMP_IR.
+                // Antes se imprimía siempre en builds debug, contaminando la salida
+                // de cada `cargo test` que compila end-to-end.
+                if std::env::var_os("HULK_DUMP_IR").is_some() {
                     eprintln!("================ LLVM IR ================\n{}", llvm_ir);
                 }
-    
+
                 self.finalize_ir(tokens, program, llvm_ir, options)
             }
     

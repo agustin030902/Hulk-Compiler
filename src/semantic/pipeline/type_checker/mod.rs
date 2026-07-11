@@ -13,6 +13,7 @@ use super::super::{
 };
 use super::{SymbolCollector, TypeConstraintEngine, TypeResolver};
 
+mod array_expr_checker;
 mod base_call_expr_checker;
 mod binary_expr_checker;
 mod block_expr_checker;
@@ -21,6 +22,7 @@ mod destructive_assign_expr_checker;
 mod for_expr_checker;
 mod function_call_expr_checker;
 mod if_expr_checker;
+mod lambda_expr_checker;
 mod let_in_expr_checker;
 mod literal_expr_checker;
 mod member_access_expr_checker;
@@ -188,6 +190,10 @@ impl<'a> TypeChecker<'a> {
             Expr::Is(is_expr) => self.check_is_expr(is_expr, source),
             Expr::As(as_expr) => self.check_as_expr(as_expr, source),
             Expr::BaseCall(call) => self.check_base_call(call, source),
+            Expr::ArrayLiteral(literal) => self.check_array_literal(literal, source),
+            Expr::NewArray(new_array) => self.check_new_array(new_array, source),
+            Expr::Index(index_expr) => self.check_index_expr(index_expr, source),
+            Expr::Lambda(lambda) => self.check_lambda(lambda, source),
         }
     }
 
@@ -311,6 +317,11 @@ impl<'a> TypeChecker<'a> {
                 }
                 self.is_subtype_of(TypeId(child), parent_id)
             }
+            // Los tipos función se comparan estructuralmente: distintas
+            // entradas internadas con la misma firma son el mismo tipo.
+            (SemanticType::Function(left), SemanticType::Function(right)) => {
+                self.function_types_equal(TypeId(left), TypeId(right))
+            }
             _ => false,
         }
     }
@@ -384,17 +395,6 @@ impl<'a> TypeChecker<'a> {
         source: &str,
     ) -> Option<()> {
         InterfaceChecker::validate_interface_conformance(self.analyzer, impl_type, interface_id, source)
-    }
-
-    pub(super) fn validate_interface_method_call(
-        &mut self,
-        impl_type: SemanticType,
-        interface_id: TypeId,
-        method_name: &str,
-        call_span: Span,
-        source: &str,
-    ) -> Option<SemanticType> {
-        InterfaceChecker::validate_interface_method_call(self.analyzer, impl_type, interface_id, method_name, call_span, source)
     }
 
     pub(in crate::semantic) fn check_type_decl(&mut self, type_decl: &TypeDecl, source: &str) {

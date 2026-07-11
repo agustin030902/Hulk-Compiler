@@ -55,7 +55,9 @@ impl LlvmBackend {
             return;
         };
 
-        if result.value_type != info.return_type {
+        if result.value_type != info.return_type
+            && !self.are_compatible_value_types(info.return_type, result.value_type)
+        {
             self.semantic_error(format!(
                 "Function '{}' returns {} but inferred signature expects {}.",
                 function.name,

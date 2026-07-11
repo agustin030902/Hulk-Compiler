@@ -16,6 +16,8 @@ enum LogosTokenKind {
     Let,
     #[token("function", priority = 3)]
     Function,
+    #[token("define", priority = 3)]
+    Define,
     #[token("type", priority = 3)]
     Type,
     #[token("protocol", priority = 3)]
@@ -82,6 +84,8 @@ enum LogosTokenKind {
     ConcatSpace,
     #[token("@")]
     Concat,
+    #[token("->")]
+    ThinArrow,
     #[token("-")]
     Minus,
     #[token("*")]
@@ -112,6 +116,10 @@ enum LogosTokenKind {
     LeftParen,
     #[token(")")]
     RightParen,
+    #[token("[")]
+    LeftBracket,
+    #[token("]")]
+    RightBracket,
     #[token(".")]
     Dot,
     #[token("{")]
@@ -144,6 +152,7 @@ impl LogosTokenKind {
         let (kind, value) = match self {
             LogosTokenKind::Let => (TokenKind::Let, lexeme.to_string()),
             LogosTokenKind::Function => (TokenKind::Function, lexeme.to_string()),
+            LogosTokenKind::Define => (TokenKind::Define, lexeme.to_string()),
             LogosTokenKind::Type => (TokenKind::Type, lexeme.to_string()),
             LogosTokenKind::Interface => (TokenKind::Interface, lexeme.to_string()),
             LogosTokenKind::Extends => (TokenKind::Extends, lexeme.to_string()),
@@ -202,8 +211,11 @@ impl LogosTokenKind {
             LogosTokenKind::DestructiveAssign => (TokenKind::DestructiveAssign, lexeme.to_string()),
             LogosTokenKind::Colon => (TokenKind::Colon, lexeme.to_string()),
             LogosTokenKind::Arrow => (TokenKind::Arrow, lexeme.to_string()),
+            LogosTokenKind::ThinArrow => (TokenKind::ThinArrow, lexeme.to_string()),
             LogosTokenKind::LeftParen => (TokenKind::LeftParen, lexeme.to_string()),
             LogosTokenKind::RightParen => (TokenKind::RightParen, lexeme.to_string()),
+            LogosTokenKind::LeftBracket => (TokenKind::LeftBracket, lexeme.to_string()),
+            LogosTokenKind::RightBracket => (TokenKind::RightBracket, lexeme.to_string()),
             LogosTokenKind::Dot => (TokenKind::Dot, lexeme.to_string()),
             LogosTokenKind::LeftBrace => (TokenKind::LeftBrace, lexeme.to_string()),
             LogosTokenKind::RightBrace => (TokenKind::RightBrace, lexeme.to_string()),

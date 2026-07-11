@@ -1,21 +1,27 @@
 //! Estado de la aplicación y layout de paneles.
 //!
 //! Estructura de la ventana:
-//! ┌──────────────── toolbar (archivo · acciones · apariencia) ───────────────┐
-//! │ editor (central, resaltado en vivo)          │ AST (panel derecho)       │
+//! ┌──────────── toolbar (branding · archivo · acciones · apariencia) ────────┐
+//! ├──────────── pipeline visual: Lexer → Parser → Semántica → Codegen → Run ─┤
+//! │ editor con gutter de líneas (central)        │ AST (panel derecho)       │
 //! ├──────────── diagnósticos en pestañas: Errores·Tokens·IR·Salida ──────────┤
-//! └──────────────── barra de estado (estado coloreado + métricas) ───────────┘
+//! └──────────── barra de estado (semáforo + ⏱ tiempo + métricas) ────────────┘
 
-use std::{fs, path::PathBuf};
+use std::{
+    collections::HashSet,
+    fs,
+    path::PathBuf,
+    time::Instant,
+};
 
-use eframe::egui::{self, RichText, TextEdit, TextStyle};
+use eframe::egui::{self, FontId, RichText, TextEdit, TextStyle, text::LayoutJob};
 use hulk_compiler::compiler::{CompileOptions, Compiler, OutputKind};
-use hulk_compiler::error::CompilerError;
+use hulk_compiler::error::{CompilerError, ErrorCategory};
 use hulk_compiler::lexer::Token;
 use hulk_compiler::parser::expression::Program;
 
 use crate::ast_view;
-use crate::highlight::hulk_highlight_job;
+use crate::highlight::{classify_highlight_role, hulk_highlight_job, role_color};
 use crate::runner;
 use crate::theme::{Theme, ThemeKind};
 
@@ -40,10 +46,21 @@ enum CompileState {
     Failure,
 }
 
+/// Estado visual de cada etapa del pipeline en la franja superior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PhaseState {
+    Pending,
+    Ok,
+    Failed,
+}
+
+const PHASES: [&str; 5] = ["Lexer", "Parser", "Semántica", "Codegen", "Run"];
+
 pub struct HulkGui {
     source: String,
     status: String,
     compile_state: CompileState,
+    last_compile_ms: Option<u128>,
     tokens: Vec<Token>,
     errors: Vec<CompilerError>,
     ast_program: Option<Program>,
@@ -68,7 +85,7 @@ pub struct HulkGui {
 
 impl HulkGui {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let theme_kind = ThemeKind::CatppuccinMocha;
+        let theme_kind = ThemeKind::HulkSmash;
         let theme = theme_kind.palette();
         theme.apply(&cc.egui_ctx);
 
@@ -77,6 +94,7 @@ impl HulkGui {
             source: runner::default_source(),
             status: "Listo para compilar".to_string(),
             compile_state: CompileState::Idle,
+            last_compile_ms: None,
             tokens: Vec::new(),
             errors: Vec::new(),
             ast_program: None,
@@ -107,11 +125,13 @@ impl HulkGui {
     }
 
     fn compile_source(&mut self) {
+        let started = Instant::now();
         let mut compiler = Compiler::new();
         let options = CompileOptions {
             output_path: self.output_path.clone(),
         };
         let report = compiler.compile(&self.source, &options);
+        self.last_compile_ms = Some(started.elapsed().as_millis());
 
         self.tokens = report.tokens;
         self.errors = report.errors;
@@ -124,8 +144,8 @@ impl HulkGui {
             self.compile_state = CompileState::Success;
             self.status = match report.output_kind {
                 Some(OutputKind::LlvmIr) => {
-                    self.exec_output =
-                        runner::run_program(&self.lli_path, &self.output_path).unwrap_or_else(|e| e);
+                    self.exec_output = runner::run_program(&self.lli_path, &self.output_path)
+                        .unwrap_or_else(|e| e);
                     self.diagnostics_tab = DiagnosticsTab::Output;
                     format!("LLVM IR generado en {}", self.output_path.display())
                 }
@@ -178,6 +198,46 @@ impl HulkGui {
         }
     }
 
+    /// Etapas del pipeline según el resultado de la última compilación.
+    /// La primera categoría de error determina la fase que falló; las
+    /// posteriores quedan pendientes.
+    fn phase_states(&self) -> [PhaseState; 5] {
+        match self.compile_state {
+            CompileState::Idle => [PhaseState::Pending; 5],
+            CompileState::Success => {
+                let run = if self.exec_output.is_empty() {
+                    PhaseState::Pending
+                } else {
+                    PhaseState::Ok
+                };
+                [
+                    PhaseState::Ok,
+                    PhaseState::Ok,
+                    PhaseState::Ok,
+                    PhaseState::Ok,
+                    run,
+                ]
+            }
+            CompileState::Failure => {
+                let failed_at = match self.errors.first().map(|e| &e.category) {
+                    Some(ErrorCategory::Lexical) => 0,
+                    Some(ErrorCategory::Syntax) => 1,
+                    Some(ErrorCategory::Type) | Some(ErrorCategory::Semantic) => 2,
+                    None => 0,
+                };
+                let mut states = [PhaseState::Pending; 5];
+                for (index, state) in states.iter_mut().enumerate() {
+                    if index < failed_at {
+                        *state = PhaseState::Ok;
+                    } else if index == failed_at {
+                        *state = PhaseState::Failed;
+                    }
+                }
+                states
+            }
+        }
+    }
+
     // ── Paneles ──────────────────────────────────────────────────────────
 
     fn show_toolbar(&mut self, ctx: &egui::Context) {
@@ -190,17 +250,21 @@ impl HulkGui {
             .show(ctx, |ui| {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(
-                        RichText::new("HULK")
+                        RichText::new("💪 HULK")
                             .color(self.theme.accent)
                             .strong()
-                            .size(18.0),
+                            .size(20.0),
                     );
-                    ui.label(RichText::new("compiler studio").color(self.theme.text_dim));
+                    ui.label(
+                        RichText::new("compiler studio")
+                            .color(self.theme.text_dim)
+                            .italics(),
+                    );
                     ui.separator();
 
                     // Archivo
                     egui::ComboBox::from_id_salt("example_select")
-                        .width(200.0)
+                        .width(190.0)
                         .selected_text(
                             self.input_path
                                 .split('/')
@@ -219,10 +283,23 @@ impl HulkGui {
                     if ui.button("🔄").on_hover_text("Refrescar ejemplos").clicked() {
                         self.example_files = runner::list_example_files();
                     }
-                    if ui.button("✨ Demo").on_hover_text("Cargar ejemplo rápido").clicked() {
-                        self.source = runner::default_source();
-                        self.status = "Ejemplo precargado".to_string();
-                    }
+
+                    // Snippets de demostración por feature
+                    ui.menu_button("⚡ Snippets", |ui| {
+                        ui.label(
+                            RichText::new("Demos de un click")
+                                .color(self.theme.text_dim)
+                                .small(),
+                        );
+                        ui.separator();
+                        for (name, code) in runner::snippets() {
+                            if ui.button(name).clicked() {
+                                self.source = code.to_string();
+                                self.status = format!("Snippet cargado: {name}");
+                                ui.close();
+                            }
+                        }
+                    });
 
                     ui.separator();
 
@@ -309,6 +386,77 @@ impl HulkGui {
             });
     }
 
+    /// Franja con las fases del pipeline: cada chip se pinta según el
+    /// resultado de la última compilación.
+    fn show_pipeline_strip(&self, ctx: &egui::Context) {
+        egui::TopBottomPanel::top("pipeline_strip")
+            .frame(
+                egui::Frame::default()
+                    .fill(self.theme.bg_main)
+                    .inner_margin(egui::Margin::symmetric(12, 6)),
+            )
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(
+                        RichText::new("PIPELINE")
+                            .color(self.theme.text_dim)
+                            .small()
+                            .strong(),
+                    );
+                    ui.add_space(6.0);
+
+                    for (index, (phase, state)) in
+                        PHASES.iter().zip(self.phase_states()).enumerate()
+                    {
+                        if index > 0 {
+                            ui.label(RichText::new("→").color(self.theme.text_dim));
+                        }
+
+                        let (fill, text_color, icon) = match state {
+                            PhaseState::Pending => {
+                                (self.theme.bg_input, self.theme.text_dim, "○")
+                            }
+                            PhaseState::Ok => (
+                                self.theme.success.gamma_multiply(0.18),
+                                self.theme.success,
+                                "✔",
+                            ),
+                            PhaseState::Failed => (
+                                self.theme.error.gamma_multiply(0.18),
+                                self.theme.error,
+                                "✘",
+                            ),
+                        };
+
+                        egui::Frame::default()
+                            .fill(fill)
+                            .corner_radius(egui::CornerRadius::same(10))
+                            .inner_margin(egui::Margin::symmetric(10, 3))
+                            .show(ui, |ui| {
+                                ui.label(
+                                    RichText::new(format!("{icon} {phase}"))
+                                        .color(text_color)
+                                        .strong(),
+                                );
+                            });
+                    }
+
+                    if let Some(ms) = self.last_compile_ms {
+                        ui.with_layout(
+                            egui::Layout::right_to_left(egui::Align::Center),
+                            |ui| {
+                                ui.label(
+                                    RichText::new(format!("⏱ {ms} ms"))
+                                        .color(self.theme.accent)
+                                        .strong(),
+                                );
+                            },
+                        );
+                    }
+                });
+            });
+    }
+
     fn show_status_bar(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::bottom("status_bar")
             .frame(
@@ -346,33 +494,68 @@ impl HulkGui {
                             RichText::new(format!("{} errores", self.errors.len()))
                                 .color(error_color),
                         );
+                        if let Some(ms) = self.last_compile_ms {
+                            ui.separator();
+                            ui.label(
+                                RichText::new(format!("⏱ {ms} ms")).color(self.theme.text_dim),
+                            );
+                        }
                     });
                 });
             });
     }
 
+    /// Gutter de números de línea alineado con el editor; las líneas con
+    /// errores se marcan en rojo y negrita.
+    fn line_number_gutter(&self, font_size: f32) -> LayoutJob {
+        let error_lines: HashSet<usize> = self.errors.iter().map(|e| e.line).collect();
+        let line_count = self.source.lines().count().max(1);
+        let width = line_count.to_string().len();
+
+        let mut job = LayoutJob::default();
+        for line in 1..=line_count {
+            let is_error = error_lines.contains(&line);
+            let color = if is_error {
+                self.theme.error
+            } else {
+                self.theme.text_dim
+            };
+            let text = if line == line_count {
+                format!("{line:>width$}")
+            } else {
+                format!("{line:>width$}\n")
+            };
+            job.append(
+                &text,
+                0.0,
+                egui::TextFormat {
+                    font_id: FontId::monospace(font_size),
+                    color,
+                    ..Default::default()
+                },
+            );
+        }
+        job
+    }
+
     fn show_editor(&mut self, ui: &mut egui::Ui) {
         let font_size = self.editor_font_size;
         let theme = self.theme.clone();
-        let mut layouter = move |ui: &egui::Ui, text: &dyn egui::TextBuffer, wrap_width: f32| {
+        let mut layouter = move |ui: &egui::Ui, text: &dyn egui::TextBuffer, _wrap: f32| {
             let mut job = hulk_highlight_job(text.as_str(), font_size, &theme);
-            job.wrap.max_width = wrap_width;
+            // Sin wrap: el gutter de líneas asume una fila visual por línea
+            // lógica; el ScrollArea horizontal absorbe las líneas largas.
+            job.wrap.max_width = f32::INFINITY;
             ui.fonts_mut(|fonts| fonts.layout_job(job))
         };
 
-        let editor = TextEdit::multiline(&mut self.source)
-            .code_editor()
-            .desired_rows(48)
-            .desired_width(f32::INFINITY)
-            .font(TextStyle::Monospace)
-            .lock_focus(true)
-            .layouter(&mut layouter);
+        let gutter = self.line_number_gutter(font_size);
 
         egui::Frame::default()
             .fill(self.theme.bg_input)
             .stroke(egui::Stroke::new(
                 1.0,
-                self.theme.text_dim.gamma_multiply(0.3),
+                self.theme.accent.gamma_multiply(0.25),
             ))
             .corner_radius(egui::CornerRadius::same(8))
             .inner_margin(egui::Margin::same(10))
@@ -381,7 +564,30 @@ impl HulkGui {
                     .id_salt("source_editor_scroll")
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
-                        ui.add_sized(ui.available_size(), editor);
+                        ui.horizontal_top(|ui| {
+                            ui.spacing_mut().item_spacing.x = 10.0;
+                            // El TextEdit aplica un pequeño margen interno;
+                            // se compensa para alinear el gutter.
+                            ui.vertical(|ui| {
+                                ui.add_space(2.0);
+                                ui.label(gutter);
+                            });
+
+                            let editor = TextEdit::multiline(&mut self.source)
+                                .code_editor()
+                                .desired_rows(48)
+                                .desired_width(f32::INFINITY)
+                                .font(TextStyle::Monospace)
+                                .lock_focus(true)
+                                .layouter(&mut layouter);
+                            ui.add_sized(
+                                egui::vec2(
+                                    ui.available_width().max(400.0),
+                                    ui.available_height(),
+                                ),
+                                editor,
+                            );
+                        });
                     });
             });
     }
@@ -488,6 +694,7 @@ impl HulkGui {
             });
     }
 
+    /// Errores como tarjetas con badge de categoría y ubicación.
     fn show_errors_tab(&self, ui: &mut egui::Ui) {
         if self.errors.is_empty() {
             ui.label(RichText::new("Sin errores ✔").color(self.theme.success));
@@ -495,33 +702,89 @@ impl HulkGui {
         }
         egui::ScrollArea::vertical().show(ui, |ui| {
             for error in &self.errors {
-                ui.label(
-                    RichText::new(format!(
-                        "{:?} @ {}:{} → {}",
-                        error.category, error.line, error.column, error.message
-                    ))
-                    .color(self.theme.error)
-                    .monospace(),
-                );
+                let badge = match error.category {
+                    ErrorCategory::Lexical => "LEXICAL",
+                    ErrorCategory::Syntax => "SYNTACTIC",
+                    ErrorCategory::Type => "TYPE",
+                    ErrorCategory::Semantic => "SEMANTIC",
+                };
+                egui::Frame::default()
+                    .fill(self.theme.error.gamma_multiply(0.08))
+                    .stroke(egui::Stroke::new(1.0, self.theme.error.gamma_multiply(0.6)))
+                    .corner_radius(egui::CornerRadius::same(6))
+                    .inner_margin(egui::Margin::symmetric(10, 6))
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label(
+                                RichText::new(badge)
+                                    .color(self.theme.error)
+                                    .strong()
+                                    .small(),
+                            );
+                            ui.label(
+                                RichText::new(format!("línea {}, col {}", error.line, error.column))
+                                    .color(self.theme.text_dim)
+                                    .small(),
+                            );
+                        });
+                        ui.label(RichText::new(&error.message).color(self.theme.text).monospace());
+                    });
+                ui.add_space(4.0);
             }
         });
     }
 
+    /// Tokens como tabla coloreada por rol sintáctico.
     fn show_tokens_tab(&self, ui: &mut egui::Ui) {
         if self.tokens.is_empty() {
             ui.label("Compila para ver los tokens.");
             return;
         }
         egui::ScrollArea::vertical().show(ui, |ui| {
-            for token in &self.tokens {
-                ui.monospace(runner::format_token(token));
-            }
+            egui::Grid::new("tokens_grid")
+                .striped(true)
+                .spacing(egui::vec2(18.0, 3.0))
+                .show(ui, |ui| {
+                    ui.label(RichText::new("#").color(self.theme.text_dim).strong());
+                    ui.label(RichText::new("token").color(self.theme.text_dim).strong());
+                    ui.label(RichText::new("valor").color(self.theme.text_dim).strong());
+                    ui.label(RichText::new("posición").color(self.theme.text_dim).strong());
+                    ui.end_row();
+
+                    for (index, token) in self.tokens.iter().enumerate() {
+                        let role = classify_highlight_role(&self.tokens, index);
+                        let color = role_color(role, &self.theme);
+                        ui.label(
+                            RichText::new(index.to_string())
+                                .color(self.theme.text_dim)
+                                .monospace(),
+                        );
+                        ui.label(
+                            RichText::new(format!("{:?}", token.kind))
+                                .color(color)
+                                .monospace(),
+                        );
+                        ui.label(RichText::new(&token.value).color(self.theme.text).monospace());
+                        ui.label(
+                            RichText::new(format!("{}:{}", token.line, token.column))
+                                .color(self.theme.text_dim)
+                                .monospace(),
+                        );
+                        ui.end_row();
+                    }
+                });
         });
     }
 
     fn show_ir_tab(&mut self, ui: &mut egui::Ui) {
-        if let Some(ir) = &self.ir_text {
-            ui.small(format!("Archivo de salida: {}", self.output_path.display()));
+        if let Some(ir) = &self.ir_text.clone() {
+            ui.horizontal(|ui| {
+                ui.small(format!("Archivo de salida: {}", self.output_path.display()));
+                if ui.button("📋 Copiar IR").clicked() {
+                    ui.ctx().copy_text(ir.clone());
+                    self.status = "LLVM IR copiado al portapapeles".to_string();
+                }
+            });
             let mut ir_display = ir.clone();
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.add(
@@ -537,10 +800,17 @@ impl HulkGui {
     }
 
     fn show_output_tab(&mut self, ui: &mut egui::Ui) {
-        if ui.button("↻ Re-ejecutar").clicked() {
-            self.exec_output =
-                runner::run_program(&self.lli_path, &self.output_path).unwrap_or_else(|e| e);
-        }
+        ui.horizontal(|ui| {
+            if ui.button("↻ Re-ejecutar").clicked() {
+                self.exec_output =
+                    runner::run_program(&self.lli_path, &self.output_path).unwrap_or_else(|e| e);
+            }
+            if !self.exec_output.is_empty() && ui.button("📋 Copiar").clicked() {
+                let output = self.exec_output.clone();
+                ui.ctx().copy_text(output);
+                self.status = "Salida copiada al portapapeles".to_string();
+            }
+        });
         if self.exec_output.is_empty() {
             ui.label("Compila para ejecutar y ver la salida del programa.");
             return;
@@ -603,6 +873,7 @@ impl eframe::App for HulkGui {
         }
 
         self.show_toolbar(ctx);
+        self.show_pipeline_strip(ctx);
         self.show_status_bar(ctx);
 
         if !self.focus_mode {

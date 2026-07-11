@@ -11,6 +11,8 @@ pub use token::TokenKind;
 
 #[derive(Logos, Debug, PartialEq)]
 #[logos(skip r"[ \t\r\n\f]+")]
+// Comentarios de línea: `// hasta el final de la línea`.
+#[logos(skip r"//[^\n]*")]
 enum LogosTokenKind {
     #[token("let", priority = 3)]
     Let,

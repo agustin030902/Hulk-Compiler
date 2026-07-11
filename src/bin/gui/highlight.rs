@@ -20,6 +20,21 @@ pub enum HighlightRole {
     Plain,
 }
 
+/// Color del tema asociado a cada rol (editor, tabla de tokens, etc.).
+pub fn role_color(role: HighlightRole, theme: &Theme) -> Color32 {
+    match role {
+        HighlightRole::Keyword => theme.keyword,
+        HighlightRole::BuiltinFunction | HighlightRole::FunctionName => theme.function,
+        HighlightRole::Variable => theme.variable,
+        HighlightRole::Number => theme.number,
+        HighlightRole::String => theme.string,
+        HighlightRole::Boolean => theme.boolean,
+        HighlightRole::Operator => theme.operator,
+        HighlightRole::Unknown => theme.unknown,
+        HighlightRole::Plain => theme.text,
+    }
+}
+
 pub fn text_format(font_size: f32, color: Color32) -> TextFormat {
     TextFormat {
         font_id: FontId::monospace(font_size),

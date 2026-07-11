@@ -8,13 +8,15 @@ use eframe::egui::{self, Color32, FontId, TextStyle};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ThemeKind {
+    HulkSmash,
     CatppuccinMocha,
     Cyberpunk,
     VsDark,
 }
 
 impl ThemeKind {
-    pub const ALL: [ThemeKind; 3] = [
+    pub const ALL: [ThemeKind; 4] = [
+        ThemeKind::HulkSmash,
         ThemeKind::CatppuccinMocha,
         ThemeKind::Cyberpunk,
         ThemeKind::VsDark,
@@ -22,6 +24,7 @@ impl ThemeKind {
 
     pub fn label(self) -> &'static str {
         match self {
+            ThemeKind::HulkSmash => "💚 Hulk Smash",
             ThemeKind::CatppuccinMocha => "🌙 Catppuccin",
             ThemeKind::Cyberpunk => "⚡ Cyberpunk",
             ThemeKind::VsDark => "🌌 VS Dark",
@@ -30,6 +33,7 @@ impl ThemeKind {
 
     pub fn palette(self) -> Theme {
         match self {
+            ThemeKind::HulkSmash => Theme::hulk_smash(),
             ThemeKind::CatppuccinMocha => Theme::catppuccin_mocha(),
             ThemeKind::Cyberpunk => Theme::cyberpunk(),
             ThemeKind::VsDark => Theme::vs_dark(),
@@ -59,6 +63,29 @@ pub struct Theme {
 }
 
 impl Theme {
+    /// Tema insignia: verde radiactivo sobre negro verdoso, con púrpura
+    /// (los pantalones de Hulk) para las palabras clave.
+    pub fn hulk_smash() -> Self {
+        Self {
+            bg_main: Color32::from_rgb(13, 17, 12),
+            bg_panel: Color32::from_rgb(10, 13, 9),
+            bg_input: Color32::from_rgb(7, 10, 7),
+            text: Color32::from_rgb(214, 235, 208),
+            text_dim: Color32::from_rgb(120, 145, 115),
+            accent: Color32::from_rgb(120, 220, 60),
+            success: Color32::from_rgb(140, 240, 80),
+            error: Color32::from_rgb(255, 92, 92),
+            keyword: Color32::from_rgb(190, 130, 255),
+            function: Color32::from_rgb(255, 214, 90),
+            variable: Color32::from_rgb(200, 224, 195),
+            number: Color32::from_rgb(120, 220, 160),
+            string: Color32::from_rgb(235, 200, 120),
+            boolean: Color32::from_rgb(110, 200, 255),
+            operator: Color32::from_rgb(160, 200, 150),
+            unknown: Color32::from_rgb(255, 92, 92),
+        }
+    }
+
     pub fn catppuccin_mocha() -> Self {
         Self {
             bg_main: Color32::from_rgb(30, 30, 46),   // base

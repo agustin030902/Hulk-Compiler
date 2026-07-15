@@ -1,3 +1,21 @@
+//! # Análisis léxico
+//!
+//! Tokenización mediante el generador de lexers [`logos`]. [`TokenKind`]
+//! define 64 clases de token (incluidos `Unknown` de recuperación y `EOF`):
+//! palabras clave (con `priority = 3` para dominar sobre identificadores),
+//! operadores (incluidos `->`, `:=`, `@@` y los corchetes de arreglos),
+//! literales y comentarios de línea `//…`.
+//!
+//! Particularidades:
+//!
+//! - **No aborta al primer error**: un carácter inesperado o un identificador
+//!   que empieza con dígito produce un [`TokenKind::Unknown`] como token de
+//!   continuidad, de modo que el parser pueda seguir y reportar más errores.
+//! - **Strings con escapes**: `\"`, `\n` y `\t` se procesan aquí; una secuencia
+//!   de escape inválida es un error léxico.
+//! - Cada [`Token`] conserva línea, columna y offsets de byte (`start..end`)
+//!   para diagnósticos precisos y para el resaltado del editor de la GUI.
+
 #[cfg(test)]
 mod tests;
 mod token;

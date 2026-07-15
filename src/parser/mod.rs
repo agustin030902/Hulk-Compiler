@@ -1,3 +1,27 @@
+//! # Análisis sintáctico
+//!
+//! Parser LR(1) generado con [LALRPOP](https://lalrpop.github.io/lalrpop/)
+//! a partir de `grammar.lalrpop` (~1100 líneas). Produce el
+//! [AST](expression::Program) que consumen las fases siguientes.
+//!
+//! Decisiones de diseño de la gramática:
+//!
+//! - **Cadena dual de expresiones**: una cadena *cerrada* (`BaseExpr`) y una
+//!   *abierta* (`ExtExpr` terminando en `FlowAtom`) permiten usar `if`,
+//!   `while`, `let-in` y **lambdas** como operando derecho de operadores
+//!   binarios sin paréntesis (`5 + if (c) 3 else 10`). Las construcciones de
+//!   cuerpo greedy viven en `FlowAtom` para evitar ambigüedades de colgado.
+//! - **Hoisting**: el símbolo raíz separa declaraciones (`types`, `interfaces`,
+//!   `functions`, `macros`) de las sentencias, así que una función puede usarse
+//!   antes de su declaración textual.
+//! - **Tipos compuestos como texto**: las anotaciones de arreglo (`Number[]`)
+//!   y de función (`(Number) -> Number`) se codifican canónicamente en el
+//!   nombre de la anotación y las interpreta el `TypeResolver` semántico.
+//! - `range(a, b)` se desazucara aquí a `new Range(a, b)`.
+//!
+//! El submódulo [`macro_expander`] expande las macros `define` por sustitución
+//! call-by-name inmediatamente después del parseo.
+
 use lalrpop_util::{ParseError, lalrpop_mod};
 
 use crate::{

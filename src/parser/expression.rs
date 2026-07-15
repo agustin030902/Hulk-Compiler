@@ -1,3 +1,15 @@
+//! # AST del lenguaje HULK
+//!
+//! Tipos de datos producidos por el parser y consumidos por la expansión de
+//! macros, el análisis semántico y el codegen. Todo nodo lleva su [`Span`]
+//! (offsets de byte en el fuente) para diagnósticos precisos.
+//!
+//! La raíz es [`Program`], que separa declaraciones (tipos, interfaces,
+//! funciones, macros) de las sentencias del `main` implícito — esa separación
+//! es la que habilita el *hoisting*. El corazón es el enum [`Expr`], con una
+//! variante por construcción del lenguaje.
+
+/// Rango de bytes `start..end` de un nodo dentro del código fuente.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Span {
     pub start: usize,
@@ -10,6 +22,9 @@ impl Span {
     }
 }
 
+/// Raíz del AST: declaraciones separadas de las sentencias del `main`
+/// implícito, lo que permite usar cualquier símbolo antes de su declaración
+/// textual (*hoisting*). Tras la expansión, `macros` queda vacío.
 #[derive(Debug)]
 pub struct Program {
     pub types: Vec<TypeDecl>,
@@ -152,6 +167,8 @@ pub enum Statement {
     },
 }
 
+/// Una expresión HULK: al ser un lenguaje basado en expresiones, también
+/// `if`, `while`, `for`, los bloques y `let-in` producen valor.
 #[derive(Debug, Clone)]
 pub enum Expr {
     Binary(BinaryExpr),

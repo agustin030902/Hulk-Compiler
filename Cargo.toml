@@ -10,6 +10,20 @@ default-run = "Hulk-Compiler"
 name = "hulk_compiler"
 path = "src/lib.rs"
 
+# Los binarios se excluyen de rustdoc (`doc = false`): en filesystems
+# case-insensitive (macOS) las docs del crate binario `Hulk_Compiler`
+# pisaban el directorio de la librería `hulk_compiler`, dejando la portada
+# de `cargo doc` con solo `fn main`.
+[[bin]]
+name = "Hulk-Compiler"
+path = "src/main.rs"
+doc = false
+
+[[bin]]
+name = "gui"
+path = "src/bin/gui/main.rs"
+doc = false
+
 [dependencies]
 logos = "0.14"
 lalrpop-util = "0.22"

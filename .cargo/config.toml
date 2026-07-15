@@ -1,0 +1,6 @@
+# Configuración local de cargo para este proyecto.
+#
+# `--extend-css` inyecta el tema visual de la documentación, de modo que un
+# simple `cargo doc --no-deps --open` ya salga con el estilo del proyecto.
+[build]
+rustdocflags = ["--extend-css", "docs/rustdoc-theme.css"]

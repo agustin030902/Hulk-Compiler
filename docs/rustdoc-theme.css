@@ -1,0 +1,74 @@
+/* Tema visual de la documentación (cargo doc).
+ * Se inyecta con `--extend-css` (ver .cargo/config.toml): pulido de tablas,
+ * encabezados y bloques de código con el acento verde HULK, respetando los
+ * temas claro/oscuro de rustdoc. */
+
+:root {
+    --hulk-accent: #78dc3c;
+    --hulk-accent-dim: rgba(120, 220, 60, 0.35);
+    --hulk-accent-faint: rgba(120, 220, 60, 0.08);
+}
+
+/* ── Encabezados del docblock con subrayado de acento ── */
+.docblock h2 {
+    border-bottom: 2px solid var(--hulk-accent-dim);
+    padding-bottom: 6px;
+    margin-top: 28px;
+}
+
+.docblock h3 {
+    border-left: 4px solid var(--hulk-accent);
+    padding-left: 10px;
+}
+
+/* ── Tablas: ancho completo, bordes suaves, cabecera acentuada ── */
+.docblock table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid var(--hulk-accent-dim);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.docblock table th {
+    background: var(--hulk-accent-faint);
+    border-bottom: 2px solid var(--hulk-accent-dim);
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.docblock table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+}
+
+.docblock table tr:last-child td {
+    border-bottom: none;
+}
+
+.docblock table tr:nth-child(even) {
+    background: rgba(128, 128, 128, 0.05);
+}
+
+/* ── Bloques de código y diagramas ASCII ── */
+.docblock pre {
+    border-radius: 8px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    padding: 14px;
+}
+
+.docblock code {
+    border-radius: 4px;
+}
+
+/* ── Logo del crate ── */
+.sidebar .logo-container img,
+nav.sub .logo-container img {
+    border-radius: 12px;
+}
+
+/* ── Enlaces con el acento al pasar el mouse ── */
+.docblock a:hover {
+    text-decoration-color: var(--hulk-accent);
+}

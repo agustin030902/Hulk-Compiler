@@ -1,3 +1,16 @@
+//! # Orquestación del pipeline
+//!
+//! [`Compiler`] encadena las cuatro fases con política **fail-fast**:
+//!
+//! ```text
+//! lex ─▶ parse ─▶ expandir macros ─▶ análisis semántico ─▶ codegen LLVM
+//! ```
+//!
+//! En cuanto una fase produce errores, se interrumpe el flujo y se escribe un
+//! reporte de diagnóstico en `output_path` en lugar del IR. El resultado
+//! completo (tokens, AST, IR, errores) queda disponible en [`CompileReport`]
+//! para consumidores como la GUI, que muestran cada artefacto por separado.
+
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -14,8 +27,11 @@ use crate::{
     semantic::SemanticAnalyzer,
 };
 
+/// Opciones de compilación.
 #[derive(Debug, Clone)]
 pub struct CompileOptions {
+    /// Ruta donde se escribe el LLVM IR generado (o el reporte de
+    /// diagnóstico si la compilación falla). Por defecto: `output`.
     pub output_path: PathBuf,
 }
 
@@ -27,22 +43,36 @@ impl Default for CompileOptions {
     }
 }
 
+/// Qué terminó escrito en `output_path`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputKind {
+    /// Compilación exitosa: el archivo contiene el módulo LLVM IR.
     LlvmIr,
+    /// Hubo errores: el archivo contiene el reporte de diagnóstico.
     Diagnostics,
 }
 
+/// Resultado completo de una compilación: expone los artefactos de cada fase
+/// aunque el pipeline se haya interrumpido, para que los consumidores (CLI,
+/// GUI) puedan inspeccionarlos por separado.
 #[derive(Debug)]
 pub struct CompileReport {
+    /// Tokens producidos por el lexer (incluye `Unknown` de recuperación).
     pub tokens: Vec<Token>,
+    /// AST tras el parseo y la expansión de macros, si el parseo tuvo éxito.
     pub ast: Option<Program>,
+    /// Módulo LLVM IR como texto, solo si toda la compilación tuvo éxito.
     pub llvm_ir: Option<String>,
+    /// Ruta donde quedó escrito el resultado (IR o diagnóstico).
     pub output_path: Option<PathBuf>,
+    /// Naturaleza de lo escrito en `output_path`.
     pub output_kind: Option<OutputKind>,
+    /// Diagnósticos acumulados; vacío si la compilación fue exitosa.
     pub errors: Vec<CompilerError>,
 }
 
+/// Orquestador del pipeline de compilación (ver [documentación del
+/// módulo](self)).
 #[derive(Debug, Default)]
 pub struct Compiler {
     semantic_analyzer: SemanticAnalyzer,
@@ -57,6 +87,8 @@ impl Compiler {
         }
     }
 
+    /// Compila `source` de principio a fin y devuelve el [`CompileReport`]
+    /// con los artefactos de todas las fases alcanzadas.
     pub fn compile(&mut self, source: &str, options: &CompileOptions) -> CompileReport {
         let mut lexer = Lexer::new(source.to_string());
         let tokens = lexer.lex();

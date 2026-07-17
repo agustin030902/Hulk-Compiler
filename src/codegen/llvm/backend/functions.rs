@@ -14,15 +14,15 @@ pub(in crate::codegen::llvm) struct FunctionInfo {
 }
 
 impl LlvmBackend {
-    pub(in crate::codegen::llvm) fn load_function_signatures(&mut self, program: &Program) -> bool {
-        let mut analyzer = SemanticAnalyzer::new();
-        let semantic_errors = analyzer.analyze(program, "");
-
-        if !semantic_errors.is_empty() {
-            self.errors.extend(semantic_errors);
-            return false;
-        }
-
+    /// Carga toda la metadata que el backend necesita desde el análisis
+    /// semántico **ya corrido** por el `Compiler`: firmas, layouts, jerarquía
+    /// de tipos, arreglos y tipos función internados. El backend no re-analiza
+    /// nada — consume la salida de la fase anterior.
+    pub(in crate::codegen::llvm) fn load_function_signatures(
+        &mut self,
+        program: &Program,
+        analyzer: &SemanticAnalyzer,
+    ) -> bool {
         let mut type_decls_map: std::collections::HashMap<String, crate::parser::expression::TypeDecl> =
             program
                 .types
@@ -76,12 +76,12 @@ impl LlvmBackend {
                 .iter()
                 .map(|param_id| {
                     Self::lower_semantic_type_quiet(
-                        self.semantic_type_from_type_id(&analyzer, *param_id),
+                        self.semantic_type_from_type_id(analyzer, *param_id),
                     )
                 })
                 .collect::<Option<Vec<_>>>();
             let return_type = Self::lower_semantic_type_quiet(
-                self.semantic_type_from_type_id(&analyzer, return_id),
+                self.semantic_type_from_type_id(analyzer, return_id),
             );
             if let (Some(params), Some(return_type)) = (params, return_type) {
                 self.function_types
@@ -90,7 +90,7 @@ impl LlvmBackend {
         }
 
         for (array_id, elem_id) in analyzer.type_table().array_entries() {
-            let elem_semantic = self.semantic_type_from_type_id(&analyzer, elem_id);
+            let elem_semantic = self.semantic_type_from_type_id(analyzer, elem_id);
             let Some(elem_value_type) =
                 self.lower_semantic_type(elem_semantic, "array element type")
             else {
@@ -99,7 +99,7 @@ impl LlvmBackend {
             self.array_elems.insert(array_id.0, elem_value_type);
         }
 
-        if !self.load_struct_layouts(&analyzer) {
+        if !self.load_struct_layouts(analyzer) {
             return false;
         }
 

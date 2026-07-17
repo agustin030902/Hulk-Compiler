@@ -1,4 +1,4 @@
-use crate::parser::expression::TypeAnnotation;
+use crate::parser::expression::{TypeAnnotation, split_function_type_name};
 
 use super::super::{
     analyzer::SemanticAnalyzer,
@@ -88,7 +88,7 @@ impl TypeResolver {
         analyzer: &mut SemanticAnalyzer,
         name: &str,
     ) -> Option<SemanticType> {
-        let (param_names, ret_name) = Self::split_function_type_name(name)?;
+        let (param_names, ret_name) = split_function_type_name(name)?;
 
         let mut param_ids = Vec::with_capacity(param_names.len());
         for param_name in &param_names {
@@ -116,48 +116,6 @@ impl TypeResolver {
         Self::resolve_named_type(analyzer, name)
     }
 
-    /// Separa `(A,B)->C` en (["A","B"], "C") respetando paréntesis anidados.
-    fn split_function_type_name(name: &str) -> Option<(Vec<String>, String)> {
-        let inner_start = name.find('(')? + 1;
-        let mut depth = 1usize;
-        let mut inner_end = None;
-        for (offset, ch) in name[inner_start..].char_indices() {
-            match ch {
-                '(' => depth += 1,
-                ')' => {
-                    depth -= 1;
-                    if depth == 0 {
-                        inner_end = Some(inner_start + offset);
-                        break;
-                    }
-                }
-                _ => {}
-            }
-        }
-        let inner_end = inner_end?;
-        let params_text = &name[inner_start..inner_end];
-        let ret_name = name[inner_end + 1..].strip_prefix("->")?.to_string();
-
-        let mut params = Vec::new();
-        if !params_text.is_empty() {
-            let mut depth = 0usize;
-            let mut start = 0usize;
-            for (offset, ch) in params_text.char_indices() {
-                match ch {
-                    '(' => depth += 1,
-                    ')' => depth = depth.saturating_sub(1),
-                    ',' if depth == 0 => {
-                        params.push(params_text[start..offset].to_string());
-                        start = offset + 1;
-                    }
-                    _ => {}
-                }
-            }
-            params.push(params_text[start..].to_string());
-        }
-
-        Some((params, ret_name))
-    }
 
     pub(in crate::semantic) fn resolve_named_type(
         analyzer: &SemanticAnalyzer,

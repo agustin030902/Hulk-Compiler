@@ -1,99 +1,72 @@
-# Codegen
+# ⚙️ Codegen — Generación de LLVM IR
 
-Este módulo convierte el AST validado a LLVM IR.
+Convierte el AST verificado a **LLVM IR en formato texto** (sin `inkwell`):
+tres buffers de líneas (globals, funciones, cuerpo de `main`) que se
+ensamblan en un módulo `.ll` que `clang` valida y compila.
 
-Backend actual:
-- `llvm` (`src/codegen/llvm`)
+![Pipeline de codegen](docs/codegen-pipeline.svg)
 
-Interfaz pública:
+## Interfaz pública
 
 ```rust
 pub trait CodegenBackend {
-    fn generate(&mut self, program: &Program) -> Result<String, Vec<CompilerError>>;
+    fn generate(
+        &mut self,
+        program: &Program,
+        analyzer: &SemanticAnalyzer,   // el análisis YA corrido por el Compiler
+    ) -> Result<String, Vec<CompilerError>>;
 }
 ```
 
-## Estructura actual
+El backend **no re-analiza nada**: consume las tablas del `SemanticAnalyzer`
+que el `Compiler` le pasa — el pipeline fluye en una sola dirección.
 
-```text
-src/codegen/
-  mod.rs
-  README.md
-  docs/
-    pipeline.svg
-  llvm/
-    mod.rs
-    backend/
-      mod.rs
-      functions.rs
-      type_lowering.rs
-      layout.rs
-      emit/
-        mod.rs
-        function.rs
-        method.rs
-        statement.rs
-        expr/
-          mod.rs
-          binary.rs
-          block.rs
-          call.rs
-          destructive_assign.rs
-          if_expr.rs
-          let_in.rs
-          literal.rs
-          member_access.rs
-          new_expr.rs
-          unary.rs
-          variable.rs
-          while_expr.rs
-    helper/
-      mod.rs
-      state.rs
-      module_writer.rs
-    tests.rs
-```
+## Flujo de `LlvmBackend::generate`
 
-## Pipeline
+1. `reset()` — limpia todo el estado entre compilaciones.
+2. **`load_function_signatures(program, analyzer)`** ([`backend/functions.rs`](llvm/backend/functions.rs)) —
+   extrae del análisis: `type_ids`, jerarquía `type_parents` (incluye
+   interfaces splat), layouts de structs, firmas (`FunctionInfo`),
+   `method_dispatch`, tipos de arreglo y de función internados.
+3. **`emit_program`** ([`backend/emit/`](llvm/backend/emit/)) — en orden:
+   globals de jerarquía (`@hulk_type_parents` + `@hulk_is_subtype`) →
+   métodos de tipos (+ `Range` builtin) → stubs de interfaces → funciones
+   globales → statements del `main`.
+4. **`compose_module`** ([`helper/module_writer.rs`](llvm/helper/module_writer.rs)) —
+   preámbulo de `declare` (libc/libm) + globals + funciones + `main`.
 
-![LLVM Backend Pipeline](./docs/pipeline.svg)
+## Estructura del backend (un módulo por responsabilidad)
 
-`LlvmBackend::generate` ejecuta:
+| Módulo | Rol |
+|--------|-----|
+| `backend/mod.rs` | Estado del generador + orquestación de `generate` |
+| `backend/emitter.rs` | Buffers de texto y nombres frescos (`%tN`, etiquetas) |
+| `backend/scopes.rs` | Pila de scopes y almacenamiento (`alloca`/`store`) |
+| `backend/type_compat.rs` | Subtipado, nulabilidad, igualdad estructural |
+| `backend/functions.rs` | Carga de la metadata semántica |
+| `backend/layout.rs` | Layout de structs (`[type_id][padre][propios]`) |
+| `backend/type_lowering.rs` | `SemanticType` → `ValueType` + anotaciones |
+| `backend/runtime_globals.rs` | `@hulk_type_parents` / `@hulk_is_subtype` |
+| `backend/emit/expr/` | Un módulo por variante de expresión |
 
-1. `reset()`
-2. `load_function_signatures(program)` (`backend/functions.rs`)
-3. `emit_program(program)` (`backend/emit/*`)
-4. `compose_module()` (`llvm/helper/module_writer.rs`)
+En `emit/expr/`, la familia de llamadas comparte convenciones
+([`call_conventions.rs`](llvm/backend/emit/expr/call_conventions.rs)):
+`builtin_call` · `function_call` · `method_call` · `interface_dispatch`
+(cascada por type-tag con herencia) · `lambda` + `free_vars` (closures).
 
-Si alguna etapa agrega errores, retorna `Err(Vec<CompilerError>)`.
+## Representación en runtime
 
-## Responsabilidades por módulo
+| Valor | Layout |
+|-------|--------|
+| `Number` / `Boolean` | `double` / `i1` |
+| Objeto | heap: `[type_id i64][campos del padre][campos propios]` |
+| Arreglo | heap: `[i64 longitud][elem0][elem1]…` (8 bytes/elem, `calloc`) |
+| Closure | heap: `[fnptr][captura0][captura1]…` (captura por valor) |
+| `is` | consulta `@hulk_type_parents` vía `@hulk_is_subtype` en runtime |
 
-- `backend/mod.rs`: estado global, scopes, buffers, contadores y utilidades base.
-- `backend/functions.rs`: carga de firmas, `FunctionInfo`, `method_dispatch`.
-- `backend/type_lowering.rs`: lowering de tipos semánticos y utilidades de layout (`align_to`, `value_layout`).
-- `backend/layout.rs`: `StructLayout`, `FieldLayout`, carga/lookup de layouts.
-- `backend/emit/function.rs`: emisión de funciones.
-- `backend/emit/method.rs`: emisión de métodos y manejo de `self`.
-- `backend/emit/statement.rs`: emisión de statements (`let`, `assign`, `print`, `expr`).
-- `backend/emit/expr/*`: emisión por expresión del AST.
+`ValueType` modela los tipos emitidos: `Double`, `Bool`, `StringPtr`, `Unit`,
+`Null`, `Function(id)`, `Struct(id)`, `Array(id)` — los ids son los
+`TypeId` semánticos, así la igualdad estructural se resuelve contra las
+mismas tablas que usó el análisis.
 
-## Tipos internos de LLVM
-
-`ValueType` modela los tipos emitidos:
-- `Double` (`double`)
-- `Bool` (`i1`)
-- `StringPtr` (`i8*`)
-- `Unit` (`i8`)
-- `Function` (`i8*`, reservado)
-- `Struct(u32)` (`i8*`, reservado)
-
-`ValueRef` combina:
-- `value_type`
-- `repr` (registro/constante LLVM)
-
-## Notas
-
-- Semántica sigue siendo la fuente de verdad de tipos.
-- El backend mantiene validaciones defensivas para no emitir IR inválido.
-- Este refactor es estructural: sin cambios de semántica del lenguaje.
+**Salida:** módulo `.ll` → `clang -Wno-override-module temp.ll -lm -o output`.

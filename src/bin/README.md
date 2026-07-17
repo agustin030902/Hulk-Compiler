@@ -1,38 +1,45 @@
-# Binaries (`src/bin`)
+# 🖥️ Binaries (`src/bin`)
 
-Este directorio contiene binarios auxiliares del proyecto.
+El proyecto compila **dos binarios** sobre la misma librería
+[`hulk_compiler`](../lib.rs) — así el compilador se compila una sola vez y
+ambos consumen exactamente el mismo pipeline.
 
-## 1) GUI (`src/bin/gui.rs`)
+## 1) GUI (`src/bin/gui/`)
 
-Interfaz de prueba rápida con `eframe/egui`.
-
-### Qué permite
-- Cargar ejemplos `.hulk` desde `examples/`
-- Editar código fuente
-- Compilar (lexer -> parser -> semantic -> LLVM IR)
-- Ver errores, tokens, AST e IR
-- Ver un panel tipo terminal con el reporte de compilación (igual al archivo generado)
-- Instalar automáticamente `hulk-vscode.vsix` desde la propia GUI
-
-### Ejecutar
+**Hulk Compiler Studio**: entorno gráfico con `eframe/egui`, organizado en
+módulos ([ver su README](gui/README.md)):
 
 ```bash
 cargo run --bin gui
 ```
 
+- Editor con resaltado en vivo (usa el lexer real), gutter de líneas con
+  marcas de error y autocompletado.
+- Pipeline visual (Lexer → Parser → Semántica → Codegen → Run) coloreado
+  según el resultado, con cronómetro de compilación.
+- Paneles de AST (árbol con búsqueda), tokens, IR, errores y terminal.
+- 4 temas en vivo (💚 Hulk Smash por defecto) y snippets de demo por feature.
+
 ## 2) CLI principal (`src/main.rs`)
 
-Aunque vive fuera de `src/bin`, es el binario principal del compilador.
-
-Comandos típicos:
+Es el binario del contrato del corrector (vive fuera de `src/bin` por ser el
+binario por defecto del paquete):
 
 ```bash
-cargo run -- --input examples/calculator_ok.hulk --emit-ir artifacts/output.txt
-cargo run -- --run-all examples --emit-dir artifacts/batch
-cargo run -- run examples/calculator_ok.hulk
+make build          # → ./hulk
+./hulk programa.hulk   # escribe temp.ll, invoca clang, produce ./output
+./output               # ejecuta el programa compilado
 ```
 
-## Notas
-- La GUI muestra el reporte de compilación generado en archivo (IR o diagnóstico).
-- Para binario nativo (`run`), se usa `clang` (ver `README.md` raíz).
-- Las funciones de usuario ya se emiten con firmas tipadas inferidas (no solo numéricas).
+| Exit code | Significado |
+|-----------|-------------|
+| `0` | OK — ejecutable en `./output` |
+| `1` | error léxico (`LEXICAL` en stderr) |
+| `2` | error sintáctico (`SYNTACTIC`) |
+| `3` | error semántico (`SEMANTIC`) |
+
+## Nota
+
+Ninguno de los dos binarios se documenta con rustdoc (`doc = false` en
+`Cargo.toml`): en filesystems case-insensitive las docs del binario
+`Hulk_Compiler` pisarían las de la librería `hulk_compiler`.

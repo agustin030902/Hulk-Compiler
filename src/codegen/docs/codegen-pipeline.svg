@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" font-family="Menlo, Consolas, monospace">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#78dc3c"/>
+    </marker>
+  </defs>
+
+  <rect width="960" height="540" rx="14" fill="#0d110c"/>
+  <text x="30" y="42" fill="#78dc3c" font-size="20" font-weight="bold">⚙️ CODEGEN</text>
+  <text x="170" y="42" fill="#789173" font-size="13">AST + análisis semántico → módulo LLVM IR (texto)</text>
+  <line x1="30" y1="56" x2="930" y2="56" stroke="#78dc3c" stroke-opacity="0.35" stroke-width="2"/>
+
+  <!-- entradas -->
+  <rect x="30" y="86" width="130" height="52" rx="10" fill="#141a12" stroke="#4a5d45"/>
+  <text x="95" y="108" fill="#d6ebd0" font-size="12" text-anchor="middle">AST</text>
+  <text x="95" y="126" fill="#789173" font-size="9" text-anchor="middle">Program</text>
+
+  <rect x="30" y="150" width="130" height="52" rx="10" fill="#241533" stroke="#be82ff"/>
+  <text x="95" y="172" fill="#be82ff" font-size="12" text-anchor="middle">SemanticAnalyzer</text>
+  <text x="95" y="190" fill="#c8b0e0" font-size="9" text-anchor="middle">análisis ya corrido</text>
+
+  <!-- load metadata -->
+  <rect x="215" y="100" width="200" height="90" rx="10" fill="#12240e" stroke="#78dc3c"/>
+  <text x="315" y="124" fill="#78dc3c" font-size="12" font-weight="bold" text-anchor="middle">load_function_signatures</text>
+  <text x="315" y="144" fill="#a0c896" font-size="9" text-anchor="middle">type_ids · type_parents · layouts</text>
+  <text x="315" y="160" fill="#a0c896" font-size="9" text-anchor="middle">firmas · method_dispatch</text>
+  <text x="315" y="176" fill="#a0c896" font-size="9" text-anchor="middle">arrays y funciones internados</text>
+
+  <!-- emit -->
+  <rect x="470" y="100" width="215" height="90" rx="10" fill="#12240e" stroke="#78dc3c"/>
+  <text x="577" y="124" fill="#78dc3c" font-size="12" font-weight="bold" text-anchor="middle">emit_program</text>
+  <text x="577" y="144" fill="#a0c896" font-size="9" text-anchor="middle">jerarquía runtime → métodos →</text>
+  <text x="577" y="160" fill="#a0c896" font-size="9" text-anchor="middle">stubs interfaces → funciones →</text>
+  <text x="577" y="176" fill="#a0c896" font-size="9" text-anchor="middle">statements de main</text>
+
+  <!-- compose -->
+  <rect x="740" y="100" width="190" height="90" rx="10" fill="#141a12" stroke="#4a5d45"/>
+  <text x="835" y="124" fill="#d6ebd0" font-size="12" font-weight="bold" text-anchor="middle">compose_module</text>
+  <text x="835" y="144" fill="#ebc878" font-size="9" text-anchor="middle">declares libc/libm + globals</text>
+  <text x="835" y="160" fill="#ebc878" font-size="9" text-anchor="middle">+ funciones + main</text>
+  <text x="835" y="178" fill="#78dc3c" font-size="10" font-weight="bold" text-anchor="middle">→ temp.ll → clang → ./output</text>
+
+  <line x1="160" y1="112" x2="207" y2="130" stroke="#78dc3c" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="160" y1="176" x2="207" y2="160" stroke="#be82ff" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="415" y1="145" x2="462" y2="145" stroke="#78dc3c" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="685" y1="145" x2="732" y2="145" stroke="#78dc3c" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- layouts de runtime -->
+  <text x="30" y="248" fill="#ebc878" font-size="14" font-weight="bold">Representación en runtime (heap, 8 bytes por slot)</text>
+
+  <!-- objeto -->
+  <text x="30" y="284" fill="#d6ebd0" font-size="12">objeto</text>
+  <g>
+    <rect x="140" y="264" width="120" height="34" fill="#241533" stroke="#be82ff"/>
+    <text x="200" y="286" fill="#be82ff" font-size="10" text-anchor="middle">type_id (i64)</text>
+    <rect x="260" y="264" width="150" height="34" fill="#10160f" stroke="#4a5d45"/>
+    <text x="335" y="286" fill="#a0c896" font-size="10" text-anchor="middle">campos del padre</text>
+    <rect x="410" y="264" width="150" height="34" fill="#10160f" stroke="#4a5d45"/>
+    <text x="485" y="286" fill="#a0c896" font-size="10" text-anchor="middle">campos propios</text>
+  </g>
+  <text x="590" y="286" fill="#789173" font-size="10">`is` consulta @hulk_type_parents en runtime</text>
+
+  <!-- arreglo -->
+  <text x="30" y="336" fill="#d6ebd0" font-size="12">arreglo</text>
+  <g>
+    <rect x="140" y="316" width="120" height="34" fill="#241533" stroke="#be82ff"/>
+    <text x="200" y="338" fill="#be82ff" font-size="10" text-anchor="middle">longitud (i64)</text>
+    <rect x="260" y="316" width="100" height="34" fill="#10160f" stroke="#4a5d45"/>
+    <text x="310" y="338" fill="#a0c896" font-size="10" text-anchor="middle">elem 0</text>
+    <rect x="360" y="316" width="100" height="34" fill="#10160f" stroke="#4a5d45"/>
+    <text x="410" y="338" fill="#a0c896" font-size="10" text-anchor="middle">elem 1</text>
+    <rect x="460" y="316" width="100" height="34" fill="#10160f" stroke="#4a5d45" stroke-dasharray="4 3"/>
+    <text x="510" y="338" fill="#789173" font-size="10" text-anchor="middle">…</text>
+  </g>
+  <text x="590" y="338" fill="#789173" font-size="10">calloc ⇒ 0 / null · size() lee la cabecera</text>
+
+  <!-- closure -->
+  <text x="30" y="388" fill="#d6ebd0" font-size="12">closure</text>
+  <g>
+    <rect x="140" y="368" width="120" height="34" fill="#241533" stroke="#be82ff"/>
+    <text x="200" y="390" fill="#be82ff" font-size="10" text-anchor="middle">fnptr (i8*)</text>
+    <rect x="260" y="368" width="100" height="34" fill="#10160f" stroke="#4a5d45"/>
+    <text x="310" y="390" fill="#a0c896" font-size="10" text-anchor="middle">captura 0</text>
+    <rect x="360" y="368" width="100" height="34" fill="#10160f" stroke="#4a5d45"/>
+    <text x="410" y="390" fill="#a0c896" font-size="10" text-anchor="middle">captura 1</text>
+    <rect x="460" y="368" width="100" height="34" fill="#10160f" stroke="#4a5d45" stroke-dasharray="4 3"/>
+    <text x="510" y="390" fill="#789173" font-size="10" text-anchor="middle">…</text>
+  </g>
+  <text x="590" y="390" fill="#789173" font-size="10">f(x) ⇒ carga fnptr y llama @hulk_lambda_N(closure, x)</text>
+
+  <!-- dispatch -->
+  <rect x="30" y="428" width="900" height="66" rx="10" fill="#10160f" stroke="#4a5d45"/>
+  <text x="50" y="452" fill="#ebc878" font-size="12" font-weight="bold">dispatch dinámico de interfaces (cascada por type-tag)</text>
+  <text x="50" y="474" fill="#a0c896" font-size="10">load type_id → icmp == Circle ? call @hulk_typeN_area : icmp == Square ? call @hulk_typeM_area : … → phi fusiona resultados</text>
+  <text x="50" y="488" fill="#789173" font-size="9">lookup_method_key sube por type_parents ⇒ los métodos heredados sin override también reciben rama</text>
+
+  <text x="30" y="522" fill="#789173" font-size="11">salida: módulo .ll autocontenido — la validación final la hace clang al compilar a binario nativo</text>
+</svg>

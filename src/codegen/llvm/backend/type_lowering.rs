@@ -29,6 +29,46 @@ impl LlvmBackend {
         Some(lowered)
     }
 
+    /// Resuelve el nombre de una anotación (simple, arreglo `T[]` o tipo
+    /// función canónico `(A,B)->C`) al ValueType correspondiente. Los tipos
+    /// compuestos ya fueron internados por el análisis semántico, así que
+    /// aquí solo se buscan por estructura.
+    pub(in crate::codegen::llvm) fn resolve_annotation_value_type(
+        &mut self,
+        name: &str,
+    ) -> Option<ValueType> {
+        if name.starts_with('(') {
+            let (param_names, ret_name) =
+                crate::parser::expression::split_function_type_name(name)?;
+            let mut params = Vec::with_capacity(param_names.len());
+            for param_name in &param_names {
+                params.push(self.resolve_annotation_value_type(param_name)?);
+            }
+            let ret = self.resolve_annotation_value_type(&ret_name)?;
+            return self.function_type_for(&params, ret);
+        }
+        self.resolve_elem_type_name(name)
+    }
+
+    /// Búsqueda estructural inversa de una firma en `function_types`.
+    pub(in crate::codegen::llvm) fn function_type_for(
+        &self,
+        params: &[ValueType],
+        ret: ValueType,
+    ) -> Option<ValueType> {
+        self.function_types
+            .iter()
+            .find(|(_, (entry_params, entry_ret))| {
+                entry_params.len() == params.len()
+                    && entry_params
+                        .iter()
+                        .zip(params.iter())
+                        .all(|(a, b)| *a == *b || self.are_compatible_value_types(*a, *b))
+                    && (*entry_ret == ret || self.are_compatible_value_types(*entry_ret, ret))
+            })
+            .map(|(id, _)| ValueType::Function(*id))
+    }
+
     /// Variante silenciosa de `lower_semantic_type`: devuelve None ante un
     /// tipo desconocido sin registrar error (para entradas de tabla que no
     /// participan en la generación, p. ej. firmas parcialmente inferidas).

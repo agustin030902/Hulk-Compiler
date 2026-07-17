@@ -1,79 +1,52 @@
-# Semantic
+# 🧠 Semantic — Análisis Semántico
 
-Este módulo implementa el análisis semántico del compilador Hulk.
+Verificación de símbolos y tipos en **dos pasadas** orquestadas por
+[`SemanticAnalyzer`](analyzer.rs). El orden de las sub-fases **importa** y
+está documentado en [`pipeline/symbol_collector/mod.rs`](pipeline/symbol_collector/mod.rs).
 
-## Qué valida
+![Pipeline semántico](docs/semantic-pipeline.svg)
 
-- scopes y redeclaraciones
-- uso de variables antes de declarar
-- compatibilidad de tipos en expresiones
-- contratos de funciones y métodos (parámetros y retorno)
-- inferencia de tipos sobre firmas incompletas
+## Flujo
 
-## Estructura actual
+1. **Inferencia de firmas** ([`SignatureInferencePass`](pipeline/signature_inference_pass.rs)) —
+   fixpoint iterativo (≤ 8 pasadas) que propaga tipos entre funciones
+   mutuamente recursivas *antes* de verificar cuerpos.
+2. **Recolección de símbolos** ([`pipeline/symbol_collector/`](pipeline/symbol_collector/)) —
+   en orden estricto:
+   - `inject_splat_interfaces` — sintetiza `Iterable_T` por cada anotación `T*`.
+   - `collect_types` — nombres → padres (ciclos detectados) → params de constructor.
+   - `collect_interfaces` — nombres → herencia `extends` validada.
+   - `collect_functions` / `collect_methods` / `collect_interface_methods` —
+     firmas con un constructor común ([`signature_collector`](pipeline/symbol_collector/signature_collector.rs)).
+3. **Verificación de tipos** ([`pipeline/type_checker/`](pipeline/type_checker/)) —
+   un módulo por variante del AST. Piezas clave:
+   - **Interfaces estructurales** con varianza (covariante en retornos,
+     contravariante en parámetros) — [`interface_checker.rs`](pipeline/type_checker/interface_checker.rs).
+   - **Iteración dual** `Iterable`/`Enumerable` (análogo a
+     `Iterator`/`IntoIterator` de Rust) — [`for_expr_checker.rs`](pipeline/type_checker/for_expr_checker.rs).
+   - **Tipos internados estructuralmente**: `Number[]` y `(Number) -> Number`
+     comparten `TypeId` si tienen la misma forma ([`type_table.rs`](helper/types_namespace/type_table.rs)).
+   - **Nulabilidad selectiva**: `Null` solo es asignable a tipos-puntero
+     (`String`, structs, funciones, arreglos).
 
-```text
-src/semantic/
-  mod.rs
-  analyzer.rs                  # orquestador del pipeline
-  helper/
-    mod.rs
-    scope.rs
-    function.rs
-    types_namespace/
-      mod.rs
-      type_info.rs
-      type_table.rs
-      types.rs
-  pipeline/
-    mod.rs
-    symbol_collector.rs
-    type_resolver.rs
-    type_constraint_engine.rs
-    type_checker.rs
-    signature_inference_pass.rs
-  docs/
-    pipeline.svg
-  tests/
-    ...
-```
+## Estructura
 
-## Flujo del pipeline
+| Módulo | Rol |
+|--------|-----|
+| `analyzer.rs` | Orquestación, scopes y tablas (símbolos, firmas, tipos) |
+| `pipeline/symbol_collector/` | Recolección — un módulo por responsabilidad (tipos, interfaces, firmas, jerarquía, splat) |
+| `pipeline/type_checker/` | Verificación — un módulo por variante de `Expr` |
+| `pipeline/signature_inference_pass.rs` | Fixpoint de firmas |
+| `pipeline/type_resolver.rs` | Nombres de anotación → tipos (arrays `T[]`, funciones `(A)->B`) |
+| `pipeline/type_constraint_engine.rs` | Unificación/propagación (`merge_types`, `constrain_*`) |
+| `helper/` | `SemanticType`, `TypeId`, `TypeTable`, `ScopeStack` |
+| `builtins.rs` | `Object`, `Range`, `Iterable`, `Enumerable` |
 
-![Semantic Pipeline](./docs/pipeline.svg)
-
-Orden de ejecución (sin cambiar semántica externa):
-
-1. `SymbolCollector`
-2. `SignatureInferencePass` (loop hasta `MAX_INFERENCE_PASSES`)
-3. `apply_inferred_signatures`
-4. `TypeChecker`
-5. `push_unresolved_function_type_errors` + `sync_function_type_entries`
-
-La API pública se mantiene:
+## API pública
 
 - `SemanticAnalyzer::analyze(program, source) -> Vec<CompilerError>`
-- getters de `type_table`, `function_symbols`, `type_symbols`, `function_signatures`
+- Getters de `type_table`, `type_symbols`, `function_symbols`,
+  `function_signatures` — **codegen los consume directamente** vía
+  `generate(program, &analyzer)`, sin re-analizar.
 
-## Responsabilidades por módulo
-
-- `analyzer.rs`: orquestación y estado compartido.
-- `pipeline/symbol_collector.rs`: construcción de tablas y símbolos.
-- `pipeline/type_resolver.rs`: resolución de tipos (`SemanticType <-> TypeId`).
-- `pipeline/type_constraint_engine.rs`: unificación/propagación (`merge_types`, `constrain_*`).
-- `pipeline/type_checker.rs`: traversal del AST y validaciones semánticas.
-- `pipeline/signature_inference_pass.rs`: inferencia iterativa de firmas.
-- `helper/scope.rs`: implementación de `ScopeStack` (sin cambios estructurales).
-
-## Estado compartido principal
-
-`SemanticAnalyzer` centraliza:
-
-- `type_table`
-- `function_symbols`
-- `type_symbols`
-- `functions` (firmas)
-- `scopes` (`ScopeStack`)
-- `errors`
-
-Las fases operan sobre este estado de forma ordenada para mantener comportamiento consistente.
+**Salida:** tablas pobladas + errores → exit code `3`.

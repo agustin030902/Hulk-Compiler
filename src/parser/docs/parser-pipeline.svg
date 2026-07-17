@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" font-family="Menlo, Consolas, monospace">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#78dc3c"/>
+    </marker>
+  </defs>
+
+  <rect width="960" height="420" rx="14" fill="#0d110c"/>
+  <text x="30" y="42" fill="#78dc3c" font-size="20" font-weight="bold">🌳 PARSER</text>
+  <text x="150" y="42" fill="#789173" font-size="13">Vec&lt;Token&gt; → AST plano (macros expandidas)</text>
+  <line x1="30" y1="56" x2="930" y2="56" stroke="#78dc3c" stroke-opacity="0.35" stroke-width="2"/>
+
+  <!-- tokens -->
+  <rect x="30" y="96" width="140" height="70" rx="10" fill="#141a12" stroke="#4a5d45"/>
+  <text x="100" y="126" fill="#d6ebd0" font-size="13" text-anchor="middle">tokens</text>
+  <text x="100" y="146" fill="#789173" font-size="10" text-anchor="middle">del lexer</text>
+
+  <!-- LALRPOP -->
+  <rect x="220" y="96" width="200" height="70" rx="10" fill="#12240e" stroke="#78dc3c"/>
+  <text x="320" y="122" fill="#78dc3c" font-size="13" font-weight="bold" text-anchor="middle">LALRPOP LR(1)</text>
+  <text x="320" y="142" fill="#a0c896" font-size="10" text-anchor="middle">grammar.lalrpop</text>
+  <text x="320" y="156" fill="#a0c896" font-size="10" text-anchor="middle">cadena dual de expresiones</text>
+
+  <!-- AST -->
+  <rect x="470" y="82" width="215" height="104" rx="10" fill="#141a12" stroke="#4a5d45"/>
+  <text x="577" y="106" fill="#d6ebd0" font-size="13" font-weight="bold" text-anchor="middle">Program</text>
+  <text x="577" y="126" fill="#be82ff" font-size="10" text-anchor="middle">types · interfaces · functions</text>
+  <text x="577" y="142" fill="#be82ff" font-size="10" text-anchor="middle">macros · statements</text>
+  <text x="577" y="164" fill="#789173" font-size="10" text-anchor="middle">declaraciones ≠ sentencias</text>
+  <text x="577" y="178" fill="#789173" font-size="10" text-anchor="middle">⇒ hoisting</text>
+
+  <!-- expansor -->
+  <rect x="735" y="96" width="195" height="70" rx="10" fill="#12240e" stroke="#78dc3c"/>
+  <text x="832" y="122" fill="#78dc3c" font-size="13" font-weight="bold" text-anchor="middle">MacroExpander</text>
+  <text x="832" y="142" fill="#a0c896" font-size="10" text-anchor="middle">call-by-name · higiene</text>
+  <text x="832" y="156" fill="#a0c896" font-size="10" text-anchor="middle">profundidad ≤ 64</text>
+
+  <line x1="170" y1="131" x2="212" y2="131" stroke="#78dc3c" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="420" y1="131" x2="462" y2="131" stroke="#78dc3c" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="685" y1="131" x2="727" y2="131" stroke="#78dc3c" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- detalle de la cadena dual -->
+  <rect x="30" y="220" width="430" height="120" rx="10" fill="#10160f" stroke="#4a5d45"/>
+  <text x="245" y="246" fill="#ebc878" font-size="12" font-weight="bold" text-anchor="middle">cadena dual de expresiones</text>
+  <text x="55" y="272" fill="#a0c896" font-size="11">cerrada:  BaseExpr → Or → … → Primary</text>
+  <text x="55" y="292" fill="#a0c896" font-size="11">abierta:  ExtExpr → OrTail → … → FlowAtom</text>
+  <text x="55" y="316" fill="#be82ff" font-size="11">FlowAtom = if · while · for · let-in · lambda</text>
+  <text x="55" y="331" fill="#789173" font-size="10">cuerpo greedy: cierran operadores, nunca son operando izq.</text>
+
+  <!-- detalle expansion -->
+  <rect x="500" y="220" width="430" height="120" rx="10" fill="#10160f" stroke="#4a5d45"/>
+  <text x="715" y="246" fill="#ebc878" font-size="12" font-weight="bold" text-anchor="middle">expansión de macros</text>
+  <text x="525" y="270" fill="#a0c896" font-size="11">repeat(5, count := count + 1)</text>
+  <text x="525" y="292" fill="#78dc3c" font-size="11">→ let i__macro0 = 5 in while (i__macro0 &gt; 0) {</text>
+  <text x="545" y="310" fill="#78dc3c" font-size="11">i__macro0 := i__macro0 - 1;  count := count + 1; }</text>
+  <text x="525" y="331" fill="#789173" font-size="10">el argumento se re-evalúa por uso · locals renombrados</text>
+
+  <text x="30" y="398" fill="#789173" font-size="11">exit code 2 · range(a,b) se desazucara aquí a new Range(a,b) · tipos compuestos codificados como texto: Number[] · (Number)-&gt;Number</text>
+</svg>

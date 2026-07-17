@@ -1,4 +1,4 @@
-use crate::{codegen::CodegenBackend, error::CompilerError, lexer::Lexer, parser::Parser};
+use crate::{codegen::CodegenBackend, error::CompilerError, lexer::Lexer, parser::Parser, semantic::SemanticAnalyzer};
 
 use super::LlvmBackend;
 
@@ -16,8 +16,14 @@ fn compile_source(source: &str) -> Result<String, Vec<CompilerError>> {
         .parse_program(tokens)
         .expect("parser should return a program");
 
+    let mut analyzer = SemanticAnalyzer::new();
+    let semantic_errors = analyzer.analyze(&program, source);
+    if !semantic_errors.is_empty() {
+        return Err(semantic_errors);
+    }
+
     let mut backend = LlvmBackend::new();
-    backend.generate(&program)
+    backend.generate(&program, &analyzer)
 }
 
 #[test]

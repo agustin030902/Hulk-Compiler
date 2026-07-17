@@ -16,6 +16,52 @@ pub struct Span {
     pub end: usize,
 }
 
+/// Decodifica el nombre canónico de un tipo función `(A,B)->C` (el formato
+/// que produce la gramática para las anotaciones) en (["A","B"], "C"),
+/// respetando paréntesis anidados. Es el codec compartido entre el análisis
+/// semántico y el codegen; devuelve `None` si el nombre no tiene esa forma.
+pub fn split_function_type_name(name: &str) -> Option<(Vec<String>, String)> {
+    let inner_start = name.find('(')? + 1;
+    let mut depth = 1usize;
+    let mut inner_end = None;
+    for (offset, ch) in name[inner_start..].char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    inner_end = Some(inner_start + offset);
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    let inner_end = inner_end?;
+    let params_text = &name[inner_start..inner_end];
+    let ret_name = name[inner_end + 1..].strip_prefix("->")?.to_string();
+
+    let mut params = Vec::new();
+    if !params_text.is_empty() {
+        let mut depth = 0usize;
+        let mut start = 0usize;
+        for (offset, ch) in params_text.char_indices() {
+            match ch {
+                '(' => depth += 1,
+                ')' => depth = depth.saturating_sub(1),
+                ',' if depth == 0 => {
+                    params.push(params_text[start..offset].to_string());
+                    start = offset + 1;
+                }
+                _ => {}
+            }
+        }
+        params.push(params_text[start..].to_string());
+    }
+
+    Some((params, ret_name))
+}
+
 impl Span {
     pub const fn new(start: usize, end: usize) -> Self {
         Self { start, end }

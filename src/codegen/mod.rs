@@ -19,12 +19,19 @@
 //! - **Closures**: `[fnptr][captura0][captura1]…`; cada lambda se eleva a una
 //!   función `@hulk_lambda_N(i8* %__env, …)` y captura por valor.
 
-use crate::{error::CompilerError, parser::expression::Program};
+use crate::{error::CompilerError, parser::expression::Program, semantic::SemanticAnalyzer};
 
 pub mod llvm;
 
-/// Contrato de un backend de generación: recibe el AST verificado y produce
-/// el módulo compilado como texto, o los diagnósticos que lo impidieron.
+/// Contrato de un backend de generación: recibe el AST verificado **y el
+/// análisis semántico ya corrido** (tabla de tipos, firmas, jerarquía), y
+/// produce el módulo compilado como texto, o los diagnósticos que lo
+/// impidieron. Pasar el análisis evita que el backend re-derive información
+/// que la fase anterior ya calculó — el pipeline fluye en una sola dirección.
 pub trait CodegenBackend {
-    fn generate(&mut self, program: &Program) -> Result<String, Vec<CompilerError>>;
+    fn generate(
+        &mut self,
+        program: &Program,
+        analyzer: &SemanticAnalyzer,
+    ) -> Result<String, Vec<CompilerError>>;
 }

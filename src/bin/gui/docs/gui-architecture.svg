@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 460" font-family="Menlo, Consolas, monospace">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#78dc3c"/>
+    </marker>
+  </defs>
+
+  <rect width="960" height="460" rx="14" fill="#0d110c"/>
+  <text x="30" y="42" fill="#78dc3c" font-size="20" font-weight="bold">🎨 GUI — Hulk Compiler Studio</text>
+  <text x="420" y="42" fill="#789173" font-size="13">misma librería, mismo pipeline que la CLI</text>
+  <line x1="30" y1="56" x2="930" y2="56" stroke="#78dc3c" stroke-opacity="0.35" stroke-width="2"/>
+
+  <!-- maqueta de ventana -->
+  <rect x="30" y="80" width="560" height="320" rx="10" fill="#10160f" stroke="#4a5d45"/>
+  <!-- toolbar -->
+  <rect x="42" y="92" width="536" height="34" rx="6" fill="#141a12" stroke="#4a5d45"/>
+  <text x="56" y="114" fill="#78dc3c" font-size="11" font-weight="bold">💪 HULK</text>
+  <text x="140" y="114" fill="#a0c896" font-size="10">📂 · ⚡ snippets · ▶ Compilar · 🎯 · temas · Aa</text>
+  <!-- pipeline strip -->
+  <rect x="42" y="132" width="536" height="26" rx="6" fill="#141a12" stroke="#4a5d45"/>
+  <text x="56" y="149" fill="#8cf050" font-size="10">✔ Lexer → ✔ Parser → ✔ Semántica → ✔ Codegen → ✔ Run</text>
+  <text x="500" y="149" fill="#78dc3c" font-size="10">⏱ 12 ms</text>
+  <!-- editor + ast -->
+  <rect x="42" y="164" width="330" height="150" rx="6" fill="#070a07" stroke="#4a5d45"/>
+  <text x="56" y="186" fill="#789173" font-size="10">1  function fib(n) =&gt;</text>
+  <text x="56" y="202" fill="#be82ff" font-size="10">2    if (n == 0) 0</text>
+  <text x="56" y="218" fill="#d6ebd0" font-size="10">3    else fib(n-1)+fib(n-2);</text>
+  <text x="56" y="240" fill="#ff5c5c" font-size="10">7  ← línea con error en rojo</text>
+  <text x="200" y="300" fill="#789173" font-size="10" text-anchor="middle">editor · gutter · autocompletar</text>
+  <rect x="380" y="164" width="198" height="150" rx="6" fill="#141a12" stroke="#4a5d45"/>
+  <text x="479" y="186" fill="#78dc3c" font-size="11" font-weight="bold" text-anchor="middle">🌳 AST</text>
+  <text x="479" y="206" fill="#a0c896" font-size="9" text-anchor="middle">árbol + 🔍 búsqueda</text>
+  <text x="479" y="224" fill="#789173" font-size="9" text-anchor="middle">▸ Funciones globales</text>
+  <text x="479" y="240" fill="#789173" font-size="9" text-anchor="middle">▸ Statements de main</text>
+  <!-- tabs -->
+  <rect x="42" y="322" width="536" height="30" rx="6" fill="#141a12" stroke="#4a5d45"/>
+  <text x="56" y="341" fill="#a0c896" font-size="10">❗ Errores · 🔤 Tokens · ⚙ LLVM IR · 🖥 Terminal</text>
+  <!-- status -->
+  <rect x="42" y="358" width="536" height="30" rx="6" fill="#070a07" stroke="#4a5d45"/>
+  <text x="56" y="377" fill="#8cf050" font-size="10">● LLVM IR generado · 42 líneas · 187 tokens · 0 errores</text>
+
+  <!-- modulos -->
+  <text x="650" y="100" fill="#ebc878" font-size="13" font-weight="bold">módulos</text>
+
+  <rect x="650" y="112" width="280" height="40" rx="8" fill="#12240e" stroke="#78dc3c"/>
+  <text x="664" y="137" fill="#78dc3c" font-size="11" font-weight="bold">app.rs</text>
+  <text x="740" y="137" fill="#a0c896" font-size="10">estado + paneles + loop UI</text>
+
+  <rect x="650" y="160" width="280" height="40" rx="8" fill="#10160f" stroke="#4a5d45"/>
+  <text x="664" y="185" fill="#d6ebd0" font-size="11" font-weight="bold">theme.rs</text>
+  <text x="750" y="185" fill="#a0c896" font-size="10">4 paletas en caliente</text>
+
+  <rect x="650" y="208" width="280" height="40" rx="8" fill="#10160f" stroke="#4a5d45"/>
+  <text x="664" y="233" fill="#d6ebd0" font-size="11" font-weight="bold">highlight.rs</text>
+  <text x="764" y="233" fill="#a0c896" font-size="10">usa el lexer REAL</text>
+
+  <rect x="650" y="256" width="280" height="40" rx="8" fill="#10160f" stroke="#4a5d45"/>
+  <text x="664" y="281" fill="#d6ebd0" font-size="11" font-weight="bold">ast_view.rs</text>
+  <text x="760" y="281" fill="#a0c896" font-size="10">árbol con búsqueda</text>
+
+  <rect x="650" y="304" width="280" height="40" rx="8" fill="#10160f" stroke="#4a5d45"/>
+  <text x="664" y="329" fill="#d6ebd0" font-size="11" font-weight="bold">runner.rs</text>
+  <text x="752" y="329" fill="#a0c896" font-size="10">lli/clang · snippets</text>
+
+  <rect x="650" y="352" width="280" height="48" rx="8" fill="#241533" stroke="#be82ff"/>
+  <text x="790" y="372" fill="#be82ff" font-size="11" font-weight="bold" text-anchor="middle">hulk_compiler (lib)</text>
+  <text x="790" y="390" fill="#c8b0e0" font-size="10" text-anchor="middle">Compiler::compile → CompileReport</text>
+
+  <line x1="590" y1="240" x2="642" y2="240" stroke="#78dc3c" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="790" y1="344" x2="790" y2="350" stroke="#be82ff" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <text x="30" y="432" fill="#789173" font-size="11">Ctrl/Cmd+Enter compila · el CompileReport alimenta todos los paneles a la vez · la franja de pipeline usa la misma regla que el exit code</text>
+</svg>

@@ -138,7 +138,7 @@ impl Compiler {
         // =========================
         // CODEGEN (AQUÍ ES DONDE VA)
         // =========================
-        match self.llvm_backend.generate(&program) {
+        match self.llvm_backend.generate(&program, &self.semantic_analyzer) {
             Ok(llvm_ir) => {
                 // Volcado del IR opt-in: activar con la env var HULK_DUMP_IR.
                 // Antes se imprimía siempre en builds debug, contaminando la salida

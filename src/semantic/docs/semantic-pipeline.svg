@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 500" font-family="Menlo, Consolas, monospace">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#78dc3c"/>
+    </marker>
+  </defs>
+
+  <rect width="960" height="500" rx="14" fill="#0d110c"/>
+  <text x="30" y="42" fill="#78dc3c" font-size="20" font-weight="bold">🧠 SEMANTIC</text>
+  <text x="180" y="42" fill="#789173" font-size="13">AST plano → tablas de tipos/firmas verificadas</text>
+  <line x1="30" y1="56" x2="930" y2="56" stroke="#78dc3c" stroke-opacity="0.35" stroke-width="2"/>
+
+  <!-- Pasada 1: inferencia -->
+  <rect x="30" y="86" width="900" height="80" rx="10" fill="#12240e" stroke="#78dc3c"/>
+  <text x="50" y="112" fill="#78dc3c" font-size="13" font-weight="bold">① SignatureInferencePass — fixpoint iterativo (≤ 8 pasadas)</text>
+  <text x="50" y="134" fill="#a0c896" font-size="11">propaga tipos entre funciones mutuamente recursivas antes de verificar cuerpos</text>
+  <text x="50" y="152" fill="#789173" font-size="10">fib(n) llama fib(n-1) ⇒ el retorno se estabiliza iterando hasta que nada cambia</text>
+
+  <line x1="480" y1="166" x2="480" y2="188" stroke="#78dc3c" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Pasada 2: recoleccion en orden -->
+  <rect x="30" y="196" width="900" height="150" rx="10" fill="#10160f" stroke="#4a5d45"/>
+  <text x="50" y="222" fill="#ebc878" font-size="13" font-weight="bold">② SymbolCollector — el orden importa</text>
+
+  <rect x="50" y="240" width="150" height="56" rx="8" fill="#241533" stroke="#be82ff"/>
+  <text x="125" y="262" fill="#be82ff" font-size="11" font-weight="bold" text-anchor="middle">splat T*</text>
+  <text x="125" y="280" fill="#c8b0e0" font-size="9" text-anchor="middle">sintetiza Iterable_T</text>
+
+  <rect x="240" y="240" width="150" height="56" rx="8" fill="#12240e" stroke="#78dc3c"/>
+  <text x="315" y="262" fill="#78dc3c" font-size="11" font-weight="bold" text-anchor="middle">types</text>
+  <text x="315" y="280" fill="#a0c896" font-size="9" text-anchor="middle">nombres→padres→ctor</text>
+
+  <rect x="430" y="240" width="150" height="56" rx="8" fill="#12240e" stroke="#78dc3c"/>
+  <text x="505" y="262" fill="#78dc3c" font-size="11" font-weight="bold" text-anchor="middle">interfaces</text>
+  <text x="505" y="280" fill="#a0c896" font-size="9" text-anchor="middle">extends + ciclos</text>
+
+  <rect x="620" y="240" width="290" height="56" rx="8" fill="#12240e" stroke="#78dc3c"/>
+  <text x="765" y="262" fill="#78dc3c" font-size="11" font-weight="bold" text-anchor="middle">firmas: functions · methods · interface methods</text>
+  <text x="765" y="280" fill="#a0c896" font-size="9" text-anchor="middle">constructor común de firmas (signature_collector)</text>
+
+  <line x1="200" y1="268" x2="232" y2="268" stroke="#78dc3c" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="390" y1="268" x2="422" y2="268" stroke="#78dc3c" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="580" y1="268" x2="612" y2="268" stroke="#78dc3c" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <text x="50" y="326" fill="#789173" font-size="10">detecta: nombres reservados · redeclaraciones · ciclos de herencia · overrides con firma distinta · anotaciones faltantes en interfaces</text>
+
+  <line x1="480" y1="346" x2="480" y2="368" stroke="#78dc3c" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Pasada 3: type checker -->
+  <rect x="30" y="376" width="900" height="80" rx="10" fill="#12240e" stroke="#78dc3c"/>
+  <text x="50" y="402" fill="#78dc3c" font-size="13" font-weight="bold">③ TypeChecker — un módulo por variante del AST</text>
+  <text x="50" y="424" fill="#a0c896" font-size="11">varianza en interfaces (co-retornos / contra-params) · iteración dual Iterable/Enumerable · arrays y lambdas estructurales</text>
+  <text x="50" y="442" fill="#789173" font-size="10">Null solo asignable a tipos-puntero · igualdad de Number[] y (Number)-&gt;Number por forma, no por id</text>
+
+  <text x="30" y="482" fill="#789173" font-size="11">exit code 3 · salida: type_table + firmas + jerarquía — codegen las consume sin re-analizar</text>
+</svg>

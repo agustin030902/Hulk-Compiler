@@ -1,5 +1,6 @@
 //! Interacción con el mundo exterior: ejecutar el IR generado (lli o clang
-//! según plataforma), instalar la extensión de VSCode y listar ejemplos.
+//! según plataforma), abrir una terminal real del sistema, instalar la
+//! extensión de VSCode y listar ejemplos.
 
 use std::{fs, path::PathBuf, process::Command};
 
@@ -175,38 +176,71 @@ pub fn install_vscode_extension() -> Result<String, String> {
     ))
 }
 
-fn run_with_lli(lli_path: &str, ll_path: &PathBuf) -> Result<String, String> {
+// ── Ejecución del programa ───────────────────────────────────────────────
+
+/// Resultado crudo de ejecutar el programa compilado. Modela una sola
+/// ejecución independientemente de la plataforma (lli o clang→exe).
+#[derive(Debug, Clone, Default)]
+pub struct ProgramOutput {
+    /// Comando ejecutado (se muestra como prompt en la consola integrada).
+    pub command: String,
+    /// Salida estándar del programa: lo que imprime `print`.
+    pub stdout: String,
+    /// Salida de error del programa, si la hubo.
+    pub stderr: String,
+    /// Código de salida del proceso.
+    pub exit_code: Option<i32>,
+}
+
+impl ProgramOutput {
+    pub fn is_success(&self) -> bool {
+        self.exit_code == Some(0)
+    }
+}
+
+/// Ruta del ejecutable nativo generado por el flujo clang.
+fn executable_path() -> PathBuf {
+    if cfg!(target_os = "windows") {
+        PathBuf::from("artifacts/gui_output.exe")
+    } else {
+        PathBuf::from("artifacts/gui_output")
+    }
+}
+
+/// Punto único de ejecución: hace el spawning específico de la plataforma y
+/// devuelve la salida cruda. Tanto la vista limpia como la verbosa delegan
+/// aquí.
+fn execute_program(lli_path: &str, ll_path: &PathBuf) -> Result<ProgramOutput, String> {
     if !ll_path.exists() {
         return Err(format!(
             "No se encontró el archivo LLVM IR en {}",
             ll_path.display()
         ));
     }
+
+    if cfg!(target_os = "windows") {
+        execute_with_clang(ll_path)
+    } else {
+        execute_with_lli(lli_path, ll_path)
+    }
+}
+
+fn execute_with_lli(lli_path: &str, ll_path: &PathBuf) -> Result<ProgramOutput, String> {
     let output = Command::new(lli_path)
         .arg(ll_path)
         .output()
-        .map_err(|e| format!("Fallo al ejecutar lli: {e}"))?;
+        .map_err(|e| format!("Fallo al ejecutar lli ('{lli_path}'): {e}"))?;
 
-    let mut result = String::new();
-    result.push_str(&format!("Comando: {} {}\n", lli_path, ll_path.display()));
-    result.push_str(&format!("Exit code: {:?}\n", output.status.code()));
-    if !output.stdout.is_empty() {
-        result.push_str("\n--- stdout ---\n");
-        result.push_str(&String::from_utf8_lossy(&output.stdout));
-    }
-    if !output.stderr.is_empty() {
-        result.push_str("\n--- stderr ---\n");
-        result.push_str(&String::from_utf8_lossy(&output.stderr));
-    }
-    Ok(result)
+    Ok(ProgramOutput {
+        command: format!("{} {}", lli_path, ll_path.display()),
+        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+        exit_code: output.status.code(),
+    })
 }
 
-fn run_with_clang(ll_path: &PathBuf) -> Result<String, String> {
-    let exe_path = if cfg!(target_os = "windows") {
-        PathBuf::from("artifacts/gui_output.exe")
-    } else {
-        PathBuf::from("artifacts/gui_output")
-    };
+fn execute_with_clang(ll_path: &PathBuf) -> Result<ProgramOutput, String> {
+    let exe_path = executable_path();
 
     let compile = Command::new("clang")
         .arg(ll_path)
@@ -226,27 +260,130 @@ fn run_with_clang(ll_path: &PathBuf) -> Result<String, String> {
         .output()
         .map_err(|e| format!("Error ejecutando exe: {e}"))?;
 
+    Ok(ProgramOutput {
+        command: exe_path.display().to_string(),
+        stdout: String::from_utf8_lossy(&run.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&run.stderr).into_owned(),
+        exit_code: run.status.code(),
+    })
+}
+
+/// Ejecuta el programa y devuelve la salida cruda, pensada para la consola
+/// tipo terminal integrada (solo lo que imprime el programa).
+pub fn run_program_clean(lli_path: &str, ll_path: &PathBuf) -> Result<ProgramOutput, String> {
+    execute_program(lli_path, ll_path)
+}
+
+/// Ejecuta el programa y devuelve un reporte verboso (comando, exit code,
+/// stdout y stderr etiquetados). Útil para depuración y logs.
+#[allow(dead_code)]
+pub fn run_program(lli_path: &str, ll_path: &PathBuf) -> Result<String, String> {
+    let output = execute_program(lli_path, ll_path)?;
+
     let mut result = String::new();
-    result.push_str("Modo: clang → exe\n");
-    result.push_str(&format!("Ejecutable: {}\n", exe_path.display()));
-    result.push_str(&format!("Exit code: {:?}\n", run.status.code()));
-
-    if !run.stdout.is_empty() {
+    result.push_str(&format!("Comando: {}\n", output.command));
+    result.push_str(&format!("Exit code: {:?}\n", output.exit_code));
+    if !output.stdout.is_empty() {
         result.push_str("\n--- stdout ---\n");
-        result.push_str(&String::from_utf8_lossy(&run.stdout));
+        result.push_str(&output.stdout);
     }
-    if !run.stderr.is_empty() {
+    if !output.stderr.is_empty() {
         result.push_str("\n--- stderr ---\n");
-        result.push_str(&String::from_utf8_lossy(&run.stderr));
+        result.push_str(&output.stderr);
     }
-
     Ok(result)
 }
 
-pub fn run_program(lli_path: &str, ll_path: &PathBuf) -> Result<String, String> {
-    if cfg!(target_os = "windows") {
-        run_with_clang(ll_path)
-    } else {
-        run_with_lli(lli_path, ll_path)
+// ── Terminal externa del sistema ──────────────────────────────────────────
+
+/// Escapa una cadena para incrustarla en un literal de AppleScript
+/// (osascript), que delimita strings con comillas dobles y usa `\` como
+/// carácter de escape.
+fn escape_for_applescript(command: &str) -> String {
+    command.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+/// Abre una terminal real del sistema y ejecuta el programa compilado en ella,
+/// de modo que el usuario vea la salida en una consola nativa.
+pub fn open_in_external_terminal(lli_path: &str, ll_path: &PathBuf) -> Result<String, String> {
+    if !ll_path.exists() {
+        return Err(format!(
+            "Compila primero: no existe {}",
+            ll_path.display()
+        ));
     }
+
+    if cfg!(target_os = "macos") {
+        open_terminal_macos(lli_path, ll_path)
+    } else if cfg!(target_os = "windows") {
+        open_terminal_windows()
+    } else {
+        open_terminal_linux(lli_path, ll_path)
+    }
+}
+
+fn open_terminal_macos(lli_path: &str, ll_path: &PathBuf) -> Result<String, String> {
+    let shell_cmd = format!("clear; {} '{}'", lli_path, ll_path.display());
+    let script = format!(
+        "tell application \"Terminal\"\n\tactivate\n\tdo script \"{}\"\nend tell",
+        escape_for_applescript(&shell_cmd)
+    );
+
+    Command::new("osascript")
+        .arg("-e")
+        .arg(&script)
+        .spawn()
+        .map(|_| "Terminal.app abierta con la salida del programa.".to_string())
+        .map_err(|e| format!("No se pudo abrir Terminal.app: {e}"))
+}
+
+fn open_terminal_linux(lli_path: &str, ll_path: &PathBuf) -> Result<String, String> {
+    let shell_cmd = format!(
+        "clear; {} '{}'; echo; echo '── programa finalizado, pulsa Enter ──'; read _",
+        lli_path,
+        ll_path.display()
+    );
+
+    let terminals = [
+        "x-terminal-emulator",
+        "gnome-terminal",
+        "konsole",
+        "xfce4-terminal",
+        "xterm",
+    ];
+
+    for term in terminals {
+        if Command::new(term)
+            .arg("-e")
+            .arg("bash")
+            .arg("-c")
+            .arg(&shell_cmd)
+            .spawn()
+            .is_ok()
+        {
+            return Ok(format!("Terminal abierta con '{term}'."));
+        }
+    }
+
+    Err(
+        "No se encontró un emulador de terminal (probé gnome-terminal, konsole, xterm...)."
+            .to_string(),
+    )
+}
+
+fn open_terminal_windows() -> Result<String, String> {
+    let exe = executable_path();
+    if !exe.exists() {
+        return Err(format!(
+            "No existe el ejecutable {}. Compila y ejecuta primero.",
+            exe.display()
+        ));
+    }
+
+    Command::new("cmd")
+        .args(["/C", "start", "Hulk", "cmd", "/K"])
+        .arg(&exe)
+        .spawn()
+        .map(|_| "Consola de Windows abierta con la salida del programa.".to_string())
+        .map_err(|e| format!("No se pudo abrir cmd: {e}"))
 }

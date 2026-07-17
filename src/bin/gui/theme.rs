@@ -12,14 +12,20 @@ pub enum ThemeKind {
     CatppuccinMocha,
     Cyberpunk,
     VsDark,
+    Dracula,
+    Nord,
+    TokyoNight,
 }
 
 impl ThemeKind {
-    pub const ALL: [ThemeKind; 4] = [
+    pub const ALL: [ThemeKind; 7] = [
         ThemeKind::HulkSmash,
         ThemeKind::CatppuccinMocha,
         ThemeKind::Cyberpunk,
         ThemeKind::VsDark,
+        ThemeKind::Dracula,
+        ThemeKind::Nord,
+        ThemeKind::TokyoNight,
     ];
 
     pub fn label(self) -> &'static str {
@@ -28,6 +34,9 @@ impl ThemeKind {
             ThemeKind::CatppuccinMocha => "🌙 Catppuccin",
             ThemeKind::Cyberpunk => "⚡ Cyberpunk",
             ThemeKind::VsDark => "🌌 VS Dark",
+            ThemeKind::Dracula => "🧛 Dracula",
+            ThemeKind::Nord => "❄️ Nord",
+            ThemeKind::TokyoNight => "🌃 Tokyo Night",
         }
     }
 
@@ -37,6 +46,9 @@ impl ThemeKind {
             ThemeKind::CatppuccinMocha => Theme::catppuccin_mocha(),
             ThemeKind::Cyberpunk => Theme::cyberpunk(),
             ThemeKind::VsDark => Theme::vs_dark(),
+            ThemeKind::Dracula => Theme::dracula(),
+            ThemeKind::Nord => Theme::nord(),
+            ThemeKind::TokyoNight => Theme::tokyo_night(),
         }
     }
 }
@@ -60,6 +72,10 @@ pub struct Theme {
     pub boolean: Color32,
     pub operator: Color32,
     pub unknown: Color32,
+    // Consola / terminal integrada
+    pub terminal_bg: Color32,
+    pub terminal_text: Color32,
+    pub prompt: Color32,
 }
 
 impl Theme {
@@ -83,6 +99,9 @@ impl Theme {
             boolean: Color32::from_rgb(110, 200, 255),
             operator: Color32::from_rgb(160, 200, 150),
             unknown: Color32::from_rgb(255, 92, 92),
+            terminal_bg: Color32::from_rgb(6, 9, 6),
+            terminal_text: Color32::from_rgb(198, 240, 190),
+            prompt: Color32::from_rgb(120, 220, 60),
         }
     }
 
@@ -104,6 +123,9 @@ impl Theme {
             boolean: Color32::from_rgb(137, 180, 250), // blue
             operator: Color32::from_rgb(180, 190, 254), // lavender
             unknown: Color32::from_rgb(243, 139, 168), // red
+            terminal_bg: Color32::from_rgb(17, 17, 27), // crust
+            terminal_text: Color32::from_rgb(205, 214, 244), // text
+            prompt: Color32::from_rgb(166, 227, 161), // green
         }
     }
 
@@ -125,6 +147,9 @@ impl Theme {
             boolean: Color32::from_rgb(0, 200, 255),
             operator: Color32::from_rgb(180, 180, 200),
             unknown: Color32::from_rgb(255, 60, 60),
+            terminal_bg: Color32::from_rgb(6, 6, 12),
+            terminal_text: Color32::from_rgb(220, 220, 235),
+            prompt: Color32::from_rgb(0, 255, 255),
         }
     }
 
@@ -146,6 +171,81 @@ impl Theme {
             boolean: Color32::from_rgb(86, 156, 214),
             operator: Color32::from_rgb(212, 212, 212),
             unknown: Color32::from_rgb(244, 71, 71),
+            terminal_bg: Color32::from_rgb(24, 24, 24),
+            terminal_text: Color32::from_rgb(212, 212, 212),
+            prompt: Color32::from_rgb(120, 210, 150),
+        }
+    }
+
+    pub fn dracula() -> Self {
+        Self {
+            bg_main: Color32::from_rgb(40, 42, 54),
+            bg_panel: Color32::from_rgb(33, 34, 44),
+            bg_input: Color32::from_rgb(25, 26, 33),
+            text: Color32::from_rgb(248, 248, 242),
+            text_dim: Color32::from_rgb(98, 114, 164),
+            accent: Color32::from_rgb(189, 147, 249),
+            success: Color32::from_rgb(80, 250, 123),
+            error: Color32::from_rgb(255, 85, 85),
+            keyword: Color32::from_rgb(255, 121, 198),
+            function: Color32::from_rgb(80, 250, 123),
+            variable: Color32::from_rgb(248, 248, 242),
+            number: Color32::from_rgb(189, 147, 249),
+            string: Color32::from_rgb(241, 250, 140),
+            boolean: Color32::from_rgb(139, 233, 253),
+            operator: Color32::from_rgb(255, 121, 198),
+            unknown: Color32::from_rgb(255, 85, 85),
+            terminal_bg: Color32::from_rgb(25, 26, 33),
+            terminal_text: Color32::from_rgb(248, 248, 242),
+            prompt: Color32::from_rgb(80, 250, 123),
+        }
+    }
+
+    pub fn nord() -> Self {
+        Self {
+            bg_main: Color32::from_rgb(46, 52, 64),
+            bg_panel: Color32::from_rgb(59, 66, 82),
+            bg_input: Color32::from_rgb(67, 76, 94),
+            text: Color32::from_rgb(236, 239, 244),
+            text_dim: Color32::from_rgb(129, 161, 193),
+            accent: Color32::from_rgb(136, 192, 208),
+            success: Color32::from_rgb(163, 190, 140),
+            error: Color32::from_rgb(191, 97, 106),
+            keyword: Color32::from_rgb(180, 142, 173),
+            function: Color32::from_rgb(136, 192, 208),
+            variable: Color32::from_rgb(216, 222, 233),
+            number: Color32::from_rgb(180, 142, 173),
+            string: Color32::from_rgb(163, 190, 140),
+            boolean: Color32::from_rgb(129, 161, 193),
+            operator: Color32::from_rgb(129, 161, 193),
+            unknown: Color32::from_rgb(191, 97, 106),
+            terminal_bg: Color32::from_rgb(46, 52, 64),
+            terminal_text: Color32::from_rgb(236, 239, 244),
+            prompt: Color32::from_rgb(163, 190, 140),
+        }
+    }
+
+    pub fn tokyo_night() -> Self {
+        Self {
+            bg_main: Color32::from_rgb(26, 27, 38),
+            bg_panel: Color32::from_rgb(22, 22, 30),
+            bg_input: Color32::from_rgb(31, 35, 53),
+            text: Color32::from_rgb(169, 177, 214),
+            text_dim: Color32::from_rgb(86, 95, 137),
+            accent: Color32::from_rgb(122, 162, 247),
+            success: Color32::from_rgb(158, 206, 106),
+            error: Color32::from_rgb(247, 118, 142),
+            keyword: Color32::from_rgb(187, 154, 247),
+            function: Color32::from_rgb(122, 162, 247),
+            variable: Color32::from_rgb(169, 177, 214),
+            number: Color32::from_rgb(255, 158, 100),
+            string: Color32::from_rgb(158, 206, 106),
+            boolean: Color32::from_rgb(125, 207, 255),
+            operator: Color32::from_rgb(137, 221, 255),
+            unknown: Color32::from_rgb(247, 118, 142),
+            terminal_bg: Color32::from_rgb(26, 27, 38),
+            terminal_text: Color32::from_rgb(169, 177, 214),
+            prompt: Color32::from_rgb(122, 162, 247),
         }
     }
 
